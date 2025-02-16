@@ -67,28 +67,31 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(
-          vertical: 12.0,  // Keep only vertical padding
+          vertical: 12.0, // Keep only vertical padding
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),  // Add padding only to search bar
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Add padding only to search bar
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) => setState(() => _searchQuery = value),
                 decoration: InputDecoration(
                   hintText: 'Search by name, phone, or bill number',
                   prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
+                  suffixIcon:
+                      _searchQuery.isNotEmpty
+                          ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                          : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -107,21 +110,21 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 stream: _supabaseService.getCustomersStream(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    );
+                    return Center(child: Text('Error: ${snapshot.error}'));
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   final customers = snapshot.data ?? [];
-                  final filteredCustomers = customers
-                      .where((customer) => _filterCustomer(customer, _searchQuery))
-                      .toList();
+                  final filteredCustomers =
+                      customers
+                          .where(
+                            (customer) =>
+                                _filterCustomer(customer, _searchQuery),
+                          )
+                          .toList();
 
                   if (customers.isEmpty) {
                     return Center(
@@ -170,26 +173,39 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add padding to list
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                    ), // Add padding to list
                     itemCount: filteredCustomers.length,
                     itemBuilder: (context, index) {
                       final customer = filteredCustomers[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12), // Adjusted spacing
+                        padding: const EdgeInsets.only(
+                          bottom: 12,
+                        ), // Adjusted spacing
                         child: _CustomerCard(
                           customer: customer,
-                          onEdit: () => _showEditCustomerDialog(
-                              context, customer, index),
-                          onDelete: () => _confirmDelete(context, () async {
-                            // await _firebaseService.deleteCustomer(customer.id); // REMOVE
-                            await _supabaseService.deleteCustomer(customer.id);
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${customer.name} has been deleted'),
+                          onEdit:
+                              () => _showEditCustomerDialog(
+                                context,
+                                customer,
+                                index,
                               ),
-                            );
-                          }),
+                          onDelete:
+                              () => _confirmDelete(context, () async {
+                                // await _firebaseService.deleteCustomer(customer.id); // REMOVE
+                                await _supabaseService.deleteCustomer(
+                                  customer.id,
+                                );
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${customer.name} has been deleted',
+                                    ),
+                                  ),
+                                );
+                              }),
                         ),
                       );
                     },
@@ -211,73 +227,77 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   Future<void> _confirmDelete(BuildContext context, VoidCallback onConfirm) {
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Customer'),
-        content: const Text(
-          'Are you sure you want to delete this customer? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Customer'),
+            content: const Text(
+              'Are you sure you want to delete this customer? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onConfirm();
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('DELETE'),
+              ),
+            ],
           ),
-          FilledButton.tonalIcon(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('DELETE'),
-          ),
-        ],
-      ),
     );
   }
 
   Future<void> _showAddCustomerDialog(BuildContext context) {
     return showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: 600,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: const Card(
-            margin: EdgeInsets.zero,
-            child: SingleChildScrollView(
-              child: _AddCustomerForm(),
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 600,
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              child: const Card(
+                margin: EdgeInsets.zero,
+                child: SingleChildScrollView(child: _AddCustomerForm()),
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 
   Future<void> _showEditCustomerDialog(
-      BuildContext context, Customer customer, int index) {
+    BuildContext context,
+    Customer customer,
+    int index,
+  ) {
     return showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: 600,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: Card(
-            margin: EdgeInsets.zero,
-            child: SingleChildScrollView(
-              child: _AddCustomerForm(
-                customer: customer,
-                index: index,
-                isEditing: true,
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 600,
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: SingleChildScrollView(
+                  child: _AddCustomerForm(
+                    customer: customer,
+                    index: index,
+                    isEditing: true,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -302,9 +322,7 @@ class _CustomerCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
-        ),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
       ),
       color: theme.colorScheme.surface.withOpacity(0.8),
       child: InkWell(
@@ -320,8 +338,10 @@ class _CustomerCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
-                    child:
-                        const Icon(Icons.person_outline, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_outline,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -349,8 +369,9 @@ class _CustomerCard extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.1),
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
@@ -383,28 +404,29 @@ class _CustomerCard extends StatelessWidget {
                     ),
                   ),
                   PopupMenuButton<String>(
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 20),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 20),
-                            SizedBox(width: 8),
-                            Text('Delete'),
-                          ],
-                        ),
-                      ),
-                    ],
+                    itemBuilder:
+                        (context) => const [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 20),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 20),
+                                SizedBox(width: 8),
+                                Text('Delete'),
+                              ],
+                            ),
+                          ),
+                        ],
                     onSelected: (value) {
                       if (value == 'edit') {
                         onEdit();
@@ -492,11 +514,7 @@ class _AddCustomerForm extends StatefulWidget {
   final int? index;
   final bool isEditing;
 
-  const _AddCustomerForm({
-    this.customer,
-    this.index,
-    this.isEditing = false,
-  });
+  const _AddCustomerForm({this.customer, this.index, this.isEditing = false});
 
   @override
   State<_AddCustomerForm> createState() => _AddCustomerFormState();
@@ -566,12 +584,15 @@ class _AddCustomerFormState extends State<_AddCustomerForm> {
   Future<void> _saveCustomer() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
-        final billNumber = widget.isEditing
-            ? widget.customer!.billNumber
-            : await _generateBillNumber();
+        final billNumber =
+            widget.isEditing
+                ? widget.customer!.billNumber
+                : await _generateBillNumber();
 
         if (_useCustomBillNumber && !widget.isEditing) {
-          final isValid = await _checkDuplicateBillNumber(_billNumberController.text);
+          final isValid = await _checkDuplicateBillNumber(
+            _billNumberController.text,
+          );
           if (!isValid) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -583,7 +604,8 @@ class _AddCustomerFormState extends State<_AddCustomerForm> {
 
         final customer = Customer(
           id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
-          billNumber: _useCustomBillNumber ? _billNumberController.text : billNumber,
+          billNumber:
+              _useCustomBillNumber ? _billNumberController.text : billNumber,
           name: _nameController.text,
           phone: _phoneController.text,
           whatsapp: _whatsappController.text,
@@ -609,9 +631,9 @@ class _AddCustomerFormState extends State<_AddCustomerForm> {
         );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }

@@ -20,14 +20,17 @@ class SupabaseService {
 
   // Update an existing customer
   Future<void> updateCustomer(Customer customer) async {
-    await _client.from('customers').update({
-      'bill_number': customer.billNumber,
-      'name': customer.name,
-      'phone': customer.phone,
-      'whatsapp': customer.whatsapp,
-      'address': customer.address,
-      'gender': customer.gender.name,
-    }).eq('id', customer.id);
+    await _client
+        .from('customers')
+        .update({
+          'bill_number': customer.billNumber,
+          'name': customer.name,
+          'phone': customer.phone,
+          'whatsapp': customer.whatsapp,
+          'address': customer.address,
+          'gender': customer.gender.name,
+        })
+        .eq('id', customer.id);
   }
 
   // Delete a customer
@@ -39,19 +42,21 @@ class SupabaseService {
   Stream<List<Customer>> getCustomersStream() {
     return _client
         .from('customers')
-        .stream(primaryKey: ['id']).order('created_at', ascending: false) // Ensure ordering
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false) // Ensure ordering
         .map((maps) => maps.map((map) => Customer.fromMap(map)).toList());
   }
 
   // Get last bill number
   Future<int> getLastBillNumber() async {
     try {
-      final response = await _client
-          .from('customers')
-          .select('bill_number')
-          .order('created_at', ascending: false)
-          .limit(1)
-          .single();
+      final response =
+          await _client
+              .from('customers')
+              .select('bill_number')
+              .order('created_at', ascending: false)
+              .limit(1)
+              .single();
 
       final data = response;
 

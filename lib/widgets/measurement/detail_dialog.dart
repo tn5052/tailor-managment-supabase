@@ -33,14 +33,15 @@ class _DetailDialogState extends State<DetailDialog> {
     setState(() {
       customer = customers.firstWhere(
         (c) => c.id == widget.customerId,
-        orElse: () => Customer(
-          id: '',
-          billNumber: '',
-          name: 'Unknown Customer',
-          phone: '',
-          address: '',
-          gender: Gender.male,
-        ),
+        orElse:
+            () => Customer(
+              id: '',
+              billNumber: '',
+              name: 'Unknown Customer',
+              phone: '',
+              address: '',
+              gender: Gender.male,
+            ),
       );
     });
   }
@@ -87,7 +88,9 @@ class _DetailDialogState extends State<DetailDialog> {
           ),
           actions: [
             FilledButton.tonal(
-              onPressed: () {/* TODO: Add print functionality */},
+              onPressed: () {
+                /* TODO: Add print functionality */
+              },
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -107,7 +110,8 @@ class _DetailDialogState extends State<DetailDialog> {
             const SizedBox(width: 8),
           ],
         ),
-        body: isDesktop ? _buildDesktopLayout(theme) : _buildMobileLayout(theme),
+        body:
+            isDesktop ? _buildDesktopLayout(theme) : _buildMobileLayout(theme),
       ),
     );
   }
@@ -172,11 +176,19 @@ class _DetailDialogState extends State<DetailDialog> {
                     color: theme.colorScheme.primary,
                     measurements: [
                       MeasurementItem(
-                          'Arabic Length', '${widget.measurement.toolArabi} cm', true),
-                      MeasurementItem('Chest', '${widget.measurement.sadur} cm'),
+                        'Arabic Length',
+                        '${widget.measurement.toolArabi} cm',
+                        true,
+                      ),
+                      MeasurementItem(
+                        'Chest',
+                        '${widget.measurement.sadur} cm',
+                      ),
                       MeasurementItem('Width', '${widget.measurement.ard} cm'),
                       MeasurementItem(
-                          'Under Kandura', widget.measurement.tahtKandura),
+                        'Under Kandura',
+                        widget.measurement.tahtKandura,
+                      ),
                     ],
                   )
                 else
@@ -186,9 +198,15 @@ class _DetailDialogState extends State<DetailDialog> {
                     icon: Icons.straighten,
                     color: theme.colorScheme.primary,
                     measurements: [
-                      MeasurementItem('Kuwaiti Length',
-                          '${widget.measurement.toolKuwaiti} cm', true),
-                      MeasurementItem('Shoulder', '${widget.measurement.katf} cm'),
+                      MeasurementItem(
+                        'Kuwaiti Length',
+                        '${widget.measurement.toolKuwaiti} cm',
+                        true,
+                      ),
+                      MeasurementItem(
+                        'Shoulder',
+                        '${widget.measurement.katf} cm',
+                      ),
                       MeasurementItem('Under', '${widget.measurement.taht} cm'),
                     ],
                   ),
@@ -200,7 +218,9 @@ class _DetailDialogState extends State<DetailDialog> {
                   color: theme.colorScheme.secondary,
                   measurements: [
                     MeasurementItem(
-                        'Back Length', '${widget.measurement.toolKhalfi} cm'),
+                      'Back Length',
+                      '${widget.measurement.toolKhalfi} cm',
+                    ),
                     MeasurementItem('Sleeve', '${widget.measurement.kum} cm'),
                     MeasurementItem('Cuff', '${widget.measurement.fkm} cm'),
                     MeasurementItem('Neck', '${widget.measurement.raqba} cm'),
@@ -217,15 +237,17 @@ class _DetailDialogState extends State<DetailDialog> {
                     color: theme.colorScheme.tertiary,
                     measurements: [
                       MeasurementItem('Cap Style', widget.measurement.tarboosh),
-                      MeasurementItem('Sleeve Style', widget.measurement.kumSalai),
+                      MeasurementItem(
+                        'Sleeve Style',
+                        widget.measurement.kumSalai,
+                      ),
                       MeasurementItem('Stitching', widget.measurement.khayata),
                       MeasurementItem('Pleats', widget.measurement.kisra),
                       MeasurementItem('Side Pocket', widget.measurement.bati),
                       MeasurementItem('Cuff Style', widget.measurement.kaf),
                       MeasurementItem('Embroidery', widget.measurement.tatreez),
                       MeasurementItem('Side Slit', widget.measurement.jasba),
-                      MeasurementItem(
-                          'Shaib Style', widget.measurement.shaib),
+                      MeasurementItem('Shaib Style', widget.measurement.shaib),
                     ],
                   ),
                 ],
@@ -241,11 +263,13 @@ class _DetailDialogState extends State<DetailDialog> {
     );
   }
 
-  Widget _buildMobileMeasurementCard(ThemeData theme,
-      {required String title,
-      required IconData icon,
-      required Color color,
-      required List<MeasurementItem> measurements}) {
+  Widget _buildMobileMeasurementCard(
+    ThemeData theme, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<MeasurementItem> measurements,
+  }) {
     return Card(
       elevation: 0,
       color: color.withOpacity(0.05),
@@ -289,16 +313,21 @@ class _DetailDialogState extends State<DetailDialog> {
   }
 
   Widget _buildMobileMeasurementItem(
-      ThemeData theme, MeasurementItem item, Color color) {
+    ThemeData theme,
+    MeasurementItem item,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: item.isHighlighted
-            ? color.withOpacity(0.1)
-            : theme.colorScheme.surface,
+        color:
+            item.isHighlighted
+                ? color.withOpacity(0.1)
+                : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: item.isHighlighted ? color.withOpacity(0.3) : theme.dividerColor,
+          color:
+              item.isHighlighted ? color.withOpacity(0.3) : theme.dividerColor,
         ),
       ),
       child: Row(
@@ -361,9 +390,7 @@ class _DetailDialogState extends State<DetailDialog> {
           width: 300,
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainer,
-            border: Border(
-              right: BorderSide(color: theme.dividerColor),
-            ),
+            border: Border(right: BorderSide(color: theme.dividerColor)),
           ),
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -387,12 +414,15 @@ class _DetailDialogState extends State<DetailDialog> {
                 content: [
                   _buildInfoRow(
                     'Created',
-                    DateFormat('MMM dd, yyyy\nhh:mm a').format(widget.measurement.date),
+                    DateFormat(
+                      'MMM dd, yyyy\nhh:mm a',
+                    ).format(widget.measurement.date),
                   ),
                   _buildInfoRow(
                     'Last Updated',
-                    DateFormat('MMM dd, yyyy\nhh:mm a')
-                        .format(widget.measurement.lastUpdated),
+                    DateFormat(
+                      'MMM dd, yyyy\nhh:mm a',
+                    ).format(widget.measurement.lastUpdated),
                   ),
                 ],
               ),
@@ -414,12 +444,20 @@ class _DetailDialogState extends State<DetailDialog> {
                     icon: Icons.straighten,
                     color: theme.colorScheme.primary,
                     measurements: [
-                      MeasurementItem('Arabic Length',
-                          '${widget.measurement.toolArabi} cm', true),
-                      MeasurementItem('Chest', '${widget.measurement.sadur} cm'),
+                      MeasurementItem(
+                        'Arabic Length',
+                        '${widget.measurement.toolArabi} cm',
+                        true,
+                      ),
+                      MeasurementItem(
+                        'Chest',
+                        '${widget.measurement.sadur} cm',
+                      ),
                       MeasurementItem('Width', '${widget.measurement.ard} cm'),
                       MeasurementItem(
-                          'Under Kandura', widget.measurement.tahtKandura),
+                        'Under Kandura',
+                        widget.measurement.tahtKandura,
+                      ),
                     ],
                   )
                 else
@@ -429,9 +467,15 @@ class _DetailDialogState extends State<DetailDialog> {
                     icon: Icons.straighten,
                     color: theme.colorScheme.primary,
                     measurements: [
-                      MeasurementItem('Kuwaiti Length',
-                          '${widget.measurement.toolKuwaiti} cm', true),
-                      MeasurementItem('Shoulder', '${widget.measurement.katf} cm'),
+                      MeasurementItem(
+                        'Kuwaiti Length',
+                        '${widget.measurement.toolKuwaiti} cm',
+                        true,
+                      ),
+                      MeasurementItem(
+                        'Shoulder',
+                        '${widget.measurement.katf} cm',
+                      ),
                       MeasurementItem('Under', '${widget.measurement.taht} cm'),
                     ],
                   ),
@@ -446,7 +490,9 @@ class _DetailDialogState extends State<DetailDialog> {
                   color: theme.colorScheme.secondary,
                   measurements: [
                     MeasurementItem(
-                        'Back Length', '${widget.measurement.toolKhalfi} cm'),
+                      'Back Length',
+                      '${widget.measurement.toolKhalfi} cm',
+                    ),
                     MeasurementItem('Sleeve', '${widget.measurement.kum} cm'),
                     MeasurementItem('Cuff', '${widget.measurement.fkm} cm'),
                     MeasurementItem('Neck', '${widget.measurement.raqba} cm'),
@@ -464,15 +510,17 @@ class _DetailDialogState extends State<DetailDialog> {
                     color: theme.colorScheme.tertiary,
                     measurements: [
                       MeasurementItem('Cap Style', widget.measurement.tarboosh),
-                      MeasurementItem('Sleeve Style', widget.measurement.kumSalai),
+                      MeasurementItem(
+                        'Sleeve Style',
+                        widget.measurement.kumSalai,
+                      ),
                       MeasurementItem('Stitching', widget.measurement.khayata),
                       MeasurementItem('Pleats', widget.measurement.kisra),
                       MeasurementItem('Side Pocket', widget.measurement.bati),
                       MeasurementItem('Cuff Style', widget.measurement.kaf),
                       MeasurementItem('Embroidery', widget.measurement.tatreez),
                       MeasurementItem('Side Slit', widget.measurement.jasba),
-                      MeasurementItem(
-                          'Shaib Style', widget.measurement.shaib),
+                      MeasurementItem('Shaib Style', widget.measurement.shaib),
                     ],
                   ),
                 ],
@@ -489,10 +537,12 @@ class _DetailDialogState extends State<DetailDialog> {
     );
   }
 
-  Widget _buildInfoCard(ThemeData theme,
-      {required String title,
-      required IconData icon,
-      required List<Widget> content}) {
+  Widget _buildInfoCard(
+    ThemeData theme, {
+    required String title,
+    required IconData icon,
+    required List<Widget> content,
+  }) {
     return Card(
       elevation: 0,
       color: theme.colorScheme.surface,
@@ -538,21 +588,20 @@ class _DetailDialogState extends State<DetailDialog> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMeasurementCard(ThemeData theme,
-      {required String title,
-      required IconData icon,
-      required Color color,
-      required List<MeasurementItem> measurements}) {
+  Widget _buildMeasurementCard(
+    ThemeData theme, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<MeasurementItem> measurements,
+  }) {
     return Card(
       elevation: 0,
       color: color.withOpacity(0.05),
@@ -601,16 +650,21 @@ class _DetailDialogState extends State<DetailDialog> {
   }
 
   Widget _buildMeasurementItem(
-      ThemeData theme, MeasurementItem item, Color color) {
+    ThemeData theme,
+    MeasurementItem item,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: item.isHighlighted
-            ? color.withOpacity(0.1)
-            : theme.colorScheme.surface,
+        color:
+            item.isHighlighted
+                ? color.withOpacity(0.1)
+                : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: item.isHighlighted ? color.withOpacity(0.3) : theme.dividerColor,
+          color:
+              item.isHighlighted ? color.withOpacity(0.3) : theme.dividerColor,
         ),
       ),
       child: Column(
@@ -647,8 +701,10 @@ class _DetailDialogState extends State<DetailDialog> {
           children: [
             Row(
               children: [
-                Icon(Icons.notes_outlined,
-                    color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.notes_outlined,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 12),
                 Text(
                   'Notes',

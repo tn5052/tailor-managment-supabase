@@ -1,17 +1,9 @@
 import 'package:uuid/uuid.dart';
 import 'customer.dart';
 
-enum InvoiceStatus {
-  pending,
-  delivered,
-  cancelled
-}
+enum InvoiceStatus { pending, delivered, cancelled }
 
-enum PaymentStatus {
-  unpaid,
-  partial,
-  paid
-}
+enum PaymentStatus { unpaid, partial, paid }
 
 class Invoice {
   static const String trn = '100566119200003';
@@ -103,7 +95,12 @@ class Invoice {
       measurementId: measurementId,
       measurementName: measurementName,
       isDelivered: false,
-      paymentStatus: advance >= amountIncludingVat ? PaymentStatus.paid : advance > 0 ? PaymentStatus.partial : PaymentStatus.unpaid,
+      paymentStatus:
+          advance >= amountIncludingVat
+              ? PaymentStatus.paid
+              : advance > 0
+              ? PaymentStatus.partial
+              : PaymentStatus.unpaid,
       deliveryStatus: InvoiceStatus.pending,
       notes: [],
       payments: [],
@@ -135,18 +132,22 @@ class Invoice {
       paymentStatus: PaymentStatus.values.firstWhere(
         (e) => e.toString() == map['payment_status'],
       ),
-      deliveredAt: map['delivered_at'] != null
-          ? DateTime.parse(map['delivered_at'])
-          : null,
+      deliveredAt:
+          map['delivered_at'] != null
+              ? DateTime.parse(map['delivered_at'])
+              : null,
       paidAt: map['paid_at'] != null ? DateTime.parse(map['paid_at']) : null,
       notes: List<String>.from(map['notes'] ?? []),
-      payments: (map['payments'] as List<dynamic>? ?? [])
-          .map((p) => Payment(
-                amount: p['amount'],
-                date: DateTime.parse(p['date']),
-                note: p['note'],
-              ))
-          .toList(),
+      payments:
+          (map['payments'] as List<dynamic>? ?? [])
+              .map(
+                (p) => Payment(
+                  amount: p['amount'],
+                  date: DateTime.parse(p['date']),
+                  note: p['note'],
+                ),
+              )
+              .toList(),
       isDelivered: map['is_delivered'] ?? false,
     );
   }
@@ -180,16 +181,14 @@ class Invoice {
     };
   }
 
-  String get displayNumber => 'INV-$customerBillNumber-${invoiceNumber.substring(0, 3)}';
+  String get displayNumber =>
+      'INV-$customerBillNumber-${invoiceNumber.substring(0, 3)}';
 
-  double get remainingBalance => balance - payments.fold(0.0, (sum, payment) => sum + payment.amount);
+  double get remainingBalance =>
+      balance - payments.fold(0.0, (sum, payment) => sum + payment.amount);
 
   void addPayment(double amount, String note) {
-    payments.add(Payment(
-      amount: amount,
-      date: DateTime.now(),
-      note: note,
-    ));
+    payments.add(Payment(amount: amount, date: DateTime.now(), note: note));
     if (remainingBalance <= 0) {
       paymentStatus = PaymentStatus.paid;
       paidAt = DateTime.now();
@@ -218,17 +217,9 @@ class Payment {
   final DateTime date;
   final String note;
 
-  Payment({
-    required this.amount,
-    required this.date,
-    required this.note,
-  });
+  Payment({required this.amount, required this.date, required this.note});
 
   Map<String, dynamic> toMap() {
-    return {
-      'amount': amount,
-      'date': date.toIso8601String(),
-      'note': note,
-    };
+    return {'amount': amount, 'date': date.toIso8601String(), 'note': note};
   }
 }

@@ -29,7 +29,8 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
     if (query.isEmpty && _selectedDate == null) return true;
 
     final queryLower = query.toLowerCase();
-    final matchesQuery = query.isEmpty ||
+    final matchesQuery =
+        query.isEmpty ||
         measurement.billNumber.toLowerCase().contains(queryLower);
 
     if (_selectedDate == null) return matchesQuery;
@@ -51,23 +52,24 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
   void _showAddMeasurementDialog() {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 40.0 : 16.0,
-          vertical: 24.0,
-        ),
-        child: Container(
-          width: isDesktop ? 800 : MediaQuery.of(context).size.width * 0.95,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? 40.0 : 16.0,
+              vertical: 24.0,
+            ),
+            child: Container(
+              width: isDesktop ? 800 : MediaQuery.of(context).size.width * 0.95,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              child: const Card(
+                margin: EdgeInsets.zero,
+                child: AddMeasurementDialog(),
+              ),
+            ),
           ),
-          child: const Card(
-            margin: EdgeInsets.zero,
-            child: AddMeasurementDialog(),
-          ),
-        ),
-      ),
     );
   }
 
@@ -114,11 +116,12 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0), // Add padding only to search bar
+                horizontal: 16.0,
+              ), // Add padding only to search bar
               child: MeasurementSearchBar(
                 searchController: _searchController,
-                onSearchChanged: (value) =>
-                    setState(() => _searchQuery = value),
+                onSearchChanged:
+                    (value) => setState(() => _searchQuery = value),
                 onClearSearch: () {
                   _searchController.clear();
                   setState(() => _searchQuery = '');
@@ -140,15 +143,14 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
 
                   if (measurementSnapshot.connectionState ==
                       ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   final measurements = measurementSnapshot.data ?? [];
-                  final filteredMeasurements = measurements
-                      .where((m) => _filterMeasurement(m, _searchQuery))
-                      .toList();
+                  final filteredMeasurements =
+                      measurements
+                          .where((m) => _filterMeasurement(m, _searchQuery))
+                          .toList();
 
                   return MeasurementList(
                     isDesktop: isDesktop,
@@ -161,12 +163,13 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
           ],
         ),
       ),
-      floatingActionButton: !isDesktop
-          ? FloatingActionButton(
-              onPressed: _showAddMeasurementDialog,
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton:
+          !isDesktop
+              ? FloatingActionButton(
+                onPressed: _showAddMeasurementDialog,
+                child: const Icon(Icons.add),
+              )
+              : null,
     );
   }
 }

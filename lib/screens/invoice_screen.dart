@@ -11,10 +11,7 @@ import '../services/supabase_service.dart';
 class InvoiceScreen extends StatefulWidget {
   final Customer? customer;
 
-  const InvoiceScreen({
-    super.key,
-    this.customer,
-  });
+  const InvoiceScreen({super.key, this.customer});
 
   static Future<void> show(BuildContext context, {Customer? customer}) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -23,21 +20,24 @@ class InvoiceScreen extends StatefulWidget {
 
     return showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: isDesktop
-              ? screenWidth * 0.60 // Reduced from 0.85 to 0.60 for desktop
-              : screenWidth * 0.95,
-          height: isDesktop ? screenHeight * 0.9 : screenHeight * 0.95,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width:
+                  isDesktop
+                      ? screenWidth *
+                          0.60 // Reduced from 0.85 to 0.60 for desktop
+                      : screenWidth * 0.95,
+              height: isDesktop ? screenHeight * 0.9 : screenHeight * 0.95,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: InvoiceScreen(customer: customer),
+            ),
           ),
-          child: InvoiceScreen(customer: customer),
-        ),
-      ),
     );
   }
 
@@ -91,8 +91,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     _date = DateTime.now();
     _deliveryDate = _date?.add(const Duration(days: 7));
     _dateController.text = DateFormat('dd/MM/yyyy').format(_date!);
-    _deliveryDateController.text =
-        DateFormat('dd/MM/yyyy').format(_deliveryDate!);
+    _deliveryDateController.text = DateFormat(
+      'dd/MM/yyyy',
+    ).format(_deliveryDate!);
   }
 
   @override
@@ -111,48 +112,56 @@ class _InvoiceScreenState extends State<InvoiceScreen>
   Future<void> _selectCustomer() async {
     final result = await showDialog<Customer>(
       context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          width: 600,
-          height: 600,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Text(
-                'Select Customer',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<List<Customer>>(
-                  stream: _supabaseService.getCustomersStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+      builder:
+          (context) => Dialog(
+            child: Container(
+              width: 600,
+              height: 600,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Text(
+                    'Select Customer',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: StreamBuilder<List<Customer>>(
+                      stream: _supabaseService.getCustomersStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}'),
+                          );
+                        }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                    final customers = snapshot.data ?? [];
-                    return ListView.builder(
-                      itemCount: customers.length,
-                      itemBuilder: (context, index) {
-                        final customer = customers[index];
-                        return ListTile(
-                          title: Text(customer.name),
-                          subtitle: Text('Bill #${customer.billNumber} • ${customer.phone}'),
-                          onTap: () => Navigator.pop(context, customer),
+                        final customers = snapshot.data ?? [];
+                        return ListView.builder(
+                          itemCount: customers.length,
+                          itemBuilder: (context, index) {
+                            final customer = customers[index];
+                            return ListTile(
+                              title: Text(customer.name),
+                              subtitle: Text(
+                                'Bill #${customer.billNumber} • ${customer.phone}',
+                              ),
+                              onTap: () => Navigator.pop(context, customer),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
 
     if (result != null) {
@@ -183,61 +192,74 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
     final result = await showDialog<Measurement>(
       context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          width: 600,
-          height: 600,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Text(
-                'Select Measurement',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<List<Measurement>>(
-                  stream: _measurementService.getMeasurementsStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+      builder:
+          (context) => Dialog(
+            child: Container(
+              width: 600,
+              height: 600,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Text(
+                    'Select Measurement',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: StreamBuilder<List<Measurement>>(
+                      stream: _measurementService.getMeasurementsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}'),
+                          );
+                        }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                    final measurements = snapshot.data ?? [];
-                    final customerMeasurements = measurements
-                        .where((m) => m.customerId == _selectedCustomer!.id)
-                        .toList();
+                        final measurements = snapshot.data ?? [];
+                        final customerMeasurements =
+                            measurements
+                                .where(
+                                  (m) => m.customerId == _selectedCustomer!.id,
+                                )
+                                .toList();
 
-                    if (customerMeasurements.isEmpty) {
-                      return const Center(
-                        child: Text('No measurements found for this customer'),
-                      );
-                    }
+                        if (customerMeasurements.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No measurements found for this customer',
+                            ),
+                          );
+                        }
 
-                    return ListView.builder(
-                      itemCount: customerMeasurements.length,
-                      itemBuilder: (context, index) {
-                        final measurement = customerMeasurements[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            child: Text(measurement.style[0].toUpperCase()),
-                          ),
-                          title: Text(_getMeasurementTitle(measurement)),
-                          subtitle: Text(_getMeasurementSubtitle(measurement)),
-                          onTap: () => Navigator.pop(context, measurement),
+                        return ListView.builder(
+                          itemCount: customerMeasurements.length,
+                          itemBuilder: (context, index) {
+                            final measurement = customerMeasurements[index];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                child: Text(measurement.style[0].toUpperCase()),
+                              ),
+                              title: Text(_getMeasurementTitle(measurement)),
+                              subtitle: Text(
+                                _getMeasurementSubtitle(measurement),
+                              ),
+                              onTap: () => Navigator.pop(context, measurement),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
 
     if (result != null) {
@@ -254,16 +276,16 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
   Future<void> _saveInvoice() async {
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a customer')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
 
     if (_formKey.currentState?.validate() ?? false) {
       try {
         final invoiceNumber = await _invoiceService.generateInvoiceNumber();
-        
+
         final invoice = Invoice.create(
           invoiceNumber: invoiceNumber,
           date: _date!,
@@ -273,9 +295,10 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           customer: _selectedCustomer!,
           details: _detailsController.text,
           measurementId: _selectedMeasurement?.id,
-          measurementName: _selectedMeasurement != null
-              ? _getMeasurementSubtitle(_selectedMeasurement!)
-              : null,
+          measurementName:
+              _selectedMeasurement != null
+                  ? _getMeasurementSubtitle(_selectedMeasurement!)
+                  : null,
         );
 
         await _invoiceService.addInvoice(invoice);
@@ -288,9 +311,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -311,9 +334,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         elevation: 0,
         backgroundColor: theme.colorScheme.primaryContainer,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         title: Text(
           'Create Invoice',
@@ -362,9 +383,10 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
+                        color:
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -454,14 +476,20 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                         children: [
                           _buildCalculationRow('Amount:', _amount),
                           _buildCalculationRow(
-                              'VAT (${(Invoice.vatRate * 100).toInt()}%):',
-                              _vat),
+                            'VAT (${(Invoice.vatRate * 100).toInt()}%):',
+                            _vat,
+                          ),
                           _buildCalculationRow(
-                              'Amount Incl. VAT:', _amountIncludingVat),
+                            'Amount Incl. VAT:',
+                            _amountIncludingVat,
+                          ),
                           _buildCalculationRow('Advance:', _advance),
                           const Divider(),
-                          _buildCalculationRow('Balance:', _balance,
-                              isBold: true),
+                          _buildCalculationRow(
+                            'Balance:',
+                            _balance,
+                            isBold: true,
+                          ),
                         ],
                       ),
                     ),
@@ -503,7 +531,8 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                               color: theme.colorScheme.primary,
                             ),
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceContainerHighest,
+                            fillColor:
+                                theme.colorScheme.surfaceContainerHighest,
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 16,
                               horizontal: 16,
@@ -521,9 +550,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                             ),
                           ),
                           maxLines: 3,
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                          ),
+                          style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                       ),
                     ),
@@ -611,10 +638,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                       color: theme.colorScheme.primary,
                     )
                   else
-                    Icon(
-                      Icons.edit_outlined,
-                      color: theme.colorScheme.primary,
-                    ),
+                    Icon(Icons.edit_outlined, color: theme.colorScheme.primary),
                 ],
               ),
               if (_selectedCustomer != null) ...[
@@ -702,8 +726,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor:
-                          theme.colorScheme.secondary.withOpacity(0.2),
+                      backgroundColor: theme.colorScheme.secondary.withOpacity(
+                        0.2,
+                      ),
                       child: Text(
                         _selectedMeasurement!.style[0].toUpperCase(),
                         style: TextStyle(
@@ -744,8 +769,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                       ? 'Select a customer first'
                       : 'Select measurement',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSecondaryContainer
-                        .withOpacity(0.8),
+                    color: theme.colorScheme.onSecondaryContainer.withOpacity(
+                      0.8,
+                    ),
                   ),
                 ),
               ],
@@ -756,11 +782,15 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     );
   }
 
-  Widget _buildCalculationRow(String label, double amount,
-      {bool isBold = false}) {
-    final style = isBold
-        ? Theme.of(context).textTheme.titleMedium
-        : Theme.of(context).textTheme.bodyLarge;
+  Widget _buildCalculationRow(
+    String label,
+    double amount, {
+    bool isBold = false,
+  }) {
+    final style =
+        isBold
+            ? Theme.of(context).textTheme.titleMedium
+            : Theme.of(context).textTheme.bodyLarge;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -768,10 +798,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: style),
-          Text(
-            NumberFormat.currency(symbol: '').format(amount),
-            style: style,
-          ),
+          Text(NumberFormat.currency(symbol: '').format(amount), style: style),
         ],
       ),
     );
@@ -794,109 +821,119 @@ class _DatePickerField extends StatelessWidget {
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDialog<DateTime>(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 340,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      color: Theme.of(context).colorScheme.primary,
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width: 340,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Select Date',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Select Date',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(
+                            color:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                  ),
+                  // Quick Actions
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _QuickDateButton(
+                          label: 'Today',
+                          onTap: () => Navigator.pop(context, DateTime.now()),
+                        ),
+                        _QuickDateButton(
+                          label: 'Tomorrow',
+                          onTap:
+                              () => Navigator.pop(
+                                context,
+                                DateTime.now().add(const Duration(days: 1)),
+                              ),
+                        ),
+                        _QuickDateButton(
+                          label: 'Next Week',
+                          onTap:
+                              () => Navigator.pop(
+                                context,
+                                DateTime.now().add(const Duration(days: 7)),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Calendar
+                  SizedBox(
+                    height: 360,
+                    child: CalendarDatePicker(
+                      initialDate: initialDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                      onDateChanged: (date) => Navigator.pop(context, date),
+                    ),
+                  ),
+                  // Bottom Actions
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('CANCEL'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed:
+                              () => Navigator.pop(context, DateTime.now()),
+                          child: const Text('TODAY'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              // Quick Actions
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _QuickDateButton(
-                      label: 'Today',
-                      onTap: () => Navigator.pop(context, DateTime.now()),
-                    ),
-                    _QuickDateButton(
-                      label: 'Tomorrow',
-                      onTap: () => Navigator.pop(
-                        context,
-                        DateTime.now().add(const Duration(days: 1)),
-                      ),
-                    ),
-                    _QuickDateButton(
-                      label: 'Next Week',
-                      onTap: () => Navigator.pop(
-                        context,
-                        DateTime.now().add(const Duration(days: 7)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Calendar
-              SizedBox(
-                height: 360,
-                child: CalendarDatePicker(
-                  initialDate: initialDate ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2100),
-                  onDateChanged: (date) => Navigator.pop(context, date),
-                ),
-              ),
-              // Bottom Actions
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('CANCEL'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.tonal(
-                      onPressed: () => Navigator.pop(context, DateTime.now()),
-                      child: const Text('TODAY'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
 
     if (picked != null) {
@@ -912,9 +949,7 @@ class _DatePickerField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: const Icon(Icons.calendar_today),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       readOnly: true,
       onTap: () => _selectDate(context),
@@ -932,10 +967,7 @@ class _QuickDateButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickDateButton({
-    required this.label,
-    required this.onTap,
-  });
+  const _QuickDateButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

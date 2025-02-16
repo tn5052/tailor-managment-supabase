@@ -49,15 +49,11 @@ class InvoiceListScreen extends StatelessWidget {
         stream: _invoiceService.getInvoicesStream(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           final invoices = snapshot.data ?? [];
@@ -68,19 +64,21 @@ class InvoiceListScreen extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
-            child: isDesktop || isTablet
-                ? _buildGrid(context, invoices)
-                : _buildList(context, invoices),
+            child:
+                isDesktop || isTablet
+                    ? _buildGrid(context, invoices)
+                    : _buildList(context, invoices),
           );
         },
       ),
-      floatingActionButton: isDesktop
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => InvoiceScreen.show(context),
-              icon: const Icon(Icons.add),
-              label: const Text('New Invoice'),
-            ),
+      floatingActionButton:
+          isDesktop
+              ? null
+              : FloatingActionButton.extended(
+                onPressed: () => InvoiceScreen.show(context),
+                icon: const Icon(Icons.add),
+                label: const Text('New Invoice'),
+              ),
     );
   }
 
@@ -98,9 +96,10 @@ class InvoiceListScreen extends StatelessWidget {
         return _InvoiceGridCard(
           invoice: invoice,
           onTap: () => _showInvoiceDetails(context, invoice),
-          onDelete: () => _confirmDelete(context, () async {
-            await _invoiceService.deleteInvoice(invoice.id);
-          }),
+          onDelete:
+              () => _confirmDelete(context, () async {
+                await _invoiceService.deleteInvoice(invoice.id);
+              }),
         );
       },
     );
@@ -114,9 +113,10 @@ class InvoiceListScreen extends StatelessWidget {
         return _InvoiceListTile(
           invoice: invoice,
           onTap: () => _showInvoiceDetails(context, invoice),
-          onDelete: () => _confirmDelete(context, () async {
-            await _invoiceService.deleteInvoice(invoice.id);
-          }),
+          onDelete:
+              () => _confirmDelete(context, () async {
+                await _invoiceService.deleteInvoice(invoice.id);
+              }),
         );
       },
     );
@@ -127,11 +127,7 @@ class InvoiceListScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.receipt_long_outlined,
-            size: 64,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           const Text(
             'No invoices yet',
@@ -158,26 +154,27 @@ class InvoiceListScreen extends StatelessWidget {
   Future<void> _confirmDelete(BuildContext context, VoidCallback onConfirm) {
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Invoice'),
-        content: const Text(
-          'Are you sure you want to delete this invoice? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Invoice'),
+            content: const Text(
+              'Are you sure you want to delete this invoice? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onConfirm();
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('DELETE'),
+              ),
+            ],
           ),
-          FilledButton.tonalIcon(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('DELETE'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -288,10 +285,7 @@ class _InvoiceGridCard extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    Text(
-                      'Total Amount',
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    Text('Total Amount', style: theme.textTheme.bodySmall),
                     Text(
                       currencyFormat.format(invoice.amountIncludingVat),
                       style: theme.textTheme.titleLarge?.copyWith(
@@ -322,47 +316,52 @@ class _InvoiceGridCard extends StatelessWidget {
     final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.edit, color: theme.colorScheme.primary),
-              title: const Text('Edit Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement edit
-              },
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.edit, color: theme.colorScheme.primary),
+                  title: const Text('Edit Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement edit
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.print, color: theme.colorScheme.primary),
+                  title: const Text('Print Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement print
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.share, color: theme.colorScheme.primary),
+                  title: const Text('Share Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement share
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: theme.colorScheme.error,
+                  ),
+                  title: Text(
+                    'Delete Invoice',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onDelete();
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: Icon(Icons.print, color: theme.colorScheme.primary),
-              title: const Text('Print Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement print
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.share, color: theme.colorScheme.primary),
-              title: const Text('Share Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement share
-              },
-            ),
-            ListTile(
-              leading:
-                  Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('Delete Invoice',
-                  style: TextStyle(color: theme.colorScheme.error)),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete();
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
@@ -428,10 +427,7 @@ class _InvoiceListTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                'Total Amount',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text('Total Amount', style: theme.textTheme.bodySmall),
               Text(
                 currencyFormat.format(invoice.amountIncludingVat),
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -458,47 +454,52 @@ class _InvoiceListTile extends StatelessWidget {
     final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.edit, color: theme.colorScheme.primary),
-              title: const Text('Edit Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement edit
-              },
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.edit, color: theme.colorScheme.primary),
+                  title: const Text('Edit Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement edit
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.print, color: theme.colorScheme.primary),
+                  title: const Text('Print Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement print
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.share, color: theme.colorScheme.primary),
+                  title: const Text('Share Invoice'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement share
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: theme.colorScheme.error,
+                  ),
+                  title: Text(
+                    'Delete Invoice',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onDelete();
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: Icon(Icons.print, color: theme.colorScheme.primary),
-              title: const Text('Print Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement print
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.share, color: theme.colorScheme.primary),
-              title: const Text('Share Invoice'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Implement share
-              },
-            ),
-            ListTile(
-              leading:
-                  Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              title: Text('Delete Invoice',
-                  style: TextStyle(color: theme.colorScheme.error)),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete();
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }

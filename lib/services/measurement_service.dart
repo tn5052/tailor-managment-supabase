@@ -28,7 +28,6 @@ class MeasurementService {
         .from('measurements')
         .stream(primaryKey: ['id'])
         .order('date', ascending: false)
-        .map((maps) =>
-            maps.map((map) => Measurement.fromMap(map)).toList());
+        .map((maps) => maps.map((map) => Measurement.fromMap(map)).toList());
   }
 }

@@ -28,19 +28,19 @@ class MeasurementListItem extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
-        ),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
       ),
       color: theme.colorScheme.surface.withOpacity(0.8),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => _showDetailsDialog(context, measurement.customerId), //customer),
+        onTap:
+            () => _showDetailsDialog(
+              context,
+              measurement.customerId,
+            ), //customer),
         child: Container(
           padding: const EdgeInsets.all(12.0), // increased from 8.0
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -77,7 +77,9 @@ class MeasurementListItem extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      const SizedBox(width: 12), // increased from 8
+                                      const SizedBox(
+                                        width: 12,
+                                      ), // increased from 8
                                       Flexible(
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
@@ -87,8 +89,9 @@ class MeasurementListItem extends StatelessWidget {
                                           decoration: BoxDecoration(
                                             color: theme.colorScheme.primary
                                                 .withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -96,7 +99,8 @@ class MeasurementListItem extends StatelessWidget {
                                               Icon(
                                                 Icons.receipt_outlined,
                                                 size: 12,
-                                                color: theme.colorScheme.primary,
+                                                color:
+                                                    theme.colorScheme.primary,
                                               ),
                                               const SizedBox(width: 3),
                                               Flexible(
@@ -104,7 +108,9 @@ class MeasurementListItem extends StatelessWidget {
                                                   '#${measurement.billNumber}',
                                                   style: TextStyle(
                                                     color:
-                                                        theme.colorScheme.primary,
+                                                        theme
+                                                            .colorScheme
+                                                            .primary,
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w500,
                                                   ),
@@ -148,34 +154,37 @@ class MeasurementListItem extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
+                    itemBuilder:
+                        (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                     onSelected: (value) {
                       if (value == 'delete') {
                         _showDeleteDialog(context);
                       } else if (value == 'edit') {
-                        _showEditMeasurementDialog(
-                            context, measurement, index);
+                        _showEditMeasurementDialog(context, measurement, index);
                       }
                     },
                   ),
@@ -190,16 +199,19 @@ class MeasurementListItem extends StatelessWidget {
                       text: 'Style: ${measurement.style}',
                       color: theme.colorScheme.primary,
                     ),
-                    ...buildStyleDetailBadges(context, theme)
-                        .map((badge) => Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 4), // reduced from 6
-                              child: badge,
-                            )),
+                    ...buildStyleDetailBadges(context, theme).map(
+                      (badge) => Padding(
+                        padding: const EdgeInsets.only(
+                          left: 4,
+                        ), // reduced from 6
+                        child: badge,
+                      ),
+                    ),
                     if (measurement.notes.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(
-                            left: 4), // reduced from 6
+                          left: 4,
+                        ), // reduced from 6
                         child: MeasurementBadge(
                           text: 'Notes: ${measurement.notes}',
                           color: Colors.grey,
@@ -252,11 +264,9 @@ class MeasurementListItem extends StatelessWidget {
 
     void addIfNotEmpty(String label, String value, Color color) {
       if (value.isNotEmpty) {
-        badges.add(MeasurementBadge(
-          text: '$label: $value',
-          color: color,
-          small: true,
-        ));
+        badges.add(
+          MeasurementBadge(text: '$label: $value', color: color, small: true),
+        );
       }
     }
 
@@ -277,70 +287,76 @@ class MeasurementListItem extends StatelessWidget {
   void _showDetailsDialog(BuildContext context, String customerId) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 1200,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
+      builder:
+          (context) => Dialog(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1200,
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              child: DetailDialog(
+                measurement: measurement,
+                customerId: customerId,
+              ),
+            ),
           ),
-          child: DetailDialog(
-            measurement: measurement,
-            customerId: customerId,
-          ),
-        ),
-      ),
     );
   }
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Measurement'),
-        content: const Text('Are you sure you want to delete this measurement?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await _measurementService.deleteMeasurement(measurement.id);
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Measurement'),
+            content: const Text(
+              'Are you sure you want to delete this measurement?',
             ),
-            child: const Text('Delete'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await _measurementService.deleteMeasurement(measurement.id);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showEditMeasurementDialog(
-      BuildContext context, Measurement measurement, int index) {
+    BuildContext context,
+    Measurement measurement,
+    int index,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 800,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: Card(
-            margin: EdgeInsets.zero,
-            child: AddMeasurementDialog(
-              measurement: measurement,
-              index: index,
-              isEditing: true,
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width: 800,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: AddMeasurementDialog(
+                  measurement: measurement,
+                  index: index,
+                  isEditing: true,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 }
