@@ -260,52 +260,60 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   }
 
   Future<void> _showAddCustomerDialog(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    
     return showDialog(
       context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: 600,
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
-              ),
-              child: const Card(
-                margin: EdgeInsets.zero,
-                child: SingleChildScrollView(child: _AddCustomerForm()),
-              ),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isDesktop ? 40.0 : 8.0, // Reduced horizontal padding on mobile
+          vertical: 24.0,
+        ),
+        child: Container(
+          width: isDesktop ? 600 : MediaQuery.of(context).size.width,  // Full width on mobile
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: SingleChildScrollView(
+              child: const _AddCustomerForm(),
             ),
           ),
+        ),
+      ),
     );
   }
 
-  Future<void> _showEditCustomerDialog(
-    BuildContext context,
-    Customer customer,
-    int index,
-  ) {
+  Future<void> _showEditCustomerDialog(BuildContext context, Customer customer, int index) {
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    
     return showDialog(
       context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: 600,
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
-              ),
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: SingleChildScrollView(
-                  child: _AddCustomerForm(
-                    customer: customer,
-                    index: index,
-                    isEditing: true,
-                  ),
-                ),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isDesktop ? 40.0 : 8.0, // Reduced horizontal padding on mobile
+          vertical: 24.0,
+        ),
+        child: Container(
+          width: isDesktop ? 600 : MediaQuery.of(context).size.width,  // Full width on mobile
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: SingleChildScrollView(
+              child: _AddCustomerForm(
+                customer: customer,
+                index: index,
+                isEditing: true,
               ),
             ),
           ),
+        ),
+      ),
     );
   }
 }
