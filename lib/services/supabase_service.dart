@@ -78,4 +78,19 @@ class SupabaseService {
       return 0;
     }
   }
+
+  // Get customer name by ID
+  Future<String> getCustomerName(String customerId) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select('name')
+          .eq('id', customerId)
+          .single();
+      return response['name'] as String;
+    } catch (e) {
+      debugPrint('Error fetching customer name: $e');
+      return 'Unknown Customer';
+    }
+  }
 }

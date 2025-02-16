@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/measurement.dart';
 import '../../services/measurement_service.dart';
+import '../../services/supabase_service.dart';
 import 'measurement_badge.dart';
 import 'detail_dialog.dart';
 import 'add_measurement_dialog.dart';
@@ -11,6 +12,7 @@ class MeasurementListItem extends StatelessWidget {
   final int index;
   final bool isDesktop;
   final MeasurementService _measurementService = MeasurementService();
+  final SupabaseService _supabaseService = SupabaseService();
 
   MeasurementListItem({
     super.key,
@@ -68,13 +70,18 @@ class MeasurementListItem extends StatelessWidget {
                                     children: [
                                       Flexible(
                                         flex: 2,
-                                        child: Text(
-                                          measurement.customerId,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 16,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                        child: FutureBuilder<String>(
+                                          future: _supabaseService.getCustomerName(measurement.customerId),
+                                          builder: (context, snapshot) {
+                                            return Text(
+                                              snapshot.data ?? 'Loading...',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            );
+                                          },
                                         ),
                                       ),
                                       const SizedBox(
