@@ -43,8 +43,16 @@ class SupabaseService {
     return _client
         .from('customers')
         .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false) // Ensure ordering
-        .map((maps) => maps.map((map) => Customer.fromMap(map)).toList());
+        // Remove the deleted condition since it doesn't exist
+        .order(
+          'bill_number',
+          ascending: false,
+        ) // Changed from created_at to bill_number
+        .map((maps) => maps.map((map) => Customer.fromMap(map)).toList())
+        .handleError((error) {
+          debugPrint('Error in customers stream: $error');
+          return [];
+        });
   }
 
   // Get last bill number

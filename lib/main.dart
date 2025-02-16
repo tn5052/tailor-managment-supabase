@@ -10,6 +10,9 @@ Future<void> main() async {
     url: 'https://fsqqvfcqfmyjidorvnst.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzcXF2ZmNxZm15amlkb3J2bnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2OTE1MjEsImV4cCI6MjA1NTI2NzUyMX0.td5lwgQHYDSFq8vvLQk7HJNNNDYskmbQ1uCeohCKgA0',
+    realtimeClientOptions: const RealtimeClientOptions(
+      eventsPerSecond: 40,
+    ),
   );
 
   runApp(const MyApp());

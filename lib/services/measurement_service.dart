@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../models/measurement.dart';
 
 class MeasurementService {
@@ -27,7 +28,12 @@ class MeasurementService {
     return _client
         .from('measurements')
         .stream(primaryKey: ['id'])
+        // Remove the deleted condition
         .order('date', ascending: false)
-        .map((maps) => maps.map((map) => Measurement.fromMap(map)).toList());
+        .map((maps) => maps.map((map) => Measurement.fromMap(map)).toList())
+        .handleError((error) {
+          debugPrint('Error in measurements stream: $error');
+          return [];
+        });
   }
 }

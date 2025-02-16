@@ -109,6 +109,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 // stream: _firebaseService.getCustomersStream(), // REMOVE
                 stream: _supabaseService.getCustomersStream(),
                 builder: (context, snapshot) {
+                  // Add debug prints
+                  debugPrint('Connection state: ${snapshot.connectionState}');
+                  debugPrint('Has error: ${snapshot.hasError}');
+                  if (snapshot.hasError) {
+                    debugPrint('Error: ${snapshot.error}');
+                  }
+                  debugPrint('Data length: ${snapshot.data?.length}');
+
                   if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
