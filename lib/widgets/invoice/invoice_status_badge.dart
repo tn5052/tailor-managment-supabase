@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/invoice.dart';
+import '../../models/invoice.dart';
 
 enum BadgeType { delivery, payment }
 

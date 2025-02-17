@@ -3,7 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'dart:typed_data';
-import '../widgets/invoice_template.dart';
+import '../widgets/invoice/invoice_template.dart';
 import '../models/invoice.dart';
 
 class InvoiceService {

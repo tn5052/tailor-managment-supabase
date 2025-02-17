@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import '../models/invoice.dart';
-import '../models/customer.dart';
-import '../models/measurement.dart';
-import '../services/measurement_service.dart';
-import '../services/invoice_service.dart';
-import '../services/supabase_service.dart';
+import '../../models/invoice.dart';
+import '../../models/customer.dart';
+import '../../models/measurement.dart';
+import '../../services/measurement_service.dart';
+import '../../services/invoice_service.dart';
+import '../../services/supabase_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final Customer? customer;

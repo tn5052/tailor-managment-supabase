@@ -2,7 +2,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart';
 import 'dart:typed_data';
-import '../models/invoice.dart';
+import '../../models/invoice.dart';
 
 class InvoiceTemplate {
   static Future<Uint8List> generateInvoice(Invoice invoice) async {

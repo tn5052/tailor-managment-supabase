@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/invoice.dart';
-import 'invoice_screen.dart';
-import '../widgets/invoice_status_badge.dart';
-import '../widgets/invoice_details_dialog.dart';
+import '../widgets/invoice/invoice_screen.dart';
+import '../widgets/invoice/invoice_status_badge.dart';
+import '../widgets/invoice/invoice_details_dialog.dart';
 import '../services/invoice_service.dart';
 
 class InvoiceListScreen extends StatelessWidget {
