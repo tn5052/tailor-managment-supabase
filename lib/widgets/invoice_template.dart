@@ -215,9 +215,12 @@ class InvoiceTemplate {
 
   static pw.Widget _buildDetailsBox(Invoice invoice, pw.Font arabicFont) {
     if (invoice.details.isEmpty) {
-      return pw.Container(); // Return empty container if no details
+      return pw.Container();
     }
 
+    // Split details by language (assuming Arabic text contains Arabic characters)
+    final hasArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(invoice.details);
+    
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
@@ -228,6 +231,7 @@ class InvoiceTemplate {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
+          // Header
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -240,6 +244,7 @@ class InvoiceTemplate {
               ),
               pw.Text(
                 'التفاصيل',
+                textDirection: pw.TextDirection.rtl,
                 style: pw.TextStyle(
                   font: arabicFont,
                   fontSize: 14,
@@ -249,23 +254,57 @@ class InvoiceTemplate {
             ],
           ),
           pw.SizedBox(height: 8),
+          // Details content with mixed text handling
           pw.Container(
             padding: const pw.EdgeInsets.all(8),
             decoration: pw.BoxDecoration(
               color: PdfColors.white,
               borderRadius: pw.BorderRadius.circular(4),
             ),
-            child: pw.Text(
-              invoice.details,
-              style: const pw.TextStyle(
-                fontSize: 11,
-                lineSpacing: 1.5,
-              ),
-              textAlign: pw.TextAlign.justify,
-            ),
+            child: _buildDetailsContent(invoice.details, hasArabic, arabicFont),
           ),
         ],
       ),
+    );
+  }
+
+  static pw.Widget _buildDetailsContent(String text, bool hasArabic, pw.Font arabicFont) {
+    if (hasArabic) {
+      // For Arabic or mixed text
+      return pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(
+            child: pw.Text(
+              text,
+              textDirection: pw.TextDirection.rtl,
+              style: pw.TextStyle(
+                font: arabicFont,
+                fontSize: 11,
+                lineSpacing: 1.5,
+              ),
+              textAlign: pw.TextAlign.right,
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // For English-only text
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Expanded(
+          child: pw.Text(
+            text,
+            style: const pw.TextStyle(
+              fontSize: 11,
+              lineSpacing: 1.5,
+            ),
+            textAlign: pw.TextAlign.left,
+          ),
+        ),
+      ],
     );
   }
 
