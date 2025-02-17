@@ -153,7 +153,9 @@ class InvoiceTemplate {
               children: [
                 pw.BarcodeWidget(
                   data: _generateQRData(invoice),
-                  barcode: pw.Barcode.qrCode(),
+                  barcode: pw.Barcode.qrCode(
+                    errorCorrectLevel: pw.BarcodeQRCorrectionLevel.high,
+                  ),
                   width: 80,
                   height: 80,
                 ),
@@ -469,29 +471,20 @@ class InvoiceTemplate {
   }
 
   static String _generateQRData(Invoice invoice) {
-    final formattedDate = _formatDate(invoice.date);
-    final separator = '\n----------------------------------------\n';
-    
+    // Create shorter, more compact QR content
     return '''
 SHABAB AL YOLA
-╔══════════════════════════════════╗
-  Invoice: #${invoice.invoiceNumber}
-  Bill: #${invoice.customerBillNumber}
-╚══════════════════════════════════╝
-
-Customer Details:
-• Name: ${invoice.customerName}
-• Date: $formattedDate
-
-Financial Details:
-• Total: AED ${invoice.amountIncludingVat.toStringAsFixed(2)}
-• Advance: AED ${invoice.advance.toStringAsFixed(2)}
-• Balance: AED ${invoice.balance.toStringAsFixed(2)}
-$separator
-Visit us at: www.shababalyola.ae
-Thank you for your business!
-شكراً لتعاملكم معنا
-''';
+─────────────────
+INV#${invoice.invoiceNumber}
+BILL#${invoice.customerBillNumber}
+${invoice.customerName}
+${_formatDate(invoice.date)}
+─────────────────
+Amount: ${invoice.amountIncludingVat.toStringAsFixed(2)}
+Adv: ${invoice.advance.toStringAsFixed(2)}
+Bal: ${invoice.balance.toStringAsFixed(2)}
+─────────────────
+Tel: 02 443 8687''';
   }
 }
 
