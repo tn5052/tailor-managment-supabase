@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/invoice.dart';
+import '../models/invoice_filter.dart';
 import '../widgets/invoice/invoice_screen.dart';
 import '../widgets/invoice/invoice_status_badge.dart';
 import '../widgets/invoice/invoice_details_dialog.dart';
+import '../widgets/invoice/invoice_search_bar.dart';
 import '../services/invoice_service.dart';
 
-class InvoiceListScreen extends StatelessWidget {
-  final InvoiceService _invoiceService = InvoiceService();
+class InvoiceListScreen extends StatefulWidget {
+  const InvoiceListScreen({super.key});
 
-  InvoiceListScreen({super.key});
+  @override
+  State<InvoiceListScreen> createState() => _InvoiceListScreenState();
+}
+
+class _InvoiceListScreenState extends State<InvoiceListScreen> {
+  final _searchController = TextEditingController();
+  final InvoiceService _invoiceService = InvoiceService();
+  InvoiceFilter _filter = const InvoiceFilter();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,31 +60,69 @@ class InvoiceListScreen extends StatelessWidget {
           ],
         ],
       ),
-      body: StreamBuilder<List<Invoice>>(
-        stream: _invoiceService.getInvoicesStream(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 12.0, // Add vertical spacing
+            ),
+            child: InvoiceSearchBar(
+              searchController: _searchController,
+              onSearchChanged: (query) {
+                setState(() {
+                  _filter = _filter.copyWith(searchQuery: query);
+                });
+              },
+              onClearSearch: () {
+                _searchController.clear();
+                setState(() {
+                  _filter = _filter.copyWith(searchQuery: '');
+                });
+              },
+              filter: _filter,
+              onFilterChanged: (newFilter) {
+                setState(() {
+                  _filter = newFilter;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0, // Add horizontal padding to list/grid
+              ),
+              child: StreamBuilder<List<Invoice>>(
+                stream: _invoiceService.getInvoicesStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-          final invoices = snapshot.data ?? [];
+                  final allInvoices = snapshot.data ?? [];
+                  final filteredInvoices = allInvoices
+                      .where((invoice) => _filter.matchesInvoice(invoice))
+                      .toList();
 
-          if (invoices.isEmpty) {
-            return _buildEmptyState(context);
-          }
+                  if (filteredInvoices.isEmpty) {
+                    if (_filter.hasActiveFilters) {
+                      return _buildNoResultsFound(context);
+                    }
+                    return _buildEmptyState(context);
+                  }
 
-          return Padding(
-            padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
-            child:
-                isDesktop || isTablet
-                    ? _buildGrid(context, invoices)
-                    : _buildList(context, invoices),
-          );
-        },
+                  return isDesktop || isTablet
+                      ? _buildGrid(context, filteredInvoices)
+                      : _buildList(context, filteredInvoices);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton:
           isDesktop
@@ -84,6 +137,7 @@ class InvoiceListScreen extends StatelessWidget {
 
   Widget _buildGrid(BuildContext context, List<Invoice> invoices) {
     return GridView.builder(
+      padding: const EdgeInsets.only(bottom: 16.0), // Add bottom padding
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: MediaQuery.of(context).size.width > 1400 ? 4 : 3,
         childAspectRatio: 1.1,
@@ -107,6 +161,7 @@ class InvoiceListScreen extends StatelessWidget {
 
   Widget _buildList(BuildContext context, List<Invoice> invoices) {
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 16.0), // Add bottom padding
       itemCount: invoices.length,
       itemBuilder: (context, index) {
         final invoice = invoices[index];
@@ -138,6 +193,33 @@ class InvoiceListScreen extends StatelessWidget {
             onPressed: () => InvoiceScreen.show(context),
             icon: const Icon(Icons.add),
             label: const Text('Create your first invoice'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsFound(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.search_off, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'No matching invoices found',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _searchController.clear();
+                _filter = const InvoiceFilter();
+              });
+            },
+            icon: const Icon(Icons.clear_all),
+            label: const Text('Clear all filters'),
           ),
         ],
       ),
