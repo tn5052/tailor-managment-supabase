@@ -22,22 +22,38 @@ class InvoiceTemplate {
     );
     
     pdf.addPage(
-      pw.MultiPage(
+      pw.Page(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(20),
         build: (pw.Context context) {
-          return [
-            _buildHeader(logo, invoice, arabicFont),
-            pw.SizedBox(height: 20),
-            _buildBusinessInfoBox(arabicFont, invoice),
-            pw.SizedBox(height: 20),
-            _buildInvoiceDetailsTable(invoice, arabicFont),
-            pw.SizedBox(height: 20),
-            _buildAmountTable(invoice, arabicFont),
-            pw.SizedBox(height: 20),
-            _buildDetailsBox(invoice, arabicFont),
-            pw.SizedBox(height: 20),
-            _buildFooter(arabicFont),
-          ];
+          return pw.Container(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                // Header with Logo and Basic Info
+                _buildHeaderSection(logo, invoice, arabicFont),
+                pw.SizedBox(height: 15),
+
+                // Business Details
+                _buildBusinessDetails(arabicFont, invoice),
+                pw.SizedBox(height: 15),
+
+                // Customer Information
+                _buildCustomerSection(invoice, arabicFont),
+                pw.SizedBox(height: 15),
+
+                // Amount Details
+                _buildAmountTable(invoice, arabicFont),
+                pw.SizedBox(height: 15),
+
+                // Details Box (if available)
+                _buildDetailsBox(invoice, arabicFont),
+                
+                pw.Spacer(),
+                _buildFooter(arabicFont),
+              ],
+            ),
+          );
         },
       ),
     );
@@ -45,18 +61,38 @@ class InvoiceTemplate {
     return pdf.save();
   }
 
-  static pw.Widget _buildHeader(pw.MemoryImage logo, Invoice invoice, pw.Font arabicFont) {
+  static pw.Widget _buildHeaderSection(
+    pw.MemoryImage logo, 
+    Invoice invoice, 
+    pw.Font arabicFont,
+  ) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(20),
+      padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
         color: PdfColors.grey200,
-        borderRadius: pw.BorderRadius.circular(10),
+        borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Image(logo, width: 120),
-          pw.Spacer(),
+          pw.Image(logo, width: 100, height: 60),
+          pw.SizedBox(width: 20),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Shabab al Yola',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text('TRN: 100556789012345'),
+              ],
+            ),
+          ),
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
@@ -65,15 +101,16 @@ class InvoiceTemplate {
                 invoice.invoiceNumber,
                 'رقم الفاتورة',
                 arabicFont,
-                fontSize: 16,
+                fontSize: 14,
                 isBold: true,
               ),
-              pw.SizedBox(height: 5),
+              pw.SizedBox(height: 4),
               _buildTrilingualRow(
-                'Bill #',
-                invoice.customerBillNumber,
-                'رقم الطلب',
+                'Date',
+                _formatDate(invoice.date),
+                'التاريخ',
                 arabicFont,
+                fontSize: 12,
               ),
             ],
           ),
@@ -82,73 +119,168 @@ class InvoiceTemplate {
     );
   }
 
-  static pw.Widget _buildBusinessInfoBox(pw.Font arabicFont, Invoice invoice) {
+  static pw.Widget _buildBusinessDetails(pw.Font arabicFont, Invoice invoice) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(15),
+      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey400),
-        borderRadius: pw.BorderRadius.circular(10),
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text('Shabab al Yola',
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 5),
-              pw.Text('11th St - Al Nahyan - E19 02'),
-              pw.Text('Abu Dhabi, UAE'),
-              pw.Text('Tel: 055 682 9381'),
-            ],
+          pw.Expanded(
+            flex: 2,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildInfoLine('Address:', '11th St - Al Nahyan - E19 02 - Abu Dhabi'),
+                _buildInfoLine('Tel:', '02 443 8687'),
+                _buildInfoLine('WhatsApp:', '055 682 9381'),
+                _buildInfoLine('Website:', 'www.shababalyola.ae'),
+              ],
+            ),
           ),
-          pw.BarcodeWidget(
-            data: invoice.invoiceNumber,
-            barcode: pw.Barcode.qrCode(),
-            width: 60,
-            height: 60,
+          pw.SizedBox(width: 20),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.grey100,
+              borderRadius: pw.BorderRadius.circular(8),
+              border: pw.Border.all(color: PdfColors.grey400),
+            ),
+            child: pw.Column(
+              children: [
+                pw.BarcodeWidget(
+                  data: _generateQRData(invoice),
+                  barcode: pw.Barcode.qrCode(),
+                  width: 80,
+                  height: 80,
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Scan for details',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildInvoiceDetailsTable(Invoice invoice, pw.Font arabicFont) {
-    return pw.Table(
-      border: pw.TableBorder.all(color: PdfColors.grey300),
-      columnWidths: {
-        0: const pw.FlexColumnWidth(1),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(1),
-      },
-      children: [
-        _buildTableRow(
-          'Customer',
-          invoice.customerName,
-          'العميل',
-          arabicFont,
-          isHeader: true,
-        ),
-        _buildTableRow(
-          'Phone',
-          invoice.customerPhone,
-          'رقم الهاتف',
-          arabicFont,
-        ),
-        _buildTableRow(
-          'Date',
-          _formatDate(invoice.date),
-          'التاريخ',
-          arabicFont,
-        ),
-        _buildTableRow(
-          'Delivery Date',
-          _formatDate(invoice.deliveryDate),
-          'تاريخ التسليم',
-          arabicFont,
-        ),
-      ],
+  static pw.Widget _buildCustomerSection(Invoice invoice, pw.Font arabicFont) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        children: [
+          _buildTrilingualRow(
+            'Customer',
+            invoice.customerName,
+            'العميل',
+            arabicFont,
+            fontSize: 12,
+            isBold: true,
+          ),
+          pw.SizedBox(height: 4),
+          _buildTrilingualRow(
+            'Phone',
+            invoice.customerPhone,
+            'الهاتف',
+            arabicFont,
+            fontSize: 12,
+          ),
+          pw.SizedBox(height: 4),
+          _buildTrilingualRow(
+            'Delivery Date',
+            _formatDate(invoice.deliveryDate),
+            'تاريخ التسليم',
+            arabicFont,
+            fontSize: 12,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildDetailsBox(Invoice invoice, pw.Font arabicFont) {
+    if (invoice.details.isEmpty) {
+      return pw.Container(); // Return empty container if no details
+    }
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: PdfColors.grey400),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Details',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                'التفاصيل',
+                style: pw.TextStyle(
+                  font: arabicFont,
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.white,
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.Text(
+              invoice.details,
+              style: const pw.TextStyle(
+                fontSize: 11,
+                lineSpacing: 1.5,
+              ),
+              textAlign: pw.TextAlign.justify,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildInfoLine(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(width: 4),
+          pw.Text(value),
+        ],
+      ),
     );
   }
 
@@ -195,40 +327,6 @@ class InvoiceTemplate {
               isTotal: true,
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  static pw.Widget _buildDetailsBox(Invoice invoice, pw.Font arabicFont) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(10),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey300),
-        borderRadius: pw.BorderRadius.circular(10),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-        children: [
-          _buildTrilingualRow(
-            'Details',
-            '',
-            'التفاصيل',
-            arabicFont,
-            isBold: true,
-          ),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(10),
-            decoration: pw.BoxDecoration(
-              color: PdfColors.grey100,
-              borderRadius: pw.BorderRadius.circular(5),
-            ),
-            child: pw.Text(
-              invoice.details ?? 'No details provided',
-              style: const pw.TextStyle(fontSize: 12),
-            ),
-          ),
         ],
       ),
     );
@@ -368,6 +466,32 @@ class InvoiceTemplate {
         ),
       ],
     );
+  }
+
+  static String _generateQRData(Invoice invoice) {
+    final formattedDate = _formatDate(invoice.date);
+    final separator = '\n----------------------------------------\n';
+    
+    return '''
+SHABAB AL YOLA
+╔══════════════════════════════════╗
+  Invoice: #${invoice.invoiceNumber}
+  Bill: #${invoice.customerBillNumber}
+╚══════════════════════════════════╝
+
+Customer Details:
+• Name: ${invoice.customerName}
+• Date: $formattedDate
+
+Financial Details:
+• Total: AED ${invoice.amountIncludingVat.toStringAsFixed(2)}
+• Advance: AED ${invoice.advance.toStringAsFixed(2)}
+• Balance: AED ${invoice.balance.toStringAsFixed(2)}
+$separator
+Visit us at: www.shababalyola.ae
+Thank you for your business!
+شكراً لتعاملكم معنا
+''';
   }
 }
 
