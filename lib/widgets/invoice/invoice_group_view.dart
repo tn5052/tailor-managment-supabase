@@ -27,7 +27,7 @@ class InvoiceGroupView extends StatefulWidget {
 
 class _InvoiceGroupViewState extends State<InvoiceGroupView> {
   final Set<String> _expandedGroups = {};
-  
+
   @override
   Widget build(BuildContext context) {
     if (widget.groupBy == InvoiceGroupBy.none) {
@@ -46,7 +46,7 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
 
   Map<String, List<Invoice>> _groupInvoices() {
     final grouped = <String, List<Invoice>>{};
-    
+
     switch (widget.groupBy) {
       case InvoiceGroupBy.customer:
         for (var invoice in widget.invoices) {
@@ -54,7 +54,7 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
           grouped.putIfAbsent(key, () => []).add(invoice);
         }
         break;
-        
+
       case InvoiceGroupBy.date:
         final dateFormat = DateFormat('MMMM d, yyyy');
         for (var invoice in widget.invoices) {
@@ -62,7 +62,7 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
           grouped.putIfAbsent(key, () => []).add(invoice);
         }
         break;
-        
+
       case InvoiceGroupBy.month:
         final monthFormat = DateFormat('MMMM yyyy');
         for (var invoice in widget.invoices) {
@@ -70,14 +70,15 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
           grouped.putIfAbsent(key, () => []).add(invoice);
         }
         break;
-        
+
       case InvoiceGroupBy.status:
         for (var invoice in widget.invoices) {
-          final key = '${invoice.deliveryStatus.name} / ${invoice.paymentStatus.name}';
+          final key =
+              '${invoice.deliveryStatus.name} / ${invoice.paymentStatus.name}';
           grouped.putIfAbsent(key, () => []).add(invoice);
         }
         break;
-        
+
       case InvoiceGroupBy.amount:
         for (var invoice in widget.invoices) {
           String key;
@@ -93,18 +94,25 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
           grouped.putIfAbsent(key, () => []).add(invoice);
         }
         break;
-        
+
       case InvoiceGroupBy.none:
         grouped[''] = widget.invoices;
         break;
     }
-    
+
     return grouped;
   }
 
-  Widget _buildCollapsibleGroup(BuildContext context, String title, List<Invoice> groupInvoices) {
+  Widget _buildCollapsibleGroup(
+    BuildContext context,
+    String title,
+    List<Invoice> groupInvoices,
+  ) {
     final theme = Theme.of(context);
-    final totalAmount = groupInvoices.fold(0.0, (sum, inv) => sum + inv.amountIncludingVat);
+    final totalAmount = groupInvoices.fold(
+      0.0,
+      (sum, inv) => sum + inv.amountIncludingVat,
+    );
     final currencyFormat = NumberFormat.currency(symbol: '');
     final isExpanded = _expandedGroups.contains(title);
 
@@ -114,15 +122,17 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: InvoiceGroupHeader(
             title: title,
-            subtitle: '${groupInvoices.length} invoices • ${currencyFormat.format(totalAmount)}',
+            subtitle:
+                '${groupInvoices.length} invoices • ${currencyFormat.format(totalAmount)}',
             isExpanded: isExpanded,
-            onToggle: () => setState(() {
-              if (isExpanded) {
-                _expandedGroups.remove(title);
-              } else {
-                _expandedGroups.add(title);
-              }
-            }),
+            onToggle:
+                () => setState(() {
+                  if (isExpanded) {
+                    _expandedGroups.remove(title);
+                  } else {
+                    _expandedGroups.add(title);
+                  }
+                }),
             headerColor: _getHeaderColor(theme, title),
           ),
         ),
@@ -132,41 +142,45 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
             children: [
               widget.isGridView
                   ? GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: _getGridCrossAxisCount(context),
-                        childAspectRatio: 1.1,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
-                      ),
-                      itemCount: groupInvoices.length,
-                      itemBuilder: (context, index) => InvoiceCard(
-                        invoice: groupInvoices[index],
-                        onTap: () => widget.onTap(groupInvoices[index]),
-                        onDelete: () => widget.onDelete(groupInvoices[index]),
-                        isGridView: true,
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: groupInvoices.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: InvoiceCard(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _getGridCrossAxisCount(context),
+                      childAspectRatio: 1.1,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                    ),
+                    itemCount: groupInvoices.length,
+                    itemBuilder:
+                        (context, index) => InvoiceCard(
                           invoice: groupInvoices[index],
                           onTap: () => widget.onTap(groupInvoices[index]),
                           onDelete: () => widget.onDelete(groupInvoices[index]),
+                          isGridView: true,
                         ),
-                      ),
-                    ),
+                  )
+                  : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: groupInvoices.length,
+                    itemBuilder:
+                        (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: InvoiceCard(
+                            invoice: groupInvoices[index],
+                            onTap: () => widget.onTap(groupInvoices[index]),
+                            onDelete:
+                                () => widget.onDelete(groupInvoices[index]),
+                          ),
+                        ),
+                  ),
               if (isExpanded) const Divider(height: 1),
             ],
           ),
-          crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState:
+              isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 300),
         ),
       ],
@@ -195,28 +209,30 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
   Widget _buildList(BuildContext context, List<Invoice> invoices) {
     return widget.isGridView
         ? GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _getGridCrossAxisCount(context),
-              childAspectRatio: 1.1,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-            ),
-            itemCount: invoices.length,
-            itemBuilder: (context, index) => InvoiceCard(
-              invoice: invoices[index],
-              onTap: () => widget.onTap(invoices[index]),
-              onDelete: () => widget.onDelete(invoices[index]),
-              isGridView: true,
-            ),
-          )
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _getGridCrossAxisCount(context),
+            childAspectRatio: 1.1,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+          ),
+          itemCount: invoices.length,
+          itemBuilder:
+              (context, index) => InvoiceCard(
+                invoice: invoices[index],
+                onTap: () => widget.onTap(invoices[index]),
+                onDelete: () => widget.onDelete(invoices[index]),
+                isGridView: true,
+              ),
+        )
         : ListView.builder(
-            itemCount: invoices.length,
-            itemBuilder: (context, index) => InvoiceCard(
-              invoice: invoices[index],
-              onTap: () => widget.onTap(invoices[index]),
-              onDelete: () => widget.onDelete(invoices[index]),
-            ),
-          );
+          itemCount: invoices.length,
+          itemBuilder:
+              (context, index) => InvoiceCard(
+                invoice: invoices[index],
+                onTap: () => widget.onTap(invoices[index]),
+                onDelete: () => widget.onDelete(invoices[index]),
+              ),
+        );
   }
 
   int _getGridCrossAxisCount(BuildContext context) {
