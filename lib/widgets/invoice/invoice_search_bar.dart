@@ -91,30 +91,41 @@ class InvoiceSearchBar extends StatelessWidget {
   }
 
   void _showFilterDialog(BuildContext context) {
-    showDialog(
+    final theme = Theme.of(context);
+    showModalBottomSheet(
       context: context,
-      builder: (context) => _FilterDialog(
-        initialFilter: filter,
-        onFilterChanged: onFilterChanged,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        // Reduce height to fit content better
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: _FilterSheet(
+          initialFilter: filter,
+          onFilterChanged: onFilterChanged,
+        ),
       ),
     );
   }
 }
 
-class _FilterDialog extends StatefulWidget {
+class _FilterSheet extends StatefulWidget {
   final InvoiceFilter initialFilter;
   final Function(InvoiceFilter) onFilterChanged;
 
-  const _FilterDialog({
+  const _FilterSheet({
     required this.initialFilter,
     required this.onFilterChanged,
   });
 
   @override
-  _FilterDialogState createState() => _FilterDialogState();
+  _FilterSheetState createState() => _FilterSheetState();
 }
 
-class _FilterDialogState extends State<_FilterDialog> {
+class _FilterSheetState extends State<_FilterSheet> {
   late InvoiceFilter _filter;
   final _minAmountController = TextEditingController();
   final _maxAmountController = TextEditingController();
@@ -132,243 +143,358 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth >= 1024;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: Container(
-        width: isDesktop ? 600 : null,
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(theme),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatusSection(theme),
-                    const Divider(height: 32),
-                    _buildDateFilters(theme),
-                    const Divider(height: 32),
-                    _buildAmountFilters(theme),
-                    const Divider(height: 32),
-                    _buildOverdueFilter(theme),
-                  ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Handle bar with reduced vertical spacing
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          width: 48,
+          height: 4,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.outlineVariant,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        // Header with reduced padding
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Row(
+            children: [
+              Text(
+                'Filters',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            _buildActions(theme),
-          ],
+              const Spacer(),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _filter = const InvoiceFilter();
+                    _minAmountController.clear();
+                    _maxAmountController.clear();
+                  });
+                },
+                child: const Text('Reset'),
+              ),
+            ],
+          ),
         ),
-      ),
+        // Quick Filters with reduced padding
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              _QuickFilterChip(
+                label: 'Today',
+                icon: Icons.today,
+                onTap: () => _setQuickDateRange(0),
+              ),
+              _QuickFilterChip(
+                label: 'This Week',
+                icon: Icons.calendar_view_week,
+                onTap: () => _setQuickDateRange(7),
+              ),
+              _QuickFilterChip(
+                label: 'This Month',
+                icon: Icons.calendar_month,
+                onTap: () => _setCurrentMonth(),
+              ),
+              _QuickFilterChip(
+                label: 'Overdue',
+                icon: Icons.warning_outlined,
+                onTap: () {
+                  setState(() {
+                    _filter = _filter.copyWith(showOverdue: true);
+                  });
+                },
+                isSelected: _filter.showOverdue,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Filter Sections with optimized spacing
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            children: [
+              _buildDateSection(theme),
+              const SizedBox(height: 16),
+              _buildStatusSection(theme),
+              const SizedBox(height: 16),
+              _buildAmountSection(theme),
+            ],
+          ),
+        ),
+        // Apply Button with reduced padding
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: FilledButton(
+              onPressed: () {
+                widget.onFilterChanged(_filter);
+                Navigator.pop(context);
+              },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Apply Filters'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.filter_list,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 16),
-          Text(
-            'Filter Invoices',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onPrimaryContainer,
+  // Update section builders to use less padding
+  Widget _buildDateSection(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Text(
+                  'Date Range',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _DateButton(
+                    label: 'From',
+                    date: _getActiveDateRange()?.start,
+                    onTap: () => _selectDate(true),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.arrow_forward, size: 20),
+                ),
+                Expanded(
+                  child: _DateButton(
+                    label: 'To',
+                    date: _getActiveDateRange()?.end,
+                    onTap: () => _selectDate(false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStatusSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Status',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _FilterChip(
-              label: 'Pending',
-              selected: _filter.deliveryStatus.contains(InvoiceStatus.pending),
-              onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.pending),
-            ),
-            _FilterChip(
-              label: 'Completed',
-              selected: _filter.deliveryStatus.contains(InvoiceStatus.delivered),
-              onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.delivered),
-            ),
-            _FilterChip(
-              label: 'Cancelled',
-              selected: _filter.deliveryStatus.contains(InvoiceStatus.cancelled),
-              onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.cancelled),
-            ),
-            _FilterChip(
-              label: 'Partially Paid',
-              selected: _filter.paymentStatus.contains(PaymentStatus.partial),
-              onSelected: (selected) => _togglePaymentStatus(PaymentStatus.partial),
-            ),
-            _FilterChip(
-              label: 'Paid',
-              selected: _filter.paymentStatus.contains(PaymentStatus.paid),
-              onSelected: (selected) => _togglePaymentStatus(PaymentStatus.paid),
-            ),
-            _FilterChip(
-              label: 'Unpaid',
-              selected: _filter.paymentStatus.contains(PaymentStatus.unpaid),
-              onSelected: (selected) => _togglePaymentStatus(PaymentStatus.unpaid),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateFilters(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Date Range',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        SegmentedButton<FilterDateType>(
-          selected: {_filter.selectedDateType},
-          onSelectionChanged: (Set<FilterDateType> selection) {
-            setState(() {
-              _filter = _filter.copyWith(selectedDateType: selection.first);
-            });
-          },
-          segments: const [
-            ButtonSegment(
-              value: FilterDateType.creation,
-              label: Text('Creation'),
-            ),
-            ButtonSegment(
-              value: FilterDateType.due,
-              label: Text('Due'),
-            ),
-            ButtonSegment(
-              value: FilterDateType.modified,
-              label: Text('Modified'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _DateRangeButton(
-          label: 'Select Date Range',
-          dateRange: _getActiveDateRange(),
-          onDateRangeSelected: (range) => _updateDateRange(range),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAmountFilters(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Amount Range',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _minAmountController,
-                decoration: const InputDecoration(
-                  labelText: 'Min Amount',
-                  prefixText: '\$ ',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (_) => _updateAmountRange(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextField(
-                controller: _maxAmountController,
-                decoration: const InputDecoration(
-                  labelText: 'Max Amount',
-                  prefixText: '\$ ',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (_) => _updateAmountRange(),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOverdueFilter(ThemeData theme) {
-    return SwitchListTile(
-      title: Text(
-        'Show Overdue',
-        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-      ),
-      subtitle: const Text('Show invoices past their due date'),
-      value: _filter.showOverdue,
-      onChanged: (value) {
-        setState(() {
-          _filter = _filter.copyWith(showOverdue: value);
-        });
-      },
-    );
-  }
-
-  Widget _buildActions(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+          Text(
+            'Status Filters',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: () {
-              widget.onFilterChanged(_filter);
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.check),
-            label: const Text('Apply Filters'),
+          const SizedBox(height: 16),
+          // Delivery Status Section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Delivery Status',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _StatusChip(
+                    icon: Icons.pending_outlined,
+                    label: 'Pending',
+                    selected: _filter.deliveryStatus.contains(InvoiceStatus.pending),
+                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.pending),
+                  ),
+                  _StatusChip(
+                    icon: Icons.check_circle_outline,
+                    label: 'Completed',
+                    selected: _filter.deliveryStatus.contains(InvoiceStatus.delivered),
+                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.delivered),
+                  ),
+                  _StatusChip(
+                    icon: Icons.cancel_outlined,
+                    label: 'Cancelled',
+                    selected: _filter.deliveryStatus.contains(InvoiceStatus.cancelled),
+                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.cancelled),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Payment Status Section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Payment Status',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _StatusChip(
+                    icon: Icons.payments_outlined,
+                    label: 'Paid',
+                    selected: _filter.paymentStatus.contains(PaymentStatus.paid),
+                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.paid),
+                    color: theme.colorScheme.secondary,
+                  ),
+                  _StatusChip(
+                    icon: Icons.pending_actions_outlined,
+                    label: 'Partial',
+                    selected: _filter.paymentStatus.contains(PaymentStatus.partial),
+                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.partial),
+                    color: theme.colorScheme.secondary,
+                  ),
+                  _StatusChip(
+                    icon: Icons.money_off_csred_outlined,
+                    label: 'Unpaid',
+                    selected: _filter.paymentStatus.contains(PaymentStatus.unpaid),
+                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.unpaid),
+                    color: theme.colorScheme.secondary,
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildAmountSection(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Amount Range',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _minAmountController,
+                  decoration: InputDecoration(
+                    labelText: 'Min Amount',
+                    prefixIcon: const Icon(Icons.remove),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceVariant,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _updateAmountRange(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _maxAmountController,
+                  decoration: InputDecoration(
+                    labelText: 'Max Amount',
+                    prefixIcon: const Icon(Icons.add),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceVariant,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _updateAmountRange(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectDate(bool isStart) async {
+    final initialDate = _getActiveDateRange()?.start ?? DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (date != null) {
+      setState(() {
+        if (isStart) {
+          _updateDateRange(DateTimeRange(
+            start: date,
+            end: _getActiveDateRange()?.end ?? date.add(const Duration(days: 7)),
+          ));
+        } else {
+          _updateDateRange(DateTimeRange(
+            start: _getActiveDateRange()?.start ?? date.subtract(const Duration(days: 7)),
+            end: date,
+          ));
+        }
+      });
+    }
+  }
+
+  void _setQuickDateRange(int days) {
+    final end = DateTime.now();
+    final start = end.subtract(Duration(days: days));
+    _updateDateRange(DateTimeRange(start: start, end: end));
+  }
+
+  void _setCurrentMonth() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, 1);
+    final end = DateTime(now.year, now.month + 1, 0);
+    _updateDateRange(DateTimeRange(start: start, end: end));
   }
 
   void _toggleDeliveryStatus(InvoiceStatus status) {
@@ -433,92 +559,150 @@ class _FilterDialogState extends State<_FilterDialog> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+
+
+class _DateButton extends StatelessWidget {
   final String label;
-  final bool selected;
-  final ValueChanged<bool> onSelected;
+  final DateTime? date;
+  final VoidCallback onTap;
 
-  const _FilterChip({
+  const _DateButton({
     required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: onSelected,
-      showCheckmark: true,
-    );
-  }
-}
-
-class _DateRangeButton extends StatelessWidget {
-  final String label;
-  final DateTimeRange? dateRange;
-  final ValueChanged<DateTimeRange?> onDateRangeSelected;
-
-  const _DateRangeButton({
-    required this.label,
-    required this.dateRange,
-    required this.onDateRangeSelected,
+    required this.date,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasRange = dateRange != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _showDateRangePicker(context),
-                icon: Icon(
-                  hasRange ? Icons.date_range : Icons.calendar_today,
-                  color: hasRange ? theme.colorScheme.primary : null,
-                ),
-                label: Text(
-                  hasRange
-                      ? '${DateFormat('MMM dd').format(dateRange!.start)} - ${DateFormat('MMM dd').format(dateRange!.end)}'
-                      : label,
-                ),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (hasRange) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () => onDateRangeSelected(null),
-                icon: const Icon(Icons.close),
-                tooltip: 'Clear date range',
+            const SizedBox(height: 4),
+            Text(
+              date != null
+                  ? DateFormat('MMM dd, yyyy').format(date!)
+                  : 'Select Date',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: date != null
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
               ),
-            ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
+}
 
-  Future<void> _showDateRangePicker(BuildContext context) async {
-    final initialDateRange = dateRange ?? DateTimeRange(
-      start: DateTime.now(),
-      end: DateTime.now().add(const Duration(days: 7)),
+class _QuickFilterChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isSelected;
+
+  const _QuickFilterChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isSelected = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected
+                  ? theme.colorScheme.onSecondaryContainer
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(label),
+          ],
+        ),
+        onPressed: onTap,
+        backgroundColor: isSelected
+            ? theme.colorScheme.secondaryContainer
+            : theme.colorScheme.surfaceVariant,
+      ),
     );
+  }
+}
 
-    final pickedRange = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      initialDateRange: initialDateRange,
+// Update _StatusChip for better visual design
+class _StatusChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+  final Color? color;
+
+  const _StatusChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final chipColor = color ?? theme.colorScheme.primary;
+    
+    return ActionChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: selected
+                ? theme.colorScheme.onSecondaryContainer
+                : chipColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? theme.colorScheme.onSecondaryContainer
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+      onPressed: () => onSelected(!selected),
+      backgroundColor: selected
+          ? chipColor.withOpacity(0.2)
+          : theme.colorScheme.surfaceVariant,
+      side: selected
+          ? BorderSide(color: chipColor)
+          : BorderSide(color: theme.colorScheme.outline),
     );
-
-    if (pickedRange != null) {
-      onDateRangeSelected(pickedRange);
-    }
   }
 }
