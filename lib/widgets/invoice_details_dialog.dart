@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/invoice.dart';
 import '../services/invoice_service.dart';
+import '../widgets/pdf_preview_widget.dart';
 
 class InvoiceDetailsDialog extends StatefulWidget {
   final Invoice invoice;
@@ -435,7 +436,57 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     );
   }
 
-  void _showInvoicePreview(BuildContext context) {}
+  void _showInvoicePreview(BuildContext context) async {
+    try {
+      final pdfBytes = await _invoiceService.generatePdfBytes(widget.invoice);
+      
+      if (!mounted) return;
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Invoice Preview'),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            height: MediaQuery.of(context).size.height * 0.8,
+            child: Column(
+              children: [
+                Expanded(
+                  child: PdfPreviewWidget(pdfBytes: pdfBytes),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Share'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (result == true) {
+        await _invoiceService.generateAndShareInvoice(widget.invoice);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate invoice: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   Widget _buildInfoRow(
     String label,

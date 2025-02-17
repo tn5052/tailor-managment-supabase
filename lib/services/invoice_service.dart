@@ -1,4 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import '../widgets/invoice_template.dart';
 import '../models/invoice.dart';
 
 class InvoiceService {
@@ -94,6 +99,26 @@ class InvoiceService {
       return (lastNumber + 1).toString();
     } catch (e) {
       return '1001';
+    }
+  }
+
+  Future<Uint8List> generatePdfBytes(Invoice invoice) async {
+    return await InvoiceTemplate.generateInvoice(invoice);
+  }
+
+  Future<void> generateAndShareInvoice(Invoice invoice) async {
+    try {
+      final pdfBytes = await generatePdfBytes(invoice);
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/invoice_${invoice.invoiceNumber}.pdf');
+      await file.writeAsBytes(pdfBytes);
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Invoice #${invoice.invoiceNumber}',
+      );
+    } catch (e) {
+      throw Exception('Failed to generate invoice: $e');
     }
   }
 }
