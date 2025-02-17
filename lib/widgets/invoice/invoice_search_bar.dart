@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_filter.dart';
 import 'package:intl/intl.dart';
+import 'invoice_group_menu.dart';
 
 class InvoiceSearchBar extends StatelessWidget {
   final TextEditingController searchController;
@@ -26,7 +27,9 @@ class InvoiceSearchBar extends StatelessWidget {
     final isDesktop = screenWidth >= 1024;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+      ), // Add horizontal padding
       child: Row(
         children: [
           Expanded(
@@ -34,14 +37,16 @@ class InvoiceSearchBar extends StatelessWidget {
               controller: searchController,
               onChanged: onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search invoices by number, customer, bill #, or phone',
+                hintText:
+                    'Search invoices by number, customer, bill #, or phone',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: filter.searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: onClearSearch,
-                      )
-                    : null,
+                suffixIcon:
+                    filter.searchQuery.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: onClearSearch,
+                        )
+                        : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -85,6 +90,12 @@ class InvoiceSearchBar extends StatelessWidget {
               label: Text(isDesktop ? 'Filters' : ''),
             ),
           ),
+          const SizedBox(width: 8),
+          InvoiceGroupMenu(
+            currentGroup: filter.groupBy,
+            onGroupChanged:
+                (group) => onFilterChanged(filter.copyWith(groupBy: group)),
+          ),
         ],
       ),
     );
@@ -96,18 +107,21 @@ class InvoiceSearchBar extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        // Reduce height to fit content better
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: _FilterSheet(
-          initialFilter: filter,
-          onFilterChanged: onFilterChanged,
-        ),
-      ),
+      builder:
+          (context) => Container(
+            // Reduce height to fit content better
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+            ),
+            child: _FilterSheet(
+              initialFilter: filter,
+              onFilterChanged: onFilterChanged,
+            ),
+          ),
     );
   }
 }
@@ -336,20 +350,32 @@ class _FilterSheetState extends State<_FilterSheet> {
                   _StatusChip(
                     icon: Icons.pending_outlined,
                     label: 'Pending',
-                    selected: _filter.deliveryStatus.contains(InvoiceStatus.pending),
-                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.pending),
+                    selected: _filter.deliveryStatus.contains(
+                      InvoiceStatus.pending,
+                    ),
+                    onSelected:
+                        (selected) =>
+                            _toggleDeliveryStatus(InvoiceStatus.pending),
                   ),
                   _StatusChip(
                     icon: Icons.check_circle_outline,
                     label: 'Completed',
-                    selected: _filter.deliveryStatus.contains(InvoiceStatus.delivered),
-                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.delivered),
+                    selected: _filter.deliveryStatus.contains(
+                      InvoiceStatus.delivered,
+                    ),
+                    onSelected:
+                        (selected) =>
+                            _toggleDeliveryStatus(InvoiceStatus.delivered),
                   ),
                   _StatusChip(
                     icon: Icons.cancel_outlined,
                     label: 'Cancelled',
-                    selected: _filter.deliveryStatus.contains(InvoiceStatus.cancelled),
-                    onSelected: (selected) => _toggleDeliveryStatus(InvoiceStatus.cancelled),
+                    selected: _filter.deliveryStatus.contains(
+                      InvoiceStatus.cancelled,
+                    ),
+                    onSelected:
+                        (selected) =>
+                            _toggleDeliveryStatus(InvoiceStatus.cancelled),
                   ),
                 ],
               ),
@@ -374,22 +400,33 @@ class _FilterSheetState extends State<_FilterSheet> {
                   _StatusChip(
                     icon: Icons.payments_outlined,
                     label: 'Paid',
-                    selected: _filter.paymentStatus.contains(PaymentStatus.paid),
-                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.paid),
+                    selected: _filter.paymentStatus.contains(
+                      PaymentStatus.paid,
+                    ),
+                    onSelected:
+                        (selected) => _togglePaymentStatus(PaymentStatus.paid),
                     color: theme.colorScheme.secondary,
                   ),
                   _StatusChip(
                     icon: Icons.pending_actions_outlined,
                     label: 'Partial',
-                    selected: _filter.paymentStatus.contains(PaymentStatus.partial),
-                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.partial),
+                    selected: _filter.paymentStatus.contains(
+                      PaymentStatus.partial,
+                    ),
+                    onSelected:
+                        (selected) =>
+                            _togglePaymentStatus(PaymentStatus.partial),
                     color: theme.colorScheme.secondary,
                   ),
                   _StatusChip(
                     icon: Icons.money_off_csred_outlined,
                     label: 'Unpaid',
-                    selected: _filter.paymentStatus.contains(PaymentStatus.unpaid),
-                    onSelected: (selected) => _togglePaymentStatus(PaymentStatus.unpaid),
+                    selected: _filter.paymentStatus.contains(
+                      PaymentStatus.unpaid,
+                    ),
+                    onSelected:
+                        (selected) =>
+                            _togglePaymentStatus(PaymentStatus.unpaid),
                     color: theme.colorScheme.secondary,
                   ),
                 ],
@@ -423,7 +460,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     labelText: 'Min Amount',
                     prefixIcon: const Icon(Icons.remove),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -441,7 +478,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     labelText: 'Max Amount',
                     prefixIcon: const Icon(Icons.add),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -470,15 +507,23 @@ class _FilterSheetState extends State<_FilterSheet> {
     if (date != null) {
       setState(() {
         if (isStart) {
-          _updateDateRange(DateTimeRange(
-            start: date,
-            end: _getActiveDateRange()?.end ?? date.add(const Duration(days: 7)),
-          ));
+          _updateDateRange(
+            DateTimeRange(
+              start: date,
+              end:
+                  _getActiveDateRange()?.end ??
+                  date.add(const Duration(days: 7)),
+            ),
+          );
         } else {
-          _updateDateRange(DateTimeRange(
-            start: _getActiveDateRange()?.start ?? date.subtract(const Duration(days: 7)),
-            end: date,
-          ));
+          _updateDateRange(
+            DateTimeRange(
+              start:
+                  _getActiveDateRange()?.start ??
+                  date.subtract(const Duration(days: 7)),
+              end: date,
+            ),
+          );
         }
       });
     }
@@ -552,14 +597,10 @@ class _FilterSheetState extends State<_FilterSheet> {
     final min = double.tryParse(_minAmountController.text) ?? 0;
     final max = double.tryParse(_maxAmountController.text) ?? double.infinity;
     setState(() {
-      _filter = _filter.copyWith(
-        amountRange: RangeValues(min, max),
-      );
+      _filter = _filter.copyWith(amountRange: RangeValues(min, max));
     });
   }
 }
-
-
 
 class _DateButton extends StatelessWidget {
   final String label;
@@ -581,7 +622,7 @@ class _DateButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant,
+          color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -599,9 +640,10 @@ class _DateButton extends StatelessWidget {
                   ? DateFormat('MMM dd, yyyy').format(date!)
                   : 'Select Date',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: date != null
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color:
+                    date != null
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
               ),
             ),
           ],
@@ -636,18 +678,20 @@ class _QuickFilterChip extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: isSelected
-                  ? theme.colorScheme.onSecondaryContainer
-                  : theme.colorScheme.onSurfaceVariant,
+              color:
+                  isSelected
+                      ? theme.colorScheme.onSecondaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
             Text(label),
           ],
         ),
         onPressed: onTap,
-        backgroundColor: isSelected
-            ? theme.colorScheme.secondaryContainer
-            : theme.colorScheme.surfaceVariant,
+        backgroundColor:
+            isSelected
+                ? theme.colorScheme.secondaryContainer
+                : theme.colorScheme.surfaceContainerHighest,
       ),
     );
   }
@@ -673,7 +717,7 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final chipColor = color ?? theme.colorScheme.primary;
-    
+
     return ActionChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
@@ -681,28 +725,30 @@ class _StatusChip extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: selected
-                ? theme.colorScheme.onSecondaryContainer
-                : chipColor,
+            color:
+                selected ? theme.colorScheme.onSecondaryContainer : chipColor,
           ),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: selected
-                  ? theme.colorScheme.onSecondaryContainer
-                  : theme.colorScheme.onSurface,
+              color:
+                  selected
+                      ? theme.colorScheme.onSecondaryContainer
+                      : theme.colorScheme.onSurface,
             ),
           ),
         ],
       ),
       onPressed: () => onSelected(!selected),
-      backgroundColor: selected
-          ? chipColor.withOpacity(0.2)
-          : theme.colorScheme.surfaceVariant,
-      side: selected
-          ? BorderSide(color: chipColor)
-          : BorderSide(color: theme.colorScheme.outline),
+      backgroundColor:
+          selected
+              ? chipColor.withOpacity(0.2)
+              : theme.colorScheme.surfaceContainerHighest,
+      side:
+          selected
+              ? BorderSide(color: chipColor)
+              : BorderSide(color: theme.colorScheme.outline),
     );
   }
 }

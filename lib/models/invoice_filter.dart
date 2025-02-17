@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'invoice.dart';
+import 'invoice_group_by.dart';
 
 class InvoiceFilter {
   final String searchQuery;
@@ -11,6 +12,8 @@ class InvoiceFilter {
   final RangeValues? amountRange;
   final FilterDateType selectedDateType;
   final bool showOverdue;
+  final InvoiceGroupBy groupBy;
+  final bool ascending;
 
   const InvoiceFilter({
     this.searchQuery = '',
@@ -22,6 +25,8 @@ class InvoiceFilter {
     this.amountRange,
     this.selectedDateType = FilterDateType.creation,
     this.showOverdue = false,
+    this.groupBy = InvoiceGroupBy.none,
+    this.ascending = true,
   });
 
   InvoiceFilter copyWith({
@@ -34,6 +39,8 @@ class InvoiceFilter {
     RangeValues? amountRange,
     FilterDateType? selectedDateType,
     bool? showOverdue,
+    InvoiceGroupBy? groupBy,
+    bool? ascending,
   }) {
     return InvoiceFilter(
       searchQuery: searchQuery ?? this.searchQuery,
@@ -45,6 +52,8 @@ class InvoiceFilter {
       amountRange: amountRange ?? this.amountRange,
       selectedDateType: selectedDateType ?? this.selectedDateType,
       showOverdue: showOverdue ?? this.showOverdue,
+      groupBy: groupBy ?? this.groupBy,
+      ascending: ascending ?? this.ascending,
     );
   }
 
