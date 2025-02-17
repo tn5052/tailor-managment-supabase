@@ -342,7 +342,6 @@ class _InvoiceGridCard extends StatelessWidget {
                   title: const Text('Share Invoice'),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Implement share
                   },
                 ),
                 ListTile(
@@ -480,7 +479,6 @@ class _InvoiceListTile extends StatelessWidget {
                   title: const Text('Share Invoice'),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Implement share
                   },
                 ),
                 ListTile(

@@ -6,10 +6,7 @@ import '../services/invoice_service.dart';
 class InvoiceDetailsDialog extends StatefulWidget {
   final Invoice invoice;
 
-  const InvoiceDetailsDialog({
-    super.key,
-    required this.invoice,
-  });
+  const InvoiceDetailsDialog({super.key, required this.invoice});
 
   @override
   State<InvoiceDetailsDialog> createState() => _InvoiceDetailsDialogState();
@@ -59,7 +56,13 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _buildMainInfo(theme, dateFormat, currencyFormat)),
+                          Expanded(
+                            child: _buildMainInfo(
+                              theme,
+                              dateFormat,
+                              currencyFormat,
+                            ),
+                          ),
                           const SizedBox(width: 24),
                           Expanded(child: _buildStatusSection(theme)),
                         ],
@@ -91,11 +94,7 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.receipt_long,
-            color: theme.colorScheme.primary,
-            size: 32,
-          ),
+          Icon(Icons.receipt_long, color: theme.colorScheme.primary, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -111,7 +110,9 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                 Text(
                   'Bill #${widget.invoice.customerBillNumber}',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    color: theme.colorScheme.onPrimaryContainer.withOpacity(
+                      0.8,
+                    ),
                   ),
                 ),
               ],
@@ -126,7 +127,11 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     );
   }
 
-  Widget _buildMainInfo(ThemeData theme, DateFormat dateFormat, NumberFormat currencyFormat) {
+  Widget _buildMainInfo(
+    ThemeData theme,
+    DateFormat dateFormat,
+    NumberFormat currencyFormat,
+  ) {
     return Card(
       elevation: 0,
       color: theme.colorScheme.surfaceContainerHighest,
@@ -138,7 +143,10 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
             ListTile(
               leading: CircleAvatar(
                 backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                child: Icon(Icons.person_outline, color: theme.colorScheme.primary),
+                child: Icon(
+                  Icons.person_outline,
+                  color: theme.colorScheme.primary,
+                ),
               ),
               title: Text(widget.invoice.customerName),
               subtitle: Text(
@@ -147,19 +155,47 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
               ),
             ),
             const Divider(),
-            _buildInfoRow('Date:', dateFormat.format(widget.invoice.date), theme),
-            _buildInfoRow('Delivery:', dateFormat.format(widget.invoice.deliveryDate), theme),
-            _buildInfoRow('Amount:', currencyFormat.format(widget.invoice.amount), theme),
-            _buildInfoRow('VAT (5%):', currencyFormat.format(widget.invoice.vat), theme),
-            _buildInfoRow('Total:', currencyFormat.format(widget.invoice.amountIncludingVat), theme, isBold: true),
+            _buildInfoRow(
+              'Date:',
+              dateFormat.format(widget.invoice.date),
+              theme,
+            ),
+            _buildInfoRow(
+              'Delivery:',
+              dateFormat.format(widget.invoice.deliveryDate),
+              theme,
+            ),
+            _buildInfoRow(
+              'Amount:',
+              currencyFormat.format(widget.invoice.amount),
+              theme,
+            ),
+            _buildInfoRow(
+              'VAT (5%):',
+              currencyFormat.format(widget.invoice.vat),
+              theme,
+            ),
+            _buildInfoRow(
+              'Total:',
+              currencyFormat.format(widget.invoice.amountIncludingVat),
+              theme,
+              isBold: true,
+            ),
             if (widget.invoice.advance > 0) ...[
-              _buildInfoRow('Advance:', currencyFormat.format(widget.invoice.advance), theme),
+              _buildInfoRow(
+                'Advance:',
+                currencyFormat.format(widget.invoice.advance),
+                theme,
+              ),
               _buildInfoRow(
                 'Balance:',
                 currencyFormat.format(widget.invoice.remainingBalance),
                 theme,
                 isBold: true,
-                color: widget.invoice.remainingBalance > 0 ? Colors.red : Colors.green,
+                color:
+                    widget.invoice.remainingBalance > 0
+                        ? Colors.red
+                        : Colors.green,
               ),
             ],
             if (widget.invoice.measurementName != null)
@@ -208,7 +244,9 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
               'Delivery Status',
               widget.invoice.deliveryStatus,
               widget.invoice.deliveredAt != null
-                  ? DateFormat('MMM dd, yyyy').format(widget.invoice.deliveredAt!)
+                  ? DateFormat(
+                    'MMM dd, yyyy',
+                  ).format(widget.invoice.deliveredAt!)
                   : null,
               onUpdate: _updateDeliveryStatus,
             ),
@@ -228,7 +266,9 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                 child: FilledButton.icon(
                   onPressed: _handlePayment,
                   icon: const Icon(Icons.payments),
-                  label: Text('Add Payment (${NumberFormat.currency(symbol: '').format(widget.invoice.remainingBalance)})'),
+                  label: Text(
+                    'Add Payment (${NumberFormat.currency(symbol: '').format(widget.invoice.remainingBalance)})',
+                  ),
                 ),
               ),
           ],
@@ -257,18 +297,24 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(title, style: theme.textTheme.titleMedium),
-              if (status is PaymentStatus) 
-                widget.invoice.remainingBalance > 0 
-                  ? Chip(
+              if (status is PaymentStatus)
+                widget.invoice.remainingBalance > 0
+                    ? Chip(
                       label: Text(status.toString().split('.').last),
                       backgroundColor: theme.colorScheme.primaryContainer,
                     )
-                  : PopupMenuButton<PaymentStatus>(
+                    : PopupMenuButton<PaymentStatus>(
                       onSelected: (value) => onUpdate(value as T),
-                      itemBuilder: (context) => PaymentStatus.values.map((s) => PopupMenuItem(
-                        value: s,
-                        child: Text(s.toString().split('.').last),
-                      )).toList(),
+                      itemBuilder:
+                          (context) =>
+                              PaymentStatus.values
+                                  .map(
+                                    (s) => PopupMenuItem(
+                                      value: s,
+                                      child: Text(s.toString().split('.').last),
+                                    ),
+                                  )
+                                  .toList(),
                       child: Chip(
                         label: Text(status.toString().split('.').last),
                         backgroundColor: theme.colorScheme.primaryContainer,
@@ -277,10 +323,16 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
               else
                 PopupMenuButton<dynamic>(
                   onSelected: (value) => onUpdate(value as T),
-                  itemBuilder: (context) => InvoiceStatus.values.map((s) => PopupMenuItem(
-                    value: s,
-                    child: Text(s.toString().split('.').last),
-                  )).toList(),
+                  itemBuilder:
+                      (context) =>
+                          InvoiceStatus.values
+                              .map(
+                                (s) => PopupMenuItem(
+                                  value: s,
+                                  child: Text(s.toString().split('.').last),
+                                ),
+                              )
+                              .toList(),
                   child: Chip(
                     label: Text(status.toString().split('.').last),
                     backgroundColor: theme.colorScheme.primaryContainer,
@@ -290,10 +342,7 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
           ),
           if (date != null) ...[
             const SizedBox(height: 8),
-            Text(
-              'Updated on $date',
-              style: theme.textTheme.bodySmall,
-            ),
+            Text('Updated on $date', style: theme.textTheme.bodySmall),
           ],
         ],
       ),
@@ -346,7 +395,9 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                   return ListTile(
                     leading: const Icon(Icons.note),
                     title: Text(widget.invoice.notes[index]),
-                    subtitle: Text('Added on ${DateFormat('MMM dd, yyyy').format(DateTime.now())}'),
+                    subtitle: Text(
+                      'Added on ${DateFormat('MMM dd, yyyy').format(DateTime.now())}',
+                    ),
                   );
                 },
               ),
@@ -369,17 +420,13 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton.icon(
-            onPressed: () {
-              // TODO: Implement print
-            },
+            onPressed: () {},
             icon: const Icon(Icons.print),
             label: const Text('Print'),
           ),
           const SizedBox(width: 16),
           FilledButton.icon(
-            onPressed: () {
-              // TODO: Implement share
-            },
+            onPressed: () => _showInvoicePreview(context),
             icon: const Icon(Icons.share),
             label: const Text('Share'),
           ),
@@ -388,7 +435,15 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, ThemeData theme, {bool isBold = false, Color? color}) {
+  void _showInvoicePreview(BuildContext context) {}
+
+  Widget _buildInfoRow(
+    String label,
+    String value,
+    ThemeData theme, {
+    bool isBold = false,
+    Color? color,
+  }) {
     final style = theme.textTheme.bodyLarge?.copyWith(
       fontWeight: isBold ? FontWeight.bold : null,
       color: color,
@@ -398,10 +453,7 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: style),
-          Text(value, style: style),
-        ],
+        children: [Text(label, style: style), Text(value, style: style)],
       ),
     );
   }
@@ -440,60 +492,66 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     final controller = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                prefixText: '\$',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add Payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Remaining:',
-                  style: TextStyle(color: Colors.grey[600]),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '\$',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
-                Text(
-                  NumberFormat.currency(symbol: '').format(widget.invoice.remainingBalance),
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Remaining:',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    Text(
+                      NumberFormat.currency(
+                        symbol: '',
+                      ).format(widget.invoice.remainingBalance),
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      controller.text =
+                          widget.invoice.remainingBalance.toString();
+                    },
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Complete Balance'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  controller.text = widget.invoice.remainingBalance.toString();
-                },
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Complete Balance'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('ADD PAYMENT'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('ADD PAYMENT'),
-          ),
-        ],
-      ),
     );
 
     if (result == true && controller.text.isNotEmpty) {
