@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/invoice.dart';
 import '../services/invoice_service.dart';
 import '../widgets/pdf_preview_widget.dart';
+import 'dart:typed_data';
 
 class InvoiceDetailsDialog extends StatefulWidget {
   final Invoice invoice;
@@ -437,46 +438,73 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
   }
 
   void _showInvoicePreview(BuildContext context) async {
+    final theme = Theme.of(context);
     try {
       final pdfBytes = await _invoiceService.generatePdfBytes(widget.invoice);
-      
+
       if (!mounted) return;
-      final result = await showDialog<bool>(
+      showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Invoice Preview'),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.8,
+          backgroundColor: Colors.transparent,
+          contentPadding: EdgeInsets.zero,
+          insetPadding: const EdgeInsets.all(16),
+          content: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.9,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
             child: Column(
               children: [
-                Expanded(
-                  child: PdfPreviewWidget(pdfBytes: pdfBytes),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Invoice Preview',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Share'),
-                    ),
-                  ],
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                    child: PdfPreviewWidget(pdfBytes: pdfBytes),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _invoiceService.generateAndShareInvoice(widget.invoice);
+                        },
+                        child: const Text('Share'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ),
       );
-
-      if (result == true) {
-        await _invoiceService.generateAndShareInvoice(widget.invoice);
-      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
