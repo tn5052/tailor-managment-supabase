@@ -17,6 +17,56 @@ class AddMeasurementDialog extends StatefulWidget {
     this.isEditing = false,
   });
 
+  // Add static show method
+  static Future<void> show(
+    BuildContext context, {
+    Measurement? measurement,
+    int? index,
+    bool isEditing = false,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 1024;
+
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder:
+            (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: 800,
+                constraints: BoxConstraints(
+                  maxWidth: 800,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: AddMeasurementDialog(
+                  measurement: measurement,
+                  index: index,
+                  isEditing: isEditing,
+                ),
+              ),
+            ),
+      );
+    }
+
+    // Full screen for mobile
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder:
+            (context) => AddMeasurementDialog(
+              measurement: measurement,
+              index: index,
+              isEditing: isEditing,
+            ),
+      ),
+    );
+  }
+
   @override
   State<AddMeasurementDialog> createState() => _AddMeasurementDialogState();
 }
@@ -54,6 +104,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   final _notesController = TextEditingController();
   final _hesbaController = TextEditingController();
   final _sheebController = TextEditingController();
+  final _fabricNameController = TextEditingController(); // Add this
 
   final _styleOptions = [
     'Arabic',
@@ -92,6 +143,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     _notesController.dispose();
     _hesbaController.dispose();
     _sheebController.dispose();
+    _fabricNameController.dispose(); // Add this
     super.dispose();
   }
 
@@ -126,6 +178,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _notesController.text = widget.measurement!.notes;
       _hesbaController.text = widget.measurement!.hesba;
       _sheebController.text = widget.measurement!.sheeb;
+      _fabricNameController.text = widget.measurement!.fabricName; // Add this
     }
   }
 
@@ -160,6 +213,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           notes: _notesController.text,
           hesba: _hesbaController.text,
           sheeb: _sheebController.text,
+          fabricName: _fabricNameController.text, // Add this
           date: widget.isEditing ? widget.measurement!.date : DateTime.now(),
           lastUpdated: DateTime.now(),
         );
@@ -191,227 +245,257 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 600;
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final theme = Theme.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        color: theme.colorScheme.surface,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: theme.colorScheme.surface,
-          title: Text(
-            widget.isEditing ? 'Edit Measurement' : 'New Measurement',
+    return isDesktop
+        ? Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            color: theme.colorScheme.surface,
           ),
-          centerTitle: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton.icon(
+          clipBehavior: Clip.antiAlias,
+          child: _buildContent(theme, isDesktop),
+        )
+        : Scaffold(
+          backgroundColor: theme.colorScheme.background,
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            title: Text(
+              widget.isEditing ? 'Edit Measurement' : 'New Measurement',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              FilledButton.icon(
                 onPressed: _addMeasurement,
                 icon: const Icon(Icons.save),
                 label: const Text('SAVE'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                label: const Text('Close'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: _buildContent(theme, isDesktop),
+        );
+  }
+
+  Widget _buildContent(ThemeData theme, bool isDesktop) {
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.symmetric(
+          horizontal: isDesktop ? 24.0 : 16.0,
+          vertical: 24.0,
         ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 24.0 : 16.0,
-              vertical: 24.0,
-            ),
+        children: [
+          _buildSectionCard(
+            title: 'Customer Details',
+            icon: Icons.person_outline,
             children: [
-              _buildSectionCard(
-                title: 'Customer Details',
-                icon: Icons.person_outline,
-                children: [
-                  _buildCustomerField(),
-                  if (_billNumber.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _buildInfoField('Bill Number', _billNumber),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
+              _buildCustomerField(),
+              if (_billNumber.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildInfoField('Bill Number', _billNumber),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
 
-              _buildSectionCard(
-                title: 'Style Selection',
-                icon: Icons.style_outlined,
-                children: [_buildStyleField()],
-              ),
+          _buildSectionCard(
+            title: 'Style & Fabric',
+            icon: Icons.style_outlined,
+            color: Theme.of(context).colorScheme.primary,
+            children: [
+              _buildStyleField(),
               const SizedBox(height: 16),
+              TextFormField(
+                controller: _fabricNameController,
+                decoration: _inputDecoration('Fabric Name').copyWith(
+                  prefixIcon: const Icon(Icons.format_color_fill),
+                  hintText: 'Enter fabric name or description',
+                ),
+                maxLines: 2,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter fabric name';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
 
-              if (_styleController.text == 'Arabic')
-                _buildSectionCard(
-                  title: 'Arabic Measurements',
-                  icon: Icons.straighten,
-                  color: Theme.of(context).colorScheme.primary,
-                  children: [
-                    _buildMeasurementFields(
-                      isDesktop: isDesktop,
-                      fields: [
-                        MeasurementField(
-                          controller: _toolArabiController,
-                          label: 'Arabic Length',
-                          required: true,
-                        ),
-                        MeasurementField(
-                          controller: _sadurController,
-                          label: 'Chest',
-                        ),
-                        MeasurementField(
-                          controller: _ardController,
-                          label: 'Width',
-                        ),
-                        MeasurementField(
-                          controller: _tahtKanduraController,
-                          label: 'Under Kandura',
-                          isTextField: true,
-                        ),
-                      ],
+          if (_styleController.text == 'Arabic')
+            _buildSectionCard(
+              title: 'Arabic Measurements',
+              icon: Icons.straighten,
+              color: Theme.of(context).colorScheme.primary,
+              children: [
+                _buildMeasurementFields(
+                  isDesktop: isDesktop,
+                  fields: [
+                    MeasurementField(
+                      controller: _toolArabiController,
+                      label: 'Arabic Length',
+                      required: true,
                     ),
-                  ],
-                )
-              else
-                _buildSectionCard(
-                  title: '${_styleController.text} Measurements',
-                  icon: Icons.straighten,
-                  color: Theme.of(context).colorScheme.primary,
-                  children: [
-                    _buildMeasurementFields(
-                      isDesktop: isDesktop,
-                      fields: [
-                        MeasurementField(
-                          controller: _toolKuwaitiController,
-                          label: 'Kuwaiti Length',
-                          required: true,
-                        ),
-                        MeasurementField(
-                          controller: _katfController,
-                          label: 'Shoulder',
-                        ),
-                        MeasurementField(
-                          controller: _tahtController,
-                          label: 'Under',
-                        ),
-                      ],
+                    MeasurementField(
+                      controller: _sadurController,
+                      label: 'Chest',
+                    ),
+                    MeasurementField(
+                      controller: _ardController,
+                      label: 'Width',
+                    ),
+                    MeasurementField(
+                      controller: _tahtKanduraController,
+                      label: 'Under Kandura',
+                      isTextField: true,
                     ),
                   ],
                 ),
-              const SizedBox(height: 16),
-
-              _buildSectionCard(
-                title: 'Common Measurements',
-                icon: Icons.straighten,
-                color: Theme.of(context).colorScheme.secondary,
-                children: [
-                  _buildMeasurementFields(
-                    isDesktop: isDesktop,
-                    fields: [
-                      MeasurementField(
-                        controller: _toolKhalfiController,
-                        label: 'Back Length',
-                      ),
-                      MeasurementField(
-                        controller: _kumController,
-                        label: 'Sleeve',
-                      ),
-                      MeasurementField(
-                        controller: _fkmController,
-                        label: 'Cuff',
-                      ),
-                      MeasurementField(
-                        controller: _raqbaController,
-                        label: 'Neck',
-                      ),
-                      MeasurementField(
-                        controller: _hesbaController,
-                        label: 'Hesba',
-                        isTextField: true,
-                      ),
-                      MeasurementField(
-                        controller: _sheebController,
-                        label: 'Sheeb',
-                        isTextField: true,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionCard(
-                title: 'Style Details',
-                icon: Icons.design_services_outlined,
-                color: Theme.of(context).colorScheme.tertiary,
-                children: [
-                  _buildStyleDetailsFields(
-                    isDesktop: isDesktop,
-                    fields: [
-                      StyleDetailField(
-                        controller: _tarbooshController,
-                        label: 'Cap Style',
-                      ),
-                      StyleDetailField(
-                        controller: _kumSalaiController,
-                        label: 'Sleeve Style',
-                      ),
-                      StyleDetailField(
-                        controller: _khayataController,
-                        label: 'Stitching',
-                      ),
-                      StyleDetailField(
-                        controller: _kisraController,
-                        label: 'Pleats',
-                      ),
-                      StyleDetailField(
-                        controller: _batiController,
-                        label: 'Side Pocket',
-                      ),
-                      StyleDetailField(
-                        controller: _kafController,
-                        label: 'Cuff Style',
-                      ),
-                      StyleDetailField(
-                        controller: _tatreezController,
-                        label: 'Embroidery',
-                      ),
-                      StyleDetailField(
-                        controller: _jasbaController,
-                        label: 'Side Slit',
-                      ),
-                      StyleDetailField(
-                        controller: _shaibController,
-                        label: 'Shaib Style',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionCard(
-                title: 'Additional Notes',
-                icon: Icons.notes_outlined,
-                children: [
-                  TextFormField(
-                    controller: _notesController,
-                    maxLines: 3,
-                    decoration: _inputDecoration(
-                      'Enter any additional notes here...',
+              ],
+            )
+          else
+            _buildSectionCard(
+              title: '${_styleController.text} Measurements',
+              icon: Icons.straighten,
+              color: Theme.of(context).colorScheme.primary,
+              children: [
+                _buildMeasurementFields(
+                  isDesktop: isDesktop,
+                  fields: [
+                    MeasurementField(
+                      controller: _toolKuwaitiController,
+                      label: 'Kuwaiti Length',
+                      required: true,
                     ),
+                    MeasurementField(
+                      controller: _katfController,
+                      label: 'Shoulder',
+                    ),
+                    MeasurementField(
+                      controller: _tahtController,
+                      label: 'Under',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          const SizedBox(height: 16),
+
+          _buildSectionCard(
+            title: 'Common Measurements',
+            icon: Icons.straighten,
+            color: Theme.of(context).colorScheme.secondary,
+            children: [
+              _buildMeasurementFields(
+                isDesktop: isDesktop,
+                fields: [
+                  MeasurementField(
+                    controller: _toolKhalfiController,
+                    label: 'Back Length',
+                  ),
+                  MeasurementField(controller: _kumController, label: 'Sleeve'),
+                  MeasurementField(controller: _fkmController, label: 'Cuff'),
+                  MeasurementField(controller: _raqbaController, label: 'Neck'),
+                  MeasurementField(
+                    controller: _hesbaController,
+                    label: 'Hesba',
+                    isTextField: true,
+                  ),
+                  MeasurementField(
+                    controller: _sheebController,
+                    label: 'Sheeb',
+                    isTextField: true,
                   ),
                 ],
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+
+          _buildSectionCard(
+            title: 'Style Details',
+            icon: Icons.design_services_outlined,
+            color: Theme.of(context).colorScheme.tertiary,
+            children: [
+              _buildStyleDetailsFields(
+                isDesktop: isDesktop,
+                fields: [
+                  StyleDetailField(
+                    controller: _tarbooshController,
+                    label: 'Cap Style',
+                  ),
+                  StyleDetailField(
+                    controller: _kumSalaiController,
+                    label: 'Sleeve Style',
+                  ),
+                  StyleDetailField(
+                    controller: _khayataController,
+                    label: 'Stitching',
+                  ),
+                  StyleDetailField(
+                    controller: _kisraController,
+                    label: 'Pleats',
+                  ),
+                  StyleDetailField(
+                    controller: _batiController,
+                    label: 'Side Pocket',
+                  ),
+                  StyleDetailField(
+                    controller: _kafController,
+                    label: 'Cuff Style',
+                  ),
+                  StyleDetailField(
+                    controller: _tatreezController,
+                    label: 'Embroidery',
+                  ),
+                  StyleDetailField(
+                    controller: _jasbaController,
+                    label: 'Side Slit',
+                  ),
+                  StyleDetailField(
+                    controller: _shaibController,
+                    label: 'Shaib Style',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          _buildSectionCard(
+            title: 'Additional Notes',
+            icon: Icons.notes_outlined,
+            children: [
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: _inputDecoration(
+                  'Enter any additional notes here...',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -292,21 +292,10 @@ class MeasurementListItem extends StatelessWidget {
   }
 
   void _showDetailsDialog(BuildContext context, String customerId) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => Dialog(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 1200,
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
-              ),
-              child: DetailDialog(
-                measurement: measurement,
-                customerId: customerId,
-              ),
-            ),
-          ),
+    DetailDialog.show(
+      context,
+      measurement: measurement,
+      customerId: customerId,
     );
   }
 
@@ -344,26 +333,11 @@ class MeasurementListItem extends StatelessWidget {
     Measurement measurement,
     int index,
   ) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              width: 800,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
-              ),
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: AddMeasurementDialog(
-                  measurement: measurement,
-                  index: index,
-                  isEditing: true,
-                ),
-              ),
-            ),
-          ),
+    AddMeasurementDialog.show(
+      context,
+      measurement: measurement,
+      index: index,
+      isEditing: true,
     );
   }
 }

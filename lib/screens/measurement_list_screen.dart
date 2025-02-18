@@ -50,28 +50,7 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
   }
 
   void _showAddMeasurementDialog() {
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 40.0 : 8.0, // Reduced horizontal padding on mobile
-          vertical: 24.0,
-        ),
-        child: Container(
-          width: isDesktop ? 800 : MediaQuery.of(context).size.width,  // Full width on mobile
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: const Card(
-            margin: EdgeInsets.zero,
-            child: AddMeasurementDialog(),
-          ),
-        ),
-      ),
-    );
+    AddMeasurementDialog.show(context);
   }
 
   @override

@@ -14,6 +14,50 @@ class DetailDialog extends StatefulWidget {
     required this.customerId,
   });
 
+  // Add static show method
+  static Future<void> show(BuildContext context, {
+    required Measurement measurement,
+    required String customerId,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 1024;
+
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 800,
+            constraints: BoxConstraints(
+              maxWidth: 800,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: DetailDialog(
+              measurement: measurement,
+              customerId: customerId,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Full screen for mobile
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => DetailDialog(
+          measurement: measurement,
+          customerId: customerId,
+        ),
+      ),
+    );
+  }
+
   @override
   State<DetailDialog> createState() => _DetailDialogState();
 }
@@ -51,68 +95,93 @@ class _DetailDialogState extends State<DetailDialog> {
     final theme = Theme.of(context);
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        color: theme.colorScheme.surface,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                child: Icon(Icons.straighten, color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      customer?.name ?? 'Measurement Details',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Bill #${widget.measurement.billNumber}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            FilledButton.tonal(
-              onPressed: () {
-                /* TODO: Add print functionality */
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+    return isDesktop 
+        ? Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              color: theme.colorScheme.surface,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _buildScaffold(theme, isDesktop),
+          )
+        : _buildScaffold(theme, isDesktop);
+  }
+
+  Widget _buildScaffold(ThemeData theme, bool isDesktop) {
+    return Scaffold(
+      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.background,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: isDesktop ? theme.colorScheme.surface : theme.colorScheme.primaryContainer,
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Icon(Icons.straighten, color: theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.print_outlined, size: 20),
-                  if (isDesktop) ...[
-                    const SizedBox(width: 8),
-                    const Text('PRINT'),
-                  ],
+                  Text(
+                    customer?.name ?? 'Measurement Details',
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: isDesktop 
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Bill #${widget.measurement.billNumber}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDesktop 
+                          ? theme.colorScheme.onSurface.withOpacity(0.6)
+                          : theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+          ],
+        ),
+        actions: [
+          FilledButton.tonal(
+            onPressed: () {
+              /* TODO: Add print functionality */
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.print_outlined, size: 20),
+                if (isDesktop) ...[
+                  const SizedBox(width: 8),
+                  const Text('PRINT'),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (!isDesktop)
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close),
+              label: const Text('Close'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+              ),
+            )
+          else
             IconButton(
               icon: const Icon(Icons.close),
               onPressed: () => Navigator.pop(context),
             ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body:
-            isDesktop ? _buildDesktopLayout(theme) : _buildMobileLayout(theme),
+          const SizedBox(width: 8),
+        ],
       ),
+      body: isDesktop ? _buildDesktopLayout(theme) : _buildMobileLayout(theme),
     );
   }
 
@@ -138,6 +207,8 @@ class _DetailDialogState extends State<DetailDialog> {
                     _buildInfoRow('Bill Number', widget.measurement.billNumber),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildFabricCard(theme),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -406,6 +477,8 @@ class _DetailDialogState extends State<DetailDialog> {
                   _buildInfoRow('Bill Number', widget.measurement.billNumber),
                 ],
               ),
+              const SizedBox(height: 24),
+              _buildFabricCard(theme),
               const SizedBox(height: 24),
               _buildInfoCard(
                 theme,
@@ -719,6 +792,64 @@ class _DetailDialogState extends State<DetailDialog> {
               notes,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFabricCard(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.format_color_fill,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Fabric Details',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
+              child: Text(
+                widget.measurement.fabricName.isEmpty
+                    ? 'No fabric specified'
+                    : widget.measurement.fabricName,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],

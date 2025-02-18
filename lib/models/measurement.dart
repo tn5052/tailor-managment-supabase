@@ -28,6 +28,7 @@ class Measurement {
   final String sheeb;
   final DateTime date;
   final DateTime lastUpdated;
+  final String fabricName;  // Add this field
 
   Measurement({
     required this.id,
@@ -59,6 +60,7 @@ class Measurement {
     this.sheeb = '',
     required this.date,
     required this.lastUpdated,
+    this.fabricName = '',  // Add this
   });
 
   factory Measurement.fromMap(Map<String, dynamic> map) {
@@ -92,6 +94,7 @@ class Measurement {
       sheeb: map['sheeb'] ?? '',
       date: DateTime.parse(map['date']),
       lastUpdated: DateTime.parse(map['last_updated']),
+      fabricName: map['fabric_name'] ?? '',  // Add this
     );
   }
 
@@ -126,6 +129,7 @@ class Measurement {
       'sheeb': sheeb,
       'date': date.toIso8601String(),
       'last_updated': lastUpdated.toIso8601String(),
+      'fabric_name': fabricName,  // Add this
     };
   }
 }
