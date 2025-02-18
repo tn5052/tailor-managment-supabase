@@ -94,9 +94,11 @@ class InvoiceCard extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => _showOptions(context),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => _showOptions(context),
+            ),
           ),
         ],
       ),
@@ -260,136 +262,90 @@ class InvoiceCard extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    final theme = Theme.of(context);
     
-    showDialog(
+    showMenu<String>(  // Add type parameter
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: IntrinsicWidth(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildQuickAction(
-                  context,
-                  icon: Icons.edit_outlined,
-                  label: 'Edit Invoice',
-                  subtitle: 'Modify invoice details',
-                  onTap: () {
-                    Navigator.pop(context);
-                    InvoiceScreen.show(context, invoice: invoice);
-                  },
+      position: position,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 8,
+      color: theme.colorScheme.surface,
+      shadowColor: theme.colorScheme.shadow.withOpacity(0.2),
+      items: [
+        PopupMenuItem<String>(  // Add type parameter
+          value: 'edit',  // Add value
+          height: 48,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.print_outlined,
-                  label: 'Print Invoice',
-                  subtitle: 'Generate PDF document',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement print
-                  },
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
                 ),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.payments_outlined,
-                  label: 'Record Payment',
-                  subtitle: 'Add new payment record',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement payment
-                  },
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Edit',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
                 ),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.local_shipping_outlined,
-                  label: 'Update Status',
-                  subtitle: 'Change delivery status',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement status update
-                  },
-                ),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.share_outlined,
-                  label: 'Share Invoice',
-                  subtitle: 'Send via email or message',
-                  onTap: () => Navigator.pop(context),
-                ),
-                const Divider(height: 16),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.delete_outline,
-                  label: 'Delete Invoice',
-                  subtitle: 'Remove permanently',
-                  isDestructive: true,
-                  onTap: () {
-                    Navigator.pop(context);
-                    onDelete();
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAction(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    final theme = Theme.of(context);
-    final color = isDestructive ? theme.colorScheme.error : theme.colorScheme.primary;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              height: 40,
-              width: 40,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+        const PopupMenuDivider(height: 0.5),
+        PopupMenuItem<String>(  // Add type parameter
+          value: 'delete',  // Add value
+          height: 48,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: theme.colorScheme.error,
+                ),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: isDestructive ? theme.colorScheme.error : null,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Text(
+                'Delete',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      ],
+    ).then((value) {
+      if (value == 'edit') {
+        InvoiceScreen.show(context, invoice: invoice);
+      } else if (value == 'delete') {
+        onDelete();
+      }
+    });
   }
 }

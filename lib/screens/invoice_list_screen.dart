@@ -94,39 +94,41 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                 physics: const BouncingScrollPhysics(),
                 scrollbars: false,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0, // Add horizontal padding to list/grid
-                ),
-                child: StreamBuilder<List<Invoice>>(
-                  stream: _invoiceService.getInvoicesStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
+              child: StreamBuilder<List<Invoice>>(
+                stream: _invoiceService.getInvoicesStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final allInvoices = snapshot.data ?? [];
+                  final filteredInvoices =
+                      allInvoices
+                          .where((invoice) => _filter.matchesInvoice(invoice))
+                          .toList();
+
+                  if (filteredInvoices.isEmpty) {
+                    if (_filter.hasActiveFilters) {
+                      return _buildNoResultsFound(context);
                     }
+                    return _buildEmptyState(context);
+                  }
 
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final allInvoices = snapshot.data ?? [];
-                    final filteredInvoices =
-                        allInvoices
-                            .where((invoice) => _filter.matchesInvoice(invoice))
-                            .toList();
-
-                    if (filteredInvoices.isEmpty) {
-                      if (_filter.hasActiveFilters) {
-                        return _buildNoResultsFound(context);
-                      }
-                      return _buildEmptyState(context);
-                    }
-
-                    return isDesktop || isTablet
-                        ? _buildGrid(context, filteredInvoices)
-                        : _buildList(context, filteredInvoices);
-                  },
-                ),
+                  return InvoiceGroupView(
+                    invoices: filteredInvoices,
+                    groupBy: _filter.groupBy,
+                    isGridView: isDesktop || isTablet,
+                    onTap: (invoice) => _showInvoiceDetails(context, invoice),
+                    onDelete: (invoice) => _confirmDelete(
+                      context,
+                      () async => await _invoiceService.deleteInvoice(invoice.id),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -140,32 +142,6 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                 icon: const Icon(Icons.add),
                 label: const Text('New Invoice'),
               ),
-    );
-  }
-
-  Widget _buildGrid(BuildContext context, List<Invoice> invoices) {
-    return InvoiceGroupView(
-      invoices: invoices,
-      groupBy: _filter.groupBy,
-      isGridView: true,
-      onTap: (invoice) => _showInvoiceDetails(context, invoice),
-      onDelete: (invoice) => _confirmDelete(
-        context,
-        () async => await _invoiceService.deleteInvoice(invoice.id),
-      ),
-    );
-  }
-
-  Widget _buildList(BuildContext context, List<Invoice> invoices) {
-    return InvoiceGroupView(
-      invoices: invoices,
-      groupBy: _filter.groupBy,
-      isGridView: false,
-      onTap: (invoice) => _showInvoiceDetails(context, invoice),
-      onDelete: (invoice) => _confirmDelete(
-        context,
-        () async => await _invoiceService.deleteInvoice(invoice.id),
-      ),
     );
   }
 

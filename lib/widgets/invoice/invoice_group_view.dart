@@ -207,16 +207,16 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
   }
 
   Widget _buildList(BuildContext context, List<Invoice> invoices) {
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
-    
+    final sidePadding = MediaQuery.of(context).size.width >= 1024 ? 16.0 : 8.0;
+
     return widget.isGridView
         ? GridView.builder(
-          padding: EdgeInsets.all(isDesktop ? 20 : 16),
+          padding: EdgeInsets.symmetric(horizontal: sidePadding), // Add horizontal padding
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: _getGridCrossAxisCount(context),
-            childAspectRatio: isDesktop ? 1.4 : 1.2,
-            mainAxisSpacing: isDesktop ? 20 : 16,
-            crossAxisSpacing: isDesktop ? 20 : 16,
+            childAspectRatio: MediaQuery.of(context).size.width >= 1024 ? 1.4 : 1.2,
+            mainAxisSpacing: sidePadding, // Add spacing
+            crossAxisSpacing: sidePadding, // Add spacing
           ),
           itemCount: invoices.length,
           itemBuilder:
@@ -228,10 +228,10 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
               ),
         )
         : ListView.builder(
-          padding: EdgeInsets.all(isDesktop ? 20 : 16),
+          padding: EdgeInsets.symmetric(horizontal: sidePadding), // Add horizontal padding
           itemCount: invoices.length,
           itemBuilder: (context, index) => Padding(
-            padding: EdgeInsets.only(bottom: isDesktop ? 12 : 8),
+            padding: EdgeInsets.only(bottom: sidePadding), // Add bottom spacing
             child: InvoiceCard(
               invoice: invoices[index],
               onTap: () => widget.onTap(invoices[index]),

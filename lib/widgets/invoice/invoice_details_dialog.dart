@@ -12,7 +12,6 @@ class InvoiceDetailsDialog extends StatefulWidget {
   @override
   State<InvoiceDetailsDialog> createState() => _InvoiceDetailsDialogState();
 }
-
 class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
   final _noteController = TextEditingController();
   final _invoiceService = InvoiceService();
