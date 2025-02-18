@@ -6,6 +6,7 @@ class Customer {
   final String whatsapp;
   final String address;
   final Gender gender;
+  final DateTime createdAt;  // Add this field
 
   Customer({
     required this.id,
@@ -15,7 +16,8 @@ class Customer {
     this.whatsapp = '',
     required this.address,
     required this.gender,
-  });
+    DateTime? createdAt,  // Make it optional with default value
+  }) : createdAt = createdAt ?? DateTime.now();  // Default to current time if not provided
 
   factory Customer.fromMap(Map<String, dynamic> map) {
     return Customer(
@@ -26,6 +28,7 @@ class Customer {
       whatsapp: map['whatsapp'] ?? '',
       address: map['address'],
       gender: map['gender'] == 'female' ? Gender.female : Gender.male,
+      createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

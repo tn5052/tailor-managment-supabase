@@ -1,10 +1,12 @@
+// Update imports at the top
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/measurement.dart';
 import '../../models/customer.dart';
 import '../../services/measurement_service.dart';
-import '../../services/supabase_service.dart'; // Import SupabaseService
+import '../../services/supabase_service.dart';
 import '../../utils/fraction_helper.dart';
+import '../customer/customer_selector_dialog.dart';  // Make sure this path is correct
 
 class AddMeasurementDialog extends StatefulWidget {
   final Measurement? measurement;
@@ -607,7 +609,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   Widget _buildCustomerField() {
     return StreamBuilder<List<Customer>>(
-      stream: _supabaseService.getCustomersStream(), // Use Supabase stream
+      stream: _supabaseService.getCustomersStream(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Text('Error: ${snapshot.error}');
@@ -618,34 +620,85 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         }
 
         final customers = snapshot.data ?? [];
+        final selectedCustomer = customers.firstWhere(
+          (c) => c.id == _selectedCustomerId,
+          orElse: () => Customer(
+            id: '',
+            billNumber: '',
+            name: '',
+            phone: '',
+            address: '',
+            gender: Gender.male,
+          ),
+        );
 
-        return DropdownButtonFormField<String>(
-          decoration: _inputDecoration('Customer'),
-          value: _selectedCustomerId,
-          items:
-              customers.map((Customer customer) {
-                return DropdownMenuItem<String>(
-                  value: customer.id,
-                  child: Text('${customer.name} (${customer.phone})'),
-                );
-              }).toList(),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a customer';
-            }
-            return null;
-          },
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              final selectedCustomer = customers.firstWhere(
-                (customer) => customer.id == newValue,
-              );
+        return InkWell(
+          onTap: () async {
+            final customer = await CustomerSelectorDialog.show(context, customers);
+            if (customer != null) {
               setState(() {
-                _selectedCustomerId = newValue;
-                _billNumber = selectedCustomer.billNumber;
+                _selectedCustomerId = customer.id;
+                _billNumber = customer.billNumber;
               });
             }
           },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: _selectedCustomerId == null || _selectedCustomerId!.isEmpty
+                  ? Border.all(color: Colors.red)
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _selectedCustomerId == null || _selectedCustomerId!.isEmpty
+                      ? Text(
+                          'Select Customer',
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              selectedCustomer.name,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              selectedCustomer.phone,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.7),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
