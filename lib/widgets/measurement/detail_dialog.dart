@@ -28,9 +28,9 @@ class DetailDialog extends StatefulWidget {
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: 800,
+            width: 1000, // Increased from 800 to 1000
             constraints: BoxConstraints(
-              maxWidth: 800,
+              maxWidth: 1000, // Increased from 800 to 1000
               maxHeight: MediaQuery.of(context).size.height * 0.9,
             ),
             decoration: BoxDecoration(
@@ -686,6 +686,7 @@ class _DetailDialogState extends State<DetailDialog> {
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Add this to minimize height
           children: [
             Row(
               children: [
@@ -700,20 +701,25 @@ class _DetailDialogState extends State<DetailDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 3,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-              ),
-              itemCount: measurements.length,
-              itemBuilder: (context, index) {
-                final item = measurements[index];
-                return _buildMeasurementItem(theme, item, color);
+            const SizedBox(height: 16), // Reduced from 24
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: constraints.maxWidth > 800 ? 4 : 3, // Adjust based on width
+                    mainAxisSpacing: 12, // Reduced from 16
+                    crossAxisSpacing: 12, // Reduced from 16
+                    mainAxisExtent: 70, // Fixed height for items
+                  ),
+                  itemCount: measurements.length,
+                  itemBuilder: (context, index) {
+                    final item = measurements[index];
+                    return _buildMeasurementItem(theme, item, color);
+                  },
+                );
               },
             ),
           ],
@@ -722,13 +728,14 @@ class _DetailDialogState extends State<DetailDialog> {
     );
   }
 
+  // Also update the _buildMeasurementItem to be more compact
   Widget _buildMeasurementItem(
     ThemeData theme,
     MeasurementItem item,
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Reduced padding
       decoration: BoxDecoration(
         color:
             item.isHighlighted
@@ -741,6 +748,7 @@ class _DetailDialogState extends State<DetailDialog> {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Add this to make column take minimum space
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -749,14 +757,18 @@ class _DetailDialogState extends State<DetailDialog> {
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2), // Keep minimal spacing
           Text(
             item.value,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.titleSmall?.copyWith( // Changed from titleMedium to titleSmall
               fontWeight: FontWeight.w600,
               color: item.isHighlighted ? color : null,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

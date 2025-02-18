@@ -106,6 +106,12 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   final _sheebController = TextEditingController();
   final _fabricNameController = TextEditingController(); // Add this
 
+  String _selectedDesignType = 'Aadi';
+  String _selectedTarbooshType = 'Fixed';
+
+  final _designOptions = ['Aadi', 'Baat'];
+  final _tarbooshOptions = ['Fixed', 'Separate'];
+
   final _styleOptions = [
     'Arabic',
     'Kuwaiti',
@@ -179,12 +185,18 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _hesbaController.text = widget.measurement!.hesba;
       _sheebController.text = widget.measurement!.sheeb;
       _fabricNameController.text = widget.measurement!.fabricName; // Add this
+      _selectedDesignType = widget.measurement!.designType;
+      _selectedTarbooshType = widget.measurement!.tarbooshType;
+      _tarbooshController.text = _selectedTarbooshType; // Ensure sync on init
     }
   }
 
   Future<void> _addMeasurement() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
+        // Ensure tarboosh field matches tarbooshType before saving
+        _tarbooshController.text = _selectedTarbooshType;
+        
         final measurement = Measurement(
           id: widget.isEditing ? widget.measurement!.id : const Uuid().v4(),
           customerId: _selectedCustomerId!,
@@ -200,7 +212,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           raqba: double.tryParse(_raqbaController.text) ?? 0,
           fkm: double.tryParse(_fkmController.text) ?? 0,
           taht: double.tryParse(_tahtController.text) ?? 0,
-          tarboosh: _tarbooshController.text,
+          tarboosh: _selectedTarbooshType, // Use selectedTarbooshType directly
           kumSalai: _kumSalaiController.text,
           khayata: _khayataController.text,
           kisra: _kisraController.text,
@@ -214,6 +226,8 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           hesba: _hesbaController.text,
           sheeb: _sheebController.text,
           fabricName: _fabricNameController.text, // Add this
+          designType: _selectedDesignType,
+          tarbooshType: _selectedTarbooshType,
           date: widget.isEditing ? widget.measurement!.date : DateTime.now(),
           lastUpdated: DateTime.now(),
         );
@@ -250,13 +264,61 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
     return isDesktop
         ? Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            color: theme.colorScheme.surface,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: _buildContent(theme, isDesktop),
-        )
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              color: theme.colorScheme.surface,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                // Add header with actions
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(28),
+                      topRight: Radius.circular(28),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        widget.isEditing ? 'Edit Measurement' : 'New Measurement',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: _addMeasurement,
+                        icon: const Icon(Icons.save),
+                        label: const Text('SAVE'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Close'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content
+                Expanded(
+                  child: _buildContent(theme, isDesktop),
+                ),
+              ],
+            ),
+          )
         : Scaffold(
           backgroundColor: theme.colorScheme.background,
           appBar: AppBar(
@@ -317,29 +379,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           ),
           const SizedBox(height: 16),
 
-          _buildSectionCard(
-            title: 'Style & Fabric',
-            icon: Icons.style_outlined,
-            color: Theme.of(context).colorScheme.primary,
-            children: [
-              _buildStyleField(),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _fabricNameController,
-                decoration: _inputDecoration('Fabric Name').copyWith(
-                  prefixIcon: const Icon(Icons.format_color_fill),
-                  hintText: 'Enter fabric name or description',
-                ),
-                maxLines: 2,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter fabric name';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
+          _buildStyleAndFabricSection(),
           const SizedBox(height: 16),
 
           if (_styleController.text == 'Arabic')
@@ -612,10 +652,13 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           childAspectRatio: isDesktop ? 3 : 6,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          children:
-              fields.map((field) {
-                return _buildTextField(field.controller, field.label);
-              }).toList(),
+          children: fields.map((field) {
+            // Special handling for Tarboosh/Cap Style
+            if (field.controller == _tarbooshController) {
+              return _buildTarbooshTypeField(readOnly: true);
+            }
+            return _buildTextField(field.controller, field.label);
+          }).toList(),
         );
       },
     );
@@ -756,6 +799,75 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       floatingLabelBehavior: FloatingLabelBehavior.auto,
     );
   }
+
+  Widget _buildStyleAndFabricSection() {
+    return _buildSectionCard(
+      title: 'Style & Fabric',
+      icon: Icons.style_outlined,
+      color: Theme.of(context).colorScheme.primary,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildStyleField(),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildDesignTypeField(),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildTarbooshTypeField(readOnly: false),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _fabricNameController,
+          // ...existing fabric name field code...
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesignTypeField() {
+    return DropdownButtonFormField<String>(
+      decoration: _inputDecoration('Design Type'),
+      value: _selectedDesignType,
+      items: _designOptions.map((String type) {
+        return DropdownMenuItem<String>(
+          value: type,
+          child: Text(type),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        setState(() {
+          _selectedDesignType = newValue!;
+        });
+      },
+    );
+  }
+
+  Widget _buildTarbooshTypeField({bool readOnly = false}) {
+    return DropdownButtonFormField<String>(
+      decoration: _inputDecoration('Tarboosh Style'),
+      value: _selectedTarbooshType,
+      items: _tarbooshOptions.map((String type) {
+        return DropdownMenuItem<String>(
+          value: type,
+          child: Text(type),
+        );
+      }).toList(),
+      onChanged: readOnly ? null : (String? newValue) {
+        setState(() {
+          _selectedTarbooshType = newValue!;
+          _tarbooshController.text = newValue; // Always keep tarboosh field in sync
+        });
+      },
+    );
+  }
+
 }
 
 class MeasurementField {

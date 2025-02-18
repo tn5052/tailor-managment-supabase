@@ -448,7 +448,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     final isDesktop = screenWidth >= 1024;
 
     return Scaffold(
-      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.background,
+      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: theme.colorScheme.primaryContainer,
@@ -939,7 +939,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                 ),
               ),
             ),
-          ..._products.map((product) => _buildProductRow(theme, product)).toList(),
+          ..._products.map((product) => _buildProductRow(theme, product)),
           const SizedBox(height: 8),
           Center(
             child: FilledButton.tonalIcon(

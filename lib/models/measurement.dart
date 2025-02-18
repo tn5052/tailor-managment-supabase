@@ -29,6 +29,8 @@ class Measurement {
   final DateTime date;
   final DateTime lastUpdated;
   final String fabricName;  // Add this field
+  final String designType; // Add this
+  final String tarbooshType; // Add this
 
   Measurement({
     required this.id,
@@ -61,6 +63,8 @@ class Measurement {
     required this.date,
     required this.lastUpdated,
     this.fabricName = '',  // Add this
+    this.designType = 'Aadi', // Add this
+    this.tarbooshType = 'Fixed', // Add this
   });
 
   factory Measurement.fromMap(Map<String, dynamic> map) {
@@ -95,6 +99,8 @@ class Measurement {
       date: DateTime.parse(map['date']),
       lastUpdated: DateTime.parse(map['last_updated']),
       fabricName: map['fabric_name'] ?? '',  // Add this
+      designType: map['design_type'] ?? 'Aadi', // Add this
+      tarbooshType: map['tarboosh_type'] ?? 'Fixed', // Add this
     );
   }
 
@@ -130,6 +136,8 @@ class Measurement {
       'date': date.toIso8601String(),
       'last_updated': lastUpdated.toIso8601String(),
       'fabric_name': fabricName,  // Add this
+      'design_type': designType, // Add this
+      'tarboosh_type': tarbooshType, // Add this
     };
   }
 }

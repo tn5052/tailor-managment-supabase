@@ -83,7 +83,7 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
           ),
         )
       : Scaffold(
-          backgroundColor: theme.colorScheme.background,
+          backgroundColor: theme.colorScheme.surface,
           appBar: AppBar(
             elevation: 0,
             backgroundColor: theme.colorScheme.primaryContainer,

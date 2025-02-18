@@ -338,7 +338,7 @@ class InvoiceTemplate {
             'AED ${product.price.toStringAsFixed(2)}',
             '', // No Arabic translation for product name
             arabicFont,
-          )).toList(),
+          )),
           _buildTableRow(
             'Amount',
             'AED ${invoice.amount.toStringAsFixed(2)}',
