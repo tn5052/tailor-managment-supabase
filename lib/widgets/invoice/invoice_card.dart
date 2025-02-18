@@ -73,7 +73,7 @@ class InvoiceCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      invoice.displayNumber,
+                      'INV No #${invoice.invoiceNumber}', // Changed from displayNumber to invoiceNumber
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
