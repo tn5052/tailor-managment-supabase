@@ -9,9 +9,45 @@ class InvoiceDetailsDialog extends StatefulWidget {
 
   const InvoiceDetailsDialog({super.key, required this.invoice});
 
+  // Add static show method
+  static Future<void> show(BuildContext context, Invoice invoice) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 1024;
+
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 800,
+            constraints: BoxConstraints(
+              maxWidth: 800,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: InvoiceDetailsDialog(invoice: invoice),
+          ),
+        ),
+      );
+    }
+
+    // Full screen for mobile
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => InvoiceDetailsDialog(invoice: invoice),
+      ),
+    );
+  }
+
   @override
   State<InvoiceDetailsDialog> createState() => _InvoiceDetailsDialogState();
 }
+
 class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
   final _noteController = TextEditingController();
   final _invoiceService = InvoiceService();
@@ -30,56 +66,156 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     final dateFormat = DateFormat('dd/MM/yyyy');
     final currencyFormat = NumberFormat.currency(symbol: '');
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: isDesktop ? 800 : null,
-        constraints: BoxConstraints(
-          maxWidth: isDesktop ? 800 : screenWidth * 0.9,
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
-        ),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(theme),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isDesktop)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildMainInfo(
-                              theme,
-                              dateFormat,
-                              currencyFormat,
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildStatusSection(theme)),
-                        ],
-                      )
-                    else ...[
-                      _buildMainInfo(theme, dateFormat, currencyFormat),
-                      const SizedBox(height: 24),
-                      _buildStatusSection(theme),
-                    ],
-                    const SizedBox(height: 24),
-                    _buildNotesSection(theme),
-                  ],
+    return isDesktop 
+      ? Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 800,
+            constraints: BoxConstraints(
+              maxWidth: 800,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: _buildContent(theme, isDesktop, dateFormat, currencyFormat),
+          ),
+        )
+      : Scaffold(
+          backgroundColor: theme.colorScheme.background,
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Invoice #${widget.invoice.invoiceNumber}',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Bill #${widget.invoice.customerBillNumber}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                label: const Text('Close'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
                 ),
               ),
+            ],
+          ),
+          body: _buildContent(theme, isDesktop, dateFormat, currencyFormat),
+        );
+  }
+
+  Widget _buildContent(
+    ThemeData theme,
+    bool isDesktop,
+    DateFormat dateFormat,
+    NumberFormat currencyFormat,
+  ) {
+    return Column(
+      children: [
+        if (isDesktop) _buildHeader(theme),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isDesktop)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildMainInfo(
+                          theme,
+                          dateFormat,
+                          currencyFormat,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(child: _buildStatusSection(theme)),
+                    ],
+                  )
+                else ...[
+                  _buildMainInfo(theme, dateFormat, currencyFormat),
+                  const SizedBox(height: 24),
+                  _buildStatusSection(theme),
+                ],
+                const SizedBox(height: 24),
+                _buildNotesSection(theme),
+              ],
             ),
-            _buildActions(theme),
-          ],
+          ),
+        ),
+        _buildGenerateButton(theme, isDesktop),
+      ],
+    );
+  }
+
+  Widget _buildGenerateButton(ThemeData theme, bool isDesktop) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        16,
+        24,
+        isDesktop ? 24 : 16 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: isDesktop 
+          ? const BorderRadius.vertical(bottom: Radius.circular(28))
+          : null,
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: isDesktop 
+          ? const BorderRadius.vertical(bottom: Radius.circular(28))
+          : BorderRadius.zero,
+        child: SafeArea(
+          child: FilledButton.icon(
+            onPressed: () => _showInvoicePreview(context),
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Generate Invoice'),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 16,
+              ),
+              textStyle: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -485,106 +621,83 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     );
   }
 
-  Widget _buildActions(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.print),
-            label: const Text('Print'),
-          ),
-          const SizedBox(width: 16),
-          FilledButton.icon(
-            onPressed: () => _showInvoicePreview(context),
-            icon: const Icon(Icons.share),
-            label: const Text('Share'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // Update the preview dialog to have rounded corners on desktop
   void _showInvoicePreview(BuildContext context) async {
     final theme = Theme.of(context);
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
     try {
       final pdfBytes = await _invoiceService.generatePdfBytes(widget.invoice);
 
       if (!mounted) return;
       showDialog(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              backgroundColor: Colors.transparent,
-              contentPadding: EdgeInsets.zero,
-              insetPadding: const EdgeInsets.all(16),
-              content: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.9,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Invoice Preview',
-                            style: theme.textTheme.titleLarge,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(28),
-                        ),
-                        child: PdfPreviewWidget(pdfBytes: pdfBytes),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _invoiceService.generateAndShareInvoice(
-                                widget.invoice,
-                              );
-                            },
-                            child: const Text('Share'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: isDesktop ? 800 : MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.9,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
             ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Invoice Preview',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(28),
+                    ),
+                    child: PdfPreviewWidget(pdfBytes: pdfBytes),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _invoiceService.generateAndShareInvoice(
+                            widget.invoice,
+                          );
+                        },
+                        icon: const Icon(Icons.ios_share),
+                        label: const Text('Share PDF'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

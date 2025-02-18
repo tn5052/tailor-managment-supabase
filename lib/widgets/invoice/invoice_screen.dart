@@ -20,25 +20,37 @@ class InvoiceScreen extends StatefulWidget {
 
   static Future<void> show(BuildContext context, {Customer? customer, Invoice? invoice}) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final isDesktop = screenWidth >= 1024;
 
-    return showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: isDesktop ? screenWidth * 0.60 : screenWidth * 0.95,
-          height: isDesktop ? screenHeight * 0.9 : screenHeight * 0.95,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: screenWidth * 0.60,
+            height: MediaQuery.of(context).size.height * 0.9,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: InvoiceScreen(
+              customer: customer,
+              invoiceToEdit: invoice,
+            ),
           ),
-          child: InvoiceScreen(
-            customer: customer,
-            invoiceToEdit: invoice, // Pass invoice for editing
-          ),
+        ),
+      );
+    }
+
+    // Full screen for mobile
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => InvoiceScreen(
+          customer: customer,
+          invoiceToEdit: invoice,
         ),
       ),
     );
@@ -436,13 +448,22 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     final isDesktop = screenWidth >= 1024;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.background,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: theme.colorScheme.primaryContainer,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
+        shape: isDesktop 
+          ? const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            )
+          : null,
+        automaticallyImplyLeading: false, // Disable default back button
+        leading: isDesktop 
+          ? IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            )
+          : null,
         title: Text(
           widget.invoiceToEdit != null ? 'Edit Invoice' : 'Create Invoice',
           style: theme.textTheme.headlineMedium?.copyWith(
@@ -450,34 +471,40 @@ class _InvoiceScreenState extends State<InvoiceScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
-          FilledButton.icon(
-            onPressed: _saveInvoice,
-            icon: const Icon(Icons.receipt_long),
-            label: const Text('Generate'),
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
+          if (!isDesktop)
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close),
+              label: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+              ),
+            )
+          else
+            FilledButton.icon(
+              onPressed: _saveInvoice,
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Generate'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+              ),
             ),
-          ),
           const SizedBox(width: 16),
         ],
       ),
       body: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(28),
-          ),
+          borderRadius: isDesktop 
+            ? const BorderRadius.vertical(bottom: Radius.circular(28))
+            : null,
         ),
         child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(28),
-          ),
+          borderRadius: isDesktop 
+            ? const BorderRadius.vertical(bottom: Radius.circular(28))
+            : BorderRadius.zero,
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -650,12 +677,17 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         ),
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).padding.bottom, // Add safe area padding
+        ),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(28),
-          ),
+          borderRadius: isDesktop 
+            ? const BorderRadius.vertical(bottom: Radius.circular(28))
+            : null,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -668,7 +700,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           child: FilledButton.icon(
             onPressed: _saveInvoice,
             icon: const Icon(Icons.receipt_long),
-            label: const Text('Generate Invoice'),
+            label: Text(isDesktop ? 'Generate Invoice' : 'Save'),
             style: FilledButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
