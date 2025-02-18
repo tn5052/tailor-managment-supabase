@@ -3,68 +3,71 @@ class Measurement {
   final String customerId;
   final String billNumber;
   final String style;
-  final double toolArabi;
-  final double toolKuwaiti;
-  final double sadur;
-  final double kum;
-  final double katf;
-  final double toolKhalfi;
-  final double ard;
-  final double raqba;
-  final double fkm;
-  final double taht;
-  final String tarboosh;
-  final String kumSalai;
-  final String khayata;
-  final String kisra;
-  final String bati;
-  final String kaf;
-  final String tatreez;
-  final String jasba;
-  final String tahtKandura;
-  final String shaib;
+  final String designType;
+  final String tarbooshType;
+  final String fabricName;
+  
+  // Measurements section
+  final double lengthArabi;    // طول عربي
+  final double lengthKuwaiti;  // طول كويتي
+  final double chest;          // صدر
+  final double width;          // عرض
+  final double sleeve;         // كم
+  final double collar;         // فكم
+  final double under;          // تحت
+  final double backLength;     // طول خلفي
+  final double neck;           // رقبة (Measurement)
+  final double shoulder;       // كتف
+  final String seam;           // شسيب
+  final String adhesive;       // چسبا
+  final String underKandura;   // تحت كندورة
+
+  // Style Details section
+  final String tarboosh;       // تربوش
+  final String openSleeve;     // كم سلالي
+  final String stitching;      // خياطة
+  final String pleat;          // كسرة
+  final String button;         // بتي
+  final String cuff;          // كف
+  final String embroidery;     // تطريز
+  final String neckStyle;      // رقبة (Style)
+
   final String notes;
-  final String hesba;
-  final String sheeb;
   final DateTime date;
   final DateTime lastUpdated;
-  final String fabricName;  // Add this field
-  final String designType; // Add this
-  final String tarbooshType; // Add this
 
   Measurement({
     required this.id,
     required this.customerId,
     required this.billNumber,
     required this.style,
-    this.toolArabi = 0,
-    this.toolKuwaiti = 0,
-    this.sadur = 0,
-    this.kum = 0,
-    this.katf = 0,
-    this.toolKhalfi = 0,
-    this.ard = 0,
-    this.raqba = 0,
-    this.fkm = 0,
-    this.taht = 0,
+    this.designType = 'Aadi',
+    this.tarbooshType = 'Fixed',
+    this.fabricName = '',
+    this.lengthArabi = 0,
+    this.lengthKuwaiti = 0,
+    this.chest = 0,
+    this.width = 0,
+    this.sleeve = 0,
+    this.collar = 0,
+    this.under = 0,
+    this.backLength = 0,
+    this.neck = 0,
+    this.shoulder = 0,
+    this.seam = '',
+    this.adhesive = '',
+    this.underKandura = '',
     this.tarboosh = '',
-    this.kumSalai = '',
-    this.khayata = '',
-    this.kisra = '',
-    this.bati = '',
-    this.kaf = '',
-    this.tatreez = '',
-    this.jasba = '',
-    this.tahtKandura = '',
-    this.shaib = '',
+    this.openSleeve = '',
+    this.stitching = '',
+    this.pleat = '',
+    this.button = '',
+    this.cuff = '',
+    this.embroidery = '',
+    this.neckStyle = '',
     this.notes = '',
-    this.hesba = '',
-    this.sheeb = '',
     required this.date,
     required this.lastUpdated,
-    this.fabricName = '',  // Add this
-    this.designType = 'Aadi', // Add this
-    this.tarbooshType = 'Fixed', // Add this
   });
 
   factory Measurement.fromMap(Map<String, dynamic> map) {
@@ -73,34 +76,33 @@ class Measurement {
       customerId: map['customer_id'] ?? '',
       billNumber: map['bill_number'] ?? '',
       style: map['style'] ?? '',
-      toolArabi: (map['tool_arabi'] ?? 0).toDouble(),
-      toolKuwaiti: (map['tool_kuwaiti'] ?? 0).toDouble(),
-      sadur: (map['sadur'] ?? 0).toDouble(),
-      kum: (map['kum'] ?? 0).toDouble(),
-      katf: (map['katf'] ?? 0).toDouble(),
-      toolKhalfi: (map['tool_khalfi'] ?? 0).toDouble(),
-      ard: (map['ard'] ?? 0).toDouble(),
-      raqba: (map['raqba'] ?? 0).toDouble(),
-      fkm: (map['fkm'] ?? 0).toDouble(),
-      taht: (map['taht'] ?? 0).toDouble(),
+      designType: map['design_type'] ?? 'Aadi',
+      tarbooshType: map['tarboosh_type'] ?? 'Fixed',
+      fabricName: map['fabric_name'] ?? '',
+      lengthArabi: (map['length_arabi'] ?? 0).toDouble(),
+      lengthKuwaiti: (map['length_kuwaiti'] ?? 0).toDouble(),
+      chest: (map['chest'] ?? 0).toDouble(),
+      width: (map['width'] ?? 0).toDouble(),
+      sleeve: (map['sleeve'] ?? 0).toDouble(),
+      collar: (map['collar'] ?? 0).toDouble(),
+      under: (map['under'] ?? 0).toDouble(),
+      backLength: (map['back_length'] ?? 0).toDouble(),
+      neck: (map['neck'] ?? 0).toDouble(),
+      shoulder: (map['shoulder'] ?? 0).toDouble(),
+      seam: map['seam'] ?? '',
+      adhesive: map['adhesive'] ?? '',
+      underKandura: map['under_kandura'] ?? '',
       tarboosh: map['tarboosh'] ?? '',
-      kumSalai: map['kum_salai'] ?? '',
-      khayata: map['khayata'] ?? '',
-      kisra: map['kisra'] ?? '',
-      bati: map['bati'] ?? '',
-      kaf: map['kaf'] ?? '',
-      tatreez: map['tatreez'] ?? '',
-      jasba: map['jasba'] ?? '',
-      tahtKandura: map['taht_kandura'] ?? '',
-      shaib: map['shaib'] ?? '',
+      openSleeve: map['open_sleeve'] ?? '',
+      stitching: map['stitching'] ?? '',
+      pleat: map['pleat'] ?? '',
+      button: map['button'] ?? '',
+      cuff: map['cuff'] ?? '',
+      embroidery: map['embroidery'] ?? '',
+      neckStyle: map['neck_style'] ?? '',
       notes: map['notes'] ?? '',
-      hesba: map['hesba'] ?? '',
-      sheeb: map['sheeb'] ?? '',
       date: DateTime.parse(map['date']),
       lastUpdated: DateTime.parse(map['last_updated']),
-      fabricName: map['fabric_name'] ?? '',  // Add this
-      designType: map['design_type'] ?? 'Aadi', // Add this
-      tarbooshType: map['tarboosh_type'] ?? 'Fixed', // Add this
     );
   }
 
@@ -110,34 +112,33 @@ class Measurement {
       'customer_id': customerId,
       'bill_number': billNumber,
       'style': style,
-      'tool_arabi': toolArabi,
-      'tool_kuwaiti': toolKuwaiti,
-      'sadur': sadur,
-      'kum': kum,
-      'katf': katf,
-      'tool_khalfi': toolKhalfi,
-      'ard': ard,
-      'raqba': raqba,
-      'fkm': fkm,
-      'taht': taht,
+      'design_type': designType,
+      'tarboosh_type': tarbooshType,
+      'fabric_name': fabricName,
+      'length_arabi': lengthArabi,
+      'length_kuwaiti': lengthKuwaiti,
+      'chest': chest,
+      'width': width,
+      'sleeve': sleeve,
+      'collar': collar,
+      'under': under,
+      'back_length': backLength,
+      'neck': neck,
+      'shoulder': shoulder,
+      'seam': seam,
+      'adhesive': adhesive,
+      'under_kandura': underKandura,
       'tarboosh': tarboosh,
-      'kum_salai': kumSalai,
-      'khayata': khayata,
-      'kisra': kisra,
-      'bati': bati,
-      'kaf': kaf,
-      'tatreez': tatreez,
-      'jasba': jasba,
-      'taht_kandura': tahtKandura,
-      'shaib': shaib,
+      'open_sleeve': openSleeve,
+      'stitching': stitching,
+      'pleat': pleat,
+      'button': button,
+      'cuff': cuff,
+      'embroidery': embroidery,
+      'neck_style': neckStyle,
       'notes': notes,
-      'hesba': hesba,
-      'sheeb': sheeb,
       'date': date.toIso8601String(),
       'last_updated': lastUpdated.toIso8601String(),
-      'fabric_name': fabricName,  // Add this
-      'design_type': designType, // Add this
-      'tarboosh_type': tarbooshType, // Add this
     };
   }
 }

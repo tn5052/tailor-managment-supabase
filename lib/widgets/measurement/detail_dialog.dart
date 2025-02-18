@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/customer.dart';
 import '../../models/measurement.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/fraction_helper.dart';
 
 class DetailDialog extends StatefulWidget {
   final Measurement measurement;
@@ -208,97 +209,29 @@ class _DetailDialogState extends State<DetailDialog> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                _buildStyleInfoCard(theme), // Add this line
+                const SizedBox(height: 16),
                 _buildFabricCard(theme),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCompactDateInfo(
-                        theme,
-                        'Created',
-                        widget.measurement.date,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildCompactDateInfo(
-                        theme,
-                        'Updated',
-                        widget.measurement.lastUpdated,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildDatesSection(theme),
               ],
             ),
           ),
 
-          // Measurements Section
+          // Updated Measurements Section
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.measurement.style == 'Arabic')
-                  _buildMobileMeasurementCard(
-                    theme,
-                    title: 'Arabic Measurements',
-                    icon: Icons.straighten,
-                    color: theme.colorScheme.primary,
-                    measurements: [
-                      MeasurementItem(
-                        'Arabic Length',
-                        '${widget.measurement.toolArabi} cm',
-                        true,
-                      ),
-                      MeasurementItem(
-                        'Chest',
-                        '${widget.measurement.sadur} cm',
-                      ),
-                      MeasurementItem('Width', '${widget.measurement.ard} cm'),
-                      MeasurementItem(
-                        'Under Kandura',
-                        widget.measurement.tahtKandura,
-                      ),
-                    ],
-                  )
-                else
-                  _buildMobileMeasurementCard(
-                    theme,
-                    title: '${widget.measurement.style} Measurements',
-                    icon: Icons.straighten,
-                    color: theme.colorScheme.primary,
-                    measurements: [
-                      MeasurementItem(
-                        'Kuwaiti Length',
-                        '${widget.measurement.toolKuwaiti} cm',
-                        true,
-                      ),
-                      MeasurementItem(
-                        'Shoulder',
-                        '${widget.measurement.katf} cm',
-                      ),
-                      MeasurementItem('Under', '${widget.measurement.taht} cm'),
-                    ],
-                  ),
-                const SizedBox(height: 16),
                 _buildMobileMeasurementCard(
                   theme,
-                  title: 'Common Measurements',
+                  title: 'All Measurements',
                   icon: Icons.straighten,
-                  color: theme.colorScheme.secondary,
-                  measurements: [
-                    MeasurementItem(
-                      'Back Length',
-                      '${widget.measurement.toolKhalfi} cm',
-                    ),
-                    MeasurementItem('Sleeve', '${widget.measurement.kum} cm'),
-                    MeasurementItem('Cuff', '${widget.measurement.fkm} cm'),
-                    MeasurementItem('Neck', '${widget.measurement.raqba} cm'),
-                    MeasurementItem('Hesba', widget.measurement.hesba),
-                    MeasurementItem('Sheeb', widget.measurement.sheeb),
-                  ],
+                  color: theme.colorScheme.primary,
+                  measurements: _buildMeasurementItems(),
                 ),
+
                 if (_hasStyleDetails()) ...[
                   const SizedBox(height: 16),
                   _buildMobileMeasurementCard(
@@ -310,15 +243,14 @@ class _DetailDialogState extends State<DetailDialog> {
                       MeasurementItem('Cap Style', widget.measurement.tarboosh),
                       MeasurementItem(
                         'Sleeve Style',
-                        widget.measurement.kumSalai,
+                        widget.measurement.openSleeve,
                       ),
-                      MeasurementItem('Stitching', widget.measurement.khayata),
-                      MeasurementItem('Pleats', widget.measurement.kisra),
-                      MeasurementItem('Side Pocket', widget.measurement.bati),
-                      MeasurementItem('Cuff Style', widget.measurement.kaf),
-                      MeasurementItem('Embroidery', widget.measurement.tatreez),
-                      MeasurementItem('Side Slit', widget.measurement.jasba),
-                      MeasurementItem('Shaib Style', widget.measurement.shaib),
+                      MeasurementItem('Stitching', widget.measurement.stitching),
+                      MeasurementItem('Pleats', widget.measurement.pleat),
+                      MeasurementItem('Side Pocket', widget.measurement.button),
+                      MeasurementItem('Cuff Style', widget.measurement.cuff),
+                      MeasurementItem('Embroidery', widget.measurement.embroidery),
+                      MeasurementItem('Neck Style', widget.measurement.neckStyle),
                     ],
                   ),
                 ],
@@ -456,50 +388,52 @@ class _DetailDialogState extends State<DetailDialog> {
   Widget _buildDesktopLayout(ThemeData theme) {
     return Row(
       children: [
-        // Left sidebar with customer info and dates
-        Container(
+        // Make left sidebar scrollable
+        SizedBox(
           width: 300,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer,
-            border: Border(right: BorderSide(color: theme.dividerColor)),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInfoCard(
-                theme,
-                title: 'Customer Information',
-                icon: Icons.person_outline,
-                content: [
-                  _buildInfoRow('Name', customer?.name ?? 'Unknown'),
-                  _buildInfoRow('Phone', customer?.phone ?? 'N/A'),
-                  _buildInfoRow('Bill Number', widget.measurement.billNumber),
+          child: SingleChildScrollView(
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainer,
+                border: Border(right: BorderSide(color: theme.dividerColor)),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoCard(
+                    theme,
+                    title: 'Customer Information',
+                    icon: Icons.person_outline,
+                    content: [
+                      _buildInfoRow('Name', customer?.name ?? 'Unknown'),
+                      _buildInfoRow('Phone', customer?.phone ?? 'N/A'),
+                      _buildInfoRow('Bill Number', widget.measurement.billNumber),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildStyleInfoCard(theme),
+                  const SizedBox(height: 24),
+                  _buildFabricCard(theme),
+                  const SizedBox(height: 24),
+                  _buildInfoCard(
+                    theme,
+                    title: 'Dates',
+                    icon: Icons.calendar_today_outlined,
+                    content: [
+                      _buildInfoRow(
+                        'Created',
+                        DateFormat('MMM dd, yyyy\nhh:mm a').format(widget.measurement.date),
+                      ),
+                      _buildInfoRow(
+                        'Last Updated',
+                        DateFormat('MMM dd, yyyy\nhh:mm a').format(widget.measurement.lastUpdated),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _buildFabricCard(theme),
-              const SizedBox(height: 24),
-              _buildInfoCard(
-                theme,
-                title: 'Dates',
-                icon: Icons.calendar_today_outlined,
-                content: [
-                  _buildInfoRow(
-                    'Created',
-                    DateFormat(
-                      'MMM dd, yyyy\nhh:mm a',
-                    ).format(widget.measurement.date),
-                  ),
-                  _buildInfoRow(
-                    'Last Updated',
-                    DateFormat(
-                      'MMM dd, yyyy\nhh:mm a',
-                    ).format(widget.measurement.lastUpdated),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
         // Main content area
@@ -509,71 +443,18 @@ class _DetailDialogState extends State<DetailDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Style-specific measurements with modern card design
-                if (widget.measurement.style == 'Arabic')
-                  _buildMeasurementCard(
-                    theme,
-                    title: 'Arabic Measurements',
-                    icon: Icons.straighten,
-                    color: theme.colorScheme.primary,
-                    measurements: [
-                      MeasurementItem(
-                        'Arabic Length',
-                        '${widget.measurement.toolArabi} cm',
-                        true,
-                      ),
-                      MeasurementItem(
-                        'Chest',
-                        '${widget.measurement.sadur} cm',
-                      ),
-                      MeasurementItem('Width', '${widget.measurement.ard} cm'),
-                      MeasurementItem(
-                        'Under Kandura',
-                        widget.measurement.tahtKandura,
-                      ),
-                    ],
-                  )
-                else
-                  _buildMeasurementCard(
-                    theme,
-                    title: '${widget.measurement.style} Measurements',
-                    icon: Icons.straighten,
-                    color: theme.colorScheme.primary,
-                    measurements: [
-                      MeasurementItem(
-                        'Kuwaiti Length',
-                        '${widget.measurement.toolKuwaiti} cm',
-                        true,
-                      ),
-                      MeasurementItem(
-                        'Shoulder',
-                        '${widget.measurement.katf} cm',
-                      ),
-                      MeasurementItem('Under', '${widget.measurement.taht} cm'),
-                    ],
-                  ),
+                // Single Measurements section
+                _buildMeasurementCard(
+                  theme,
+                  title: 'All Measurements',
+                  icon: Icons.straighten,
+                  color: theme.colorScheme.primary,
+                  measurements: _buildMeasurementItems(),
+                ),
 
                 const SizedBox(height: 24),
 
-                // Common measurements
-                _buildMeasurementCard(
-                  theme,
-                  title: 'Common Measurements',
-                  icon: Icons.straighten,
-                  color: theme.colorScheme.secondary,
-                  measurements: [
-                    MeasurementItem(
-                      'Back Length',
-                      '${widget.measurement.toolKhalfi} cm',
-                    ),
-                    MeasurementItem('Sleeve', '${widget.measurement.kum} cm'),
-                    MeasurementItem('Cuff', '${widget.measurement.fkm} cm'),
-                    MeasurementItem('Neck', '${widget.measurement.raqba} cm'),
-                    MeasurementItem('Hesba', widget.measurement.hesba),
-                    MeasurementItem('Sheeb', widget.measurement.sheeb),
-                  ],
-                ),
-
+                // Style Details section remains the same
                 if (_hasStyleDetails()) ...[
                   const SizedBox(height: 24),
                   _buildMeasurementCard(
@@ -585,15 +466,14 @@ class _DetailDialogState extends State<DetailDialog> {
                       MeasurementItem('Cap Style', widget.measurement.tarboosh),
                       MeasurementItem(
                         'Sleeve Style',
-                        widget.measurement.kumSalai,
+                        widget.measurement.openSleeve,
                       ),
-                      MeasurementItem('Stitching', widget.measurement.khayata),
-                      MeasurementItem('Pleats', widget.measurement.kisra),
-                      MeasurementItem('Side Pocket', widget.measurement.bati),
-                      MeasurementItem('Cuff Style', widget.measurement.kaf),
-                      MeasurementItem('Embroidery', widget.measurement.tatreez),
-                      MeasurementItem('Side Slit', widget.measurement.jasba),
-                      MeasurementItem('Shaib Style', widget.measurement.shaib),
+                      MeasurementItem('Stitching', widget.measurement.stitching),
+                      MeasurementItem('Pleats', widget.measurement.pleat),
+                      MeasurementItem('Side Pocket', widget.measurement.button),
+                      MeasurementItem('Cuff Style', widget.measurement.cuff),
+                      MeasurementItem('Embroidery', widget.measurement.embroidery),
+                      MeasurementItem('Neck Style', widget.measurement.neckStyle),
                     ],
                   ),
                 ],
@@ -872,15 +752,144 @@ class _DetailDialogState extends State<DetailDialog> {
 
   bool _hasStyleDetails() {
     return widget.measurement.tarboosh.isNotEmpty ||
-        widget.measurement.kumSalai.isNotEmpty ||
-        widget.measurement.khayata.isNotEmpty ||
-        widget.measurement.kisra.isNotEmpty ||
-        widget.measurement.bati.isNotEmpty ||
-        widget.measurement.kaf.isNotEmpty ||
-        widget.measurement.tatreez.isNotEmpty ||
-        widget.measurement.jasba.isNotEmpty ||
-        widget.measurement.tahtKandura.isNotEmpty ||
-        widget.measurement.shaib.isNotEmpty;
+        widget.measurement.openSleeve.isNotEmpty ||
+        widget.measurement.stitching.isNotEmpty ||
+        widget.measurement.pleat.isNotEmpty ||
+        widget.measurement.button.isNotEmpty ||
+        widget.measurement.cuff.isNotEmpty ||
+        widget.measurement.embroidery.isNotEmpty ||
+        widget.measurement.neckStyle.isNotEmpty;
+  }
+
+  Widget _buildDatesSection(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildCompactDateInfo(
+            theme,
+            'Created',
+            widget.measurement.date,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildCompactDateInfo(
+            theme,
+            'Updated',
+            widget.measurement.lastUpdated,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStyleInfoCard(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.style_outlined,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Style Information',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStyleInfoItem(
+                    theme,
+                    'Style Type',
+                    widget.measurement.style,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStyleInfoItem(
+                    theme,
+                    'Design Type',
+                    widget.measurement.designType,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStyleInfoItem(ThemeData theme, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<MeasurementItem> _buildMeasurementItems() {
+    return [
+      if (widget.measurement.style == 'Emirati')
+        MeasurementItem(
+          'Arabic Length',
+          FractionHelper.formatFraction(widget.measurement.lengthArabi),
+          true,
+        )
+      else
+        MeasurementItem(
+          'Kuwaiti Length',
+          FractionHelper.formatFraction(widget.measurement.lengthKuwaiti),
+          true,
+        ),
+      MeasurementItem('Chest', FractionHelper.formatFraction(widget.measurement.chest)),
+      MeasurementItem('Width', FractionHelper.formatFraction(widget.measurement.width)),
+      MeasurementItem('Sleeve', FractionHelper.formatFraction(widget.measurement.sleeve)),
+      MeasurementItem('Collar', FractionHelper.formatFraction(widget.measurement.collar)),
+      MeasurementItem('Under', FractionHelper.formatFraction(widget.measurement.under)),
+      MeasurementItem('Back Length', FractionHelper.formatFraction(widget.measurement.backLength)),
+      MeasurementItem('Neck', FractionHelper.formatFraction(widget.measurement.neck)),
+      MeasurementItem('Shoulder', FractionHelper.formatFraction(widget.measurement.shoulder)),
+      // ...rest of the measurements...
+    ];
   }
 }
 

@@ -277,16 +277,17 @@ class MeasurementListItem extends StatelessWidget {
       }
     }
 
+    // Update to use new field names
     addIfNotEmpty('Tarboosh', measurement.tarboosh, colors[0]);
-    addIfNotEmpty('Kum Salai', measurement.kumSalai, colors[1]);
-    addIfNotEmpty('Khayata', measurement.khayata, colors[2]);
-    addIfNotEmpty('Kisra', measurement.kisra, colors[3]);
-    addIfNotEmpty('Bati', measurement.bati, colors[4]);
-    addIfNotEmpty('Kaf', measurement.kaf, colors[5]);
-    addIfNotEmpty('Tatreez', measurement.tatreez, colors[6]);
-    addIfNotEmpty('Jasba', measurement.jasba, colors[7]);
-    addIfNotEmpty('Taht Kandura', measurement.tahtKandura, colors[8]);
-    addIfNotEmpty('Shaib', measurement.shaib, colors[9]);
+    addIfNotEmpty('Open Sleeve', measurement.openSleeve, colors[1]);
+    addIfNotEmpty('Stitching', measurement.stitching, colors[2]);
+    addIfNotEmpty('Pleat', measurement.pleat, colors[3]);
+    addIfNotEmpty('Button', measurement.button, colors[4]);
+    addIfNotEmpty('Cuff', measurement.cuff, colors[5]);
+    addIfNotEmpty('Embroidery', measurement.embroidery, colors[6]);
+    addIfNotEmpty('Under Kandura', measurement.underKandura, colors[7]);
+    addIfNotEmpty('Neck Style', measurement.neckStyle, colors[8]);
+    addIfNotEmpty('Seam', measurement.seam, colors[9]);
 
     return badges;
   }
