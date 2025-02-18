@@ -10,34 +10,37 @@ import '../../services/supabase_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final Customer? customer;
+  final Invoice? invoiceToEdit; // Add this
 
-  const InvoiceScreen({super.key, this.customer});
+  const InvoiceScreen({
+    super.key, 
+    this.customer,
+    this.invoiceToEdit, // Add this
+  });
 
-  static Future<void> show(BuildContext context, {Customer? customer}) {
+  static Future<void> show(BuildContext context, {Customer? customer, Invoice? invoice}) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isDesktop = screenWidth >= 1024;
 
     return showDialog(
       context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              width:
-                  isDesktop
-                      ? screenWidth *
-                          0.60 // Reduced from 0.85 to 0.60 for desktop
-                      : screenWidth * 0.95,
-              height: isDesktop ? screenHeight * 0.9 : screenHeight * 0.95,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: InvoiceScreen(customer: customer),
-            ),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: isDesktop ? screenWidth * 0.60 : screenWidth * 0.95,
+          height: isDesktop ? screenHeight * 0.9 : screenHeight * 0.95,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
           ),
+          child: InvoiceScreen(
+            customer: customer,
+            invoiceToEdit: invoice, // Pass invoice for editing
+          ),
+        ),
+      ),
     );
   }
 
@@ -94,6 +97,49 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     _deliveryDateController.text = DateFormat(
       'dd/MM/yyyy',
     ).format(_deliveryDate!);
+
+    if (widget.invoiceToEdit != null) {
+      // Populate fields with existing invoice data
+      _selectedCustomer = Customer(
+        id: widget.invoiceToEdit!.customerId,
+        name: widget.invoiceToEdit!.customerName,
+        phone: widget.invoiceToEdit!.customerPhone,
+        billNumber: widget.invoiceToEdit!.customerBillNumber,
+        address: '', // Add required address parameter
+        gender: Gender.male, // Add required gender parameter, adjust as needed
+      );
+      _customerNameController.text = widget.invoiceToEdit!.customerName;
+      _customerPhoneController.text = widget.invoiceToEdit!.customerPhone;
+      _date = widget.invoiceToEdit!.date;
+      _deliveryDate = widget.invoiceToEdit!.deliveryDate;
+      _dateController.text = DateFormat('dd/MM/yyyy').format(_date!);
+      _deliveryDateController.text = DateFormat('dd/MM/yyyy').format(_deliveryDate!);
+      _amount = widget.invoiceToEdit!.amount;
+      _amountController.text = _amount.toString();
+      _advance = widget.invoiceToEdit!.advance;
+      _advanceController.text = _advance.toString();
+      _detailsController.text = widget.invoiceToEdit!.details;
+      
+      if (widget.invoiceToEdit!.measurementId != null) {
+        // Load measurement if exists
+        _loadExistingMeasurement();
+      }
+    }
+  }
+
+  Future<void> _loadExistingMeasurement() async {
+    if (widget.invoiceToEdit?.measurementId != null) {
+      final measurement = await _measurementService.getMeasurement(
+        widget.invoiceToEdit!.measurementId!
+      );
+      if (measurement != null) {
+        setState(() {
+          _selectedMeasurement = measurement;
+          _measurementName = _getMeasurementTitle(measurement);
+          _measurementSubtitle = _getMeasurementSubtitle(measurement);
+        });
+      }
+    }
   }
 
   @override
@@ -166,7 +212,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
     if (result != null) {
       setState(() {
-        _selectedCustomer = result;
+        _selectedCustomer = result; // This is fine as we get a complete Customer object from the dialog
         _customerNameController.text = result.name;
         _customerPhoneController.text = result.phone;
       });
@@ -284,30 +330,19 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
     if (_formKey.currentState?.validate() ?? false) {
       try {
-        final invoiceNumber = await _invoiceService.generateInvoiceNumber();
-
-        final invoice = Invoice.create(
-          invoiceNumber: invoiceNumber,
-          date: _date!,
-          deliveryDate: _deliveryDate!,
-          amount: _amount,
-          advance: _advance,
-          customer: _selectedCustomer!,
-          details: _detailsController.text,
-          measurementId: _selectedMeasurement?.id,
-          measurementName:
-              _selectedMeasurement != null
-                  ? _getMeasurementSubtitle(_selectedMeasurement!)
-                  : null,
-        );
-
-        await _invoiceService.addInvoice(invoice);
+        final invoice = widget.invoiceToEdit?.id != null
+            ? _updateExistingInvoice()
+            : await _createNewInvoice();
 
         if (!mounted) return;
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invoice #${invoice.invoiceNumber} has been created'),
+            content: Text(
+              widget.invoiceToEdit != null
+                  ? 'Invoice #${invoice.invoiceNumber} has been updated'
+                  : 'Invoice #${invoice.invoiceNumber} has been created'
+            ),
           ),
         );
       } catch (e) {
@@ -316,6 +351,62 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
+  }
+
+  Invoice _updateExistingInvoice() {
+    final updatedInvoice = Invoice(
+      id: widget.invoiceToEdit!.id,
+      invoiceNumber: widget.invoiceToEdit!.invoiceNumber,
+      date: _date!,
+      deliveryDate: _deliveryDate!,
+      amount: _amount,
+      vat: _amount * Invoice.vatRate,
+      amountIncludingVat: _amount + (_amount * Invoice.vatRate),
+      netTotal: _amount,
+      advance: _advance,
+      balance: (_amount + (_amount * Invoice.vatRate)) - _advance,
+      customerId: _selectedCustomer!.id,
+      customerName: _selectedCustomer!.name,
+      customerPhone: _selectedCustomer!.phone,
+      details: _detailsController.text,
+      customerBillNumber: _selectedCustomer!.billNumber,
+      measurementId: _selectedMeasurement?.id,
+      measurementName: _selectedMeasurement != null 
+          ? _getMeasurementSubtitle(_selectedMeasurement!)
+          : null,
+      deliveryStatus: widget.invoiceToEdit!.deliveryStatus,
+      paymentStatus: widget.invoiceToEdit!.paymentStatus,
+      deliveredAt: widget.invoiceToEdit!.deliveredAt,
+      paidAt: widget.invoiceToEdit!.paidAt,
+      notes: widget.invoiceToEdit!.notes,
+      payments: widget.invoiceToEdit!.payments,
+    );
+
+    _invoiceService.updateInvoice(updatedInvoice);
+    return updatedInvoice;
+  }
+
+  Future<Invoice> _createNewInvoice() async {
+    final invoiceNumber = await _invoiceService.generateInvoiceNumber();
+
+    final invoice = Invoice.create(
+      invoiceNumber: invoiceNumber,
+      date: _date!,
+      deliveryDate: _deliveryDate!,
+      amount: _amount,
+      advance: _advance,
+      customer: _selectedCustomer!,
+      details: _detailsController.text,
+      measurementId: _selectedMeasurement?.id,
+      measurementName:
+          _selectedMeasurement != null
+              ? _getMeasurementSubtitle(_selectedMeasurement!)
+              : null,
+    );
+
+    await _invoiceService.addInvoice(invoice);
+
+    return invoice;
   }
 
   double get _vat => _amount * Invoice.vatRate;
@@ -337,7 +428,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         title: Text(
-          'Create Invoice',
+          widget.invoiceToEdit != null ? 'Edit Invoice' : 'Create Invoice',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: theme.colorScheme.onPrimaryContainer,
             fontWeight: FontWeight.bold,

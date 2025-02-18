@@ -23,6 +23,17 @@ class MeasurementService {
     await _client.from('measurements').delete().eq('id', measurementId);
   }
 
+  // Get measurement
+  Future<Measurement?> getMeasurement(String measurementId) async {
+    final response = await _client
+        .from('measurements')
+        .select()
+        .eq('id', measurementId)
+        .single();
+    
+    return Measurement.fromMap(response);
+  }
+
   // Get measurements stream
   Stream<List<Measurement>> getMeasurementsStream() {
     return _client

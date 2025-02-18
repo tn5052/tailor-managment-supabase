@@ -42,6 +42,7 @@ dependencies:
   share_plus: ^10.1.4
   webview_flutter: ^4.10.0
   font_awesome_flutter: ^10.7.0  # Add this line
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

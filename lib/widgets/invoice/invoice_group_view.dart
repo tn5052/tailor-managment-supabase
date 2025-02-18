@@ -207,13 +207,16 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
   }
 
   Widget _buildList(BuildContext context, List<Invoice> invoices) {
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    
     return widget.isGridView
         ? GridView.builder(
+          padding: EdgeInsets.all(isDesktop ? 20 : 16),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: _getGridCrossAxisCount(context),
-            childAspectRatio: 1.1,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+            childAspectRatio: isDesktop ? 1.4 : 1.2,
+            mainAxisSpacing: isDesktop ? 20 : 16,
+            crossAxisSpacing: isDesktop ? 20 : 16,
           ),
           itemCount: invoices.length,
           itemBuilder:
@@ -225,20 +228,23 @@ class _InvoiceGroupViewState extends State<InvoiceGroupView> {
               ),
         )
         : ListView.builder(
+          padding: EdgeInsets.all(isDesktop ? 20 : 16),
           itemCount: invoices.length,
-          itemBuilder:
-              (context, index) => InvoiceCard(
-                invoice: invoices[index],
-                onTap: () => widget.onTap(invoices[index]),
-                onDelete: () => widget.onDelete(invoices[index]),
-              ),
+          itemBuilder: (context, index) => Padding(
+            padding: EdgeInsets.only(bottom: isDesktop ? 12 : 8),
+            child: InvoiceCard(
+              invoice: invoices[index],
+              onTap: () => widget.onTap(invoices[index]),
+              onDelete: () => widget.onDelete(invoices[index]),
+            ),
+          ),
         );
   }
 
   int _getGridCrossAxisCount(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width > 1400) return 4;
-    if (width > 1100) return 3;
+    if (width > 1600) return 4;
+    if (width > 1200) return 3;
     if (width > 800) return 2;
     return 1;
   }
