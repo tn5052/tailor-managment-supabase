@@ -132,94 +132,172 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     DateFormat dateFormat,
     NumberFormat currencyFormat,
   ) {
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                child: Icon(
-                  Icons.person_outline,
-                  color: theme.colorScheme.primary,
+    return Column(
+      children: [
+        // Customer Card
+        Card(
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    child: Icon(
+                      Icons.person_outline,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  title: Text(widget.invoice.customerName),
+                  subtitle: Text(
+                    'Bill #${widget.invoice.customerBillNumber} • ${widget.invoice.customerPhone}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              title: Text(widget.invoice.customerName),
-              subtitle: Text(
-                'Bill #${widget.invoice.customerBillNumber} • ${widget.invoice.customerPhone}',
-                overflow: TextOverflow.ellipsis,
-              ),
+                const Divider(),
+                _buildInfoRow(
+                  'Date:',
+                  dateFormat.format(widget.invoice.date),
+                  theme,
+                ),
+                _buildInfoRow(
+                  'Delivery:',
+                  dateFormat.format(widget.invoice.deliveryDate),
+                  theme,
+                ),
+              ],
             ),
-            const Divider(),
-            _buildInfoRow(
-              'Date:',
-              dateFormat.format(widget.invoice.date),
-              theme,
-            ),
-            _buildInfoRow(
-              'Delivery:',
-              dateFormat.format(widget.invoice.deliveryDate),
-              theme,
-            ),
-            _buildInfoRow(
-              'Amount:',
-              currencyFormat.format(widget.invoice.amount),
-              theme,
-            ),
-            _buildInfoRow(
-              'VAT (5%):',
-              currencyFormat.format(widget.invoice.vat),
-              theme,
-            ),
-            _buildInfoRow(
-              'Total:',
-              currencyFormat.format(widget.invoice.amountIncludingVat),
-              theme,
-              isBold: true,
-            ),
-            if (widget.invoice.advance > 0) ...[
-              _buildInfoRow(
-                'Advance:',
-                currencyFormat.format(widget.invoice.advance),
-                theme,
-              ),
-              _buildInfoRow(
-                'Balance:',
-                currencyFormat.format(widget.invoice.remainingBalance),
-                theme,
-                isBold: true,
-                color:
-                    widget.invoice.remainingBalance > 0
-                        ? Colors.red
-                        : Colors.green,
-              ),
-            ],
-            if (widget.invoice.measurementName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Text('Measurement:', style: theme.textTheme.bodyLarge),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.invoice.measurementName!,
-                        style: theme.textTheme.bodyLarge?.copyWith(
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Products Card (if products exist)
+        if (widget.invoice.products.isNotEmpty)
+          Card(
+            elevation: 0,
+            color: theme.colorScheme.secondaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Products',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                      Text(
+                        'Total: ${currencyFormat.format(widget.invoice.calculateProductsTotal())}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: widget.invoice.products.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final product = widget.invoice.products[index];
+                      return ListTile(
+                        dense: true,
+                        visualDensity: VisualDensity.compact,
+                        title: Text(
+                          product.name,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                        trailing: Text(
+                          currencyFormat.format(product.price),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-          ],
+            ),
+          ),
+        const SizedBox(height: 16),
+
+        // Totals Card
+        Card(
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildInfoRow(
+                  'Amount:',
+                  currencyFormat.format(widget.invoice.amount),
+                  theme,
+                ),
+                _buildInfoRow(
+                  'VAT (5%):',
+                  currencyFormat.format(widget.invoice.vat),
+                  theme,
+                ),
+                const Divider(),
+                _buildInfoRow(
+                  'Total:',
+                  currencyFormat.format(widget.invoice.amountIncludingVat),
+                  theme,
+                  isBold: true,
+                ),
+                if (widget.invoice.advance > 0) ...[
+                  _buildInfoRow(
+                    'Advance:',
+                    currencyFormat.format(widget.invoice.advance),
+                    theme,
+                  ),
+                  _buildInfoRow(
+                    'Balance:',
+                    currencyFormat.format(widget.invoice.remainingBalance),
+                    theme,
+                    isBold: true,
+                    color: widget.invoice.remainingBalance > 0
+                        ? Colors.red
+                        : Colors.green,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
-      ),
+
+        if (widget.invoice.measurementName != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            elevation: 0,
+            color: theme.colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: Icon(Icons.straighten, color: theme.colorScheme.primary),
+              title: Text('Measurement'),
+              subtitle: Text(
+                widget.invoice.measurementName!,
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

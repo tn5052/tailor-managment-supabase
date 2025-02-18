@@ -333,6 +333,12 @@ class InvoiceTemplate {
       child: pw.Table(
         border: pw.TableBorder.all(color: PdfColors.grey300),
         children: [
+          ...invoice.products.map((product) => _buildProductTableRow(
+            product.name,
+            'AED ${product.price.toStringAsFixed(2)}',
+            '', // No Arabic translation for product name
+            arabicFont,
+          )).toList(),
           _buildTableRow(
             'Amount',
             'AED ${invoice.amount.toStringAsFixed(2)}',
@@ -373,6 +379,48 @@ class InvoiceTemplate {
   }
 
   static pw.TableRow _buildTableRow(
+    String english,
+    String value,
+    String arabic,
+    pw.Font arabicFont, {
+    bool isHeader = false,
+    bool isTotal = false,
+  }) {
+    final style = pw.TextStyle(
+      fontSize: isHeader || isTotal ? 14 : 12,
+      fontWeight: isHeader || isTotal ? pw.FontWeight.bold : null,
+    );
+
+    return pw.TableRow(
+      decoration: pw.BoxDecoration(
+        color: isHeader ? PdfColors.grey200 : null,
+      ),
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(8),
+          child: pw.Text(english, style: style),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(8),
+          child: pw.Text(
+            value,
+            textAlign: pw.TextAlign.center,
+            style: style,
+          ),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(8),
+          child: pw.Text(
+            arabic,
+            textDirection: pw.TextDirection.rtl,
+            style: style.copyWith(font: arabicFont),
+          ),
+        ),
+        ],
+    );
+  }
+
+  static pw.TableRow _buildProductTableRow(
     String english,
     String value,
     String arabic,

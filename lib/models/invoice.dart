@@ -33,6 +33,7 @@ class Invoice {
   List<String> notes;
   List<Payment> payments;
   final bool isDelivered;
+  final List<Product> products;
 
   Invoice({
     required this.id,
@@ -59,6 +60,7 @@ class Invoice {
     this.paidAt,
     this.notes = const [],
     this.payments = const [],
+    this.products = const [],
   });
 
   factory Invoice.create({
@@ -71,9 +73,13 @@ class Invoice {
     String? details,
     String? measurementId,
     String? measurementName,
+    List<Product>? products,
   }) {
-    final vat = amount * vatRate;
-    final amountIncludingVat = amount + vat;
+    final productsList = products ?? [];
+    final productsTotal = productsList.fold(0.0, (sum, product) => sum + product.price);
+    final finalAmount = amount > 0 ? amount : productsTotal;
+    final vat = finalAmount * vatRate;
+    final amountIncludingVat = finalAmount + vat;
     final balance = amountIncludingVat - advance;
 
     return Invoice(
@@ -81,7 +87,7 @@ class Invoice {
       invoiceNumber: invoiceNumber,
       date: date,
       deliveryDate: deliveryDate,
-      amount: amount,
+      amount: finalAmount,
       vat: vat,
       amountIncludingVat: amountIncludingVat,
       netTotal: amount,
@@ -104,6 +110,7 @@ class Invoice {
       deliveryStatus: InvoiceStatus.pending,
       notes: [],
       payments: [],
+      products: products ?? [],
     );
   }
 
@@ -149,6 +156,9 @@ class Invoice {
               )
               .toList(),
       isDelivered: map['is_delivered'] ?? false,
+      products: (map['products'] as List<dynamic>? ?? [])
+          .map((p) => Product.fromMap(p))
+          .toList(),
     );
   }
 
@@ -178,6 +188,7 @@ class Invoice {
       'notes': notes,
       'payments': payments.map((p) => p.toMap()).toList(),
       'is_delivered': isDelivered,
+      'products': products.map((p) => p.toMap()).toList(),
     };
   }
 
@@ -210,6 +221,10 @@ class Invoice {
   void addNote(String note) {
     notes.add(note);
   }
+
+  double calculateProductsTotal() {
+    return products.fold(0.0, (sum, product) => sum + product.price);
+  }
 }
 
 class Payment {
@@ -221,5 +236,38 @@ class Payment {
 
   Map<String, dynamic> toMap() {
     return {'amount': amount, 'date': date.toIso8601String(), 'note': note};
+  }
+}
+
+class Product {
+  String name;
+  double price;
+
+  Product({required this.name, required this.price});
+
+  Product copyWith({String? name, double? price}) {
+    return Product(
+      name: name ?? this.name,
+      price: price ?? this.price,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'price': price,
+    };
+  }
+
+  factory Product.fromMap(Map<String, dynamic> map) {
+    return Product(
+      name: map['name'],
+      price: map['price'],
+    );
+  }
+
+  @override
+  String toString() {
+    return '$name: ${price.toStringAsFixed(2)}';
   }
 }

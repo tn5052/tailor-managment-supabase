@@ -74,6 +74,8 @@ class _InvoiceScreenState extends State<InvoiceScreen>
   final MeasurementService _measurementService = MeasurementService();
   final InvoiceService _invoiceService = InvoiceService();
 
+  List<Product> _products = [];
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +121,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
       _advance = widget.invoiceToEdit!.advance;
       _advanceController.text = _advance.toString();
       _detailsController.text = widget.invoiceToEdit!.details;
+      _products = widget.invoiceToEdit!.products;
       
       if (widget.invoiceToEdit!.measurementId != null) {
         // Load measurement if exists
@@ -380,6 +383,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
       paidAt: widget.invoiceToEdit!.paidAt,
       notes: widget.invoiceToEdit!.notes,
       payments: widget.invoiceToEdit!.payments,
+      products: _products,
     );
 
     _invoiceService.updateInvoice(updatedInvoice);
@@ -402,6 +406,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           _selectedMeasurement != null
               ? _getMeasurementSubtitle(_selectedMeasurement!)
               : null,
+      products: _products,
     );
 
     await _invoiceService.addInvoice(invoice);
@@ -412,6 +417,17 @@ class _InvoiceScreenState extends State<InvoiceScreen>
   double get _vat => _amount * Invoice.vatRate;
   double get _amountIncludingVat => _amount + _vat;
   double get _balance => _amountIncludingVat - _advance;
+
+  void _updateCalculations() {
+    final productsTotal = _products.fold(0.0, (sum, product) => sum + product.price);
+    setState(() {
+      // Only update amount if it's zero or less than products total
+      if (_amount == 0 || _amount < productsTotal) {
+        _amount = productsTotal;
+        _amountController.text = _amount.toString();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -526,33 +542,7 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                     const SizedBox(height: 24),
 
                     // Amount Section
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _NumberField(
-                            controller: _amountController,
-                            label: 'Amount',
-                            onChanged: (value) {
-                              setState(() {
-                                _amount = double.tryParse(value) ?? 0;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _NumberField(
-                            controller: _advanceController,
-                            label: 'Advance',
-                            onChanged: (value) {
-                              setState(() {
-                                _advance = double.tryParse(value) ?? 0;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildAmountSection(),
                     const SizedBox(height: 24),
 
                     // Calculations Section
@@ -600,6 +590,11 @@ class _InvoiceScreenState extends State<InvoiceScreen>
                       const SizedBox(height: 24),
                       _buildMeasurementSection(),
                     ],
+
+                    const SizedBox(height: 24),
+
+                    // Product Section
+                    _buildProductsSection(theme),
 
                     const SizedBox(height: 24),
 
@@ -873,6 +868,122 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     );
   }
 
+  Widget _buildProductsSection(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Products',
+                style: theme.textTheme.titleLarge,
+              ),
+              Text(
+                'Total: ${NumberFormat.currency(symbol: 'AED ').format(_products.fold(0.0, (sum, p) => sum + p.price))}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_products.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'No products added yet',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  ),
+                ),
+              ),
+            ),
+          ..._products.map((product) => _buildProductRow(theme, product)).toList(),
+          const SizedBox(height: 8),
+          Center(
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                setState(() {
+                  _products.add(Product(name: '', price: 0));
+                });
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Product'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductRow(ThemeData theme, Product product) {
+    final index = _products.indexOf(product);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              initialValue: product.name,
+              decoration: InputDecoration(
+                hintText: 'Product Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _products[index] = _products[index].copyWith(name: value);
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextFormField(
+              initialValue: product.price > 0 ? product.price.toString() : '',
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Price',
+                prefixText: 'AED ',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _products[index] = _products[index].copyWith(
+                    price: double.tryParse(value) ?? 0
+                  );
+                  _updateCalculations();
+                });
+              },
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () {
+              setState(() {
+                _products.removeAt(index);
+                _updateCalculations();
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCalculationRow(
     String label,
     double amount, {
@@ -892,6 +1003,44 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           Text(NumberFormat.currency(symbol: '').format(amount), style: style),
         ],
       ),
+    );
+  }
+
+  Widget _buildAmountSection() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: _amountController,
+            decoration: InputDecoration(
+              labelText: 'Amount',
+              prefixIcon: const Icon(Icons.attach_money),
+              enabled: _products.isEmpty,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _amount = double.tryParse(value) ?? 0;
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _NumberField(
+            controller: _advanceController,
+            label: 'Advance',
+            onChanged: (value) {
+              setState(() {
+                _advance = double.tryParse(value) ?? 0;
+              });
+            },
+          ),
+        ),
+      ],
     );
   }
 }
