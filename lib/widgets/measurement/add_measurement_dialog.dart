@@ -187,6 +187,10 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _selectedDesignType = widget.measurement!.designType;
       _selectedTarbooshType = widget.measurement!.tarbooshType;
       _tarbooshController.text = _selectedTarbooshType; // Ensure sync on init
+    } else {
+      // Set default values for new measurements
+      _selectedStyle = _styleOptions[0]; // Select first style by default
+      _styleController.text = _styleOptions[0]; // Set the controller text as well
     }
   }
 
@@ -706,12 +710,21 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   Widget _buildStyleField() {
     return DropdownButtonFormField<String>(
-      decoration: _inputDecoration('Style'),
+      decoration: _inputDecoration('Style').copyWith(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
       value: _selectedStyle,
-      items:
-          _styleOptions.map((String style) {
-            return DropdownMenuItem<String>(value: style, child: Text(style));
-          }).toList(),
+      items: _styleOptions.map((String style) {
+        return DropdownMenuItem<String>(
+          value: style,
+          child: Text(
+            style,
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width >= 1024 ? null : 14,
+            ),
+          ),
+        );
+      }).toList(),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please select a style';
@@ -801,31 +814,60 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   }
 
   Widget _buildStyleAndFabricSection() {
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    
     return _buildSectionCard(
       title: 'Style & Fabric',
       icon: Icons.style_outlined,
       color: Theme.of(context).colorScheme.primary,
       children: [
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: _buildStyleField(),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildDesignTypeField(),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildTarbooshTypeField(readOnly: false),
-            ),
-          ],
-        ),
+        if (isDesktop)
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: _buildStyleField(),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDesignTypeField(),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTarbooshTypeField(readOnly: false),
+              ),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildStyleField(),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDesignTypeField(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTarbooshTypeField(readOnly: false),
+                  ),
+                ],
+              ),
+            ],
+          ),
         const SizedBox(height: 16),
+        // Fabric name field
         TextFormField(
           controller: _fabricNameController,
-          // ...existing fabric name field code...
+          decoration: _inputDecoration('Fabric Name').copyWith(
+            prefixIcon: Icon(
+              Icons.format_color_fill,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
+          ),
         ),
       ],
     );
@@ -833,12 +875,19 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   Widget _buildDesignTypeField() {
     return DropdownButtonFormField<String>(
-      decoration: _inputDecoration('Design Type'),
+      decoration: _inputDecoration('Design Type').copyWith(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
       value: _selectedDesignType,
       items: _designOptions.map((String type) {
         return DropdownMenuItem<String>(
           value: type,
-          child: Text(type),
+          child: Text(
+            type,
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width >= 1024 ? null : 14,
+            ),
+          ),
         );
       }).toList(),
       onChanged: (String? newValue) {
@@ -851,18 +900,25 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   Widget _buildTarbooshTypeField({bool readOnly = false}) {
     return DropdownButtonFormField<String>(
-      decoration: _inputDecoration('Tarboosh Style'),
+      decoration: _inputDecoration('Tarboosh Style').copyWith(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
       value: _selectedTarbooshType,
       items: _tarbooshOptions.map((String type) {
         return DropdownMenuItem<String>(
           value: type,
-          child: Text(type),
+          child: Text(
+            type,
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width >= 1024 ? null : 14,
+            ),
+          ),
         );
       }).toList(),
       onChanged: readOnly ? null : (String? newValue) {
         setState(() {
           _selectedTarbooshType = newValue!;
-          _tarbooshController.text = newValue; // Always keep tarboosh field in sync
+          _tarbooshController.text = newValue;
         });
       },
     );
