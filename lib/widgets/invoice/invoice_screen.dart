@@ -450,272 +450,304 @@ class _InvoiceScreenState extends State<InvoiceScreen>
     });
   }
 
+  Future<bool> _onWillPop() async {
+    return (await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Are you sure?'),
+            content: const Text('Do you want to discard changes?'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('No'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Yes'),
+              ),
+            ],
+          ),
+        )) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 1024;
 
-    return Scaffold(
-      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.surface,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: theme.colorScheme.primaryContainer,
-        shape: isDesktop 
-          ? const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            )
-          : null,
-        automaticallyImplyLeading: false, // Disable default back button
-        leading: isDesktop 
-          ? IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
-            )
-          : null,
-        title: Text(
-          widget.invoiceToEdit != null ? 'Edit Invoice' : 'Create Invoice',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          if (!isDesktop)
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-              ),
-            )
-          else
-            FilledButton.icon(
-              onPressed: _saveInvoice,
-              icon: const Icon(Icons.receipt_long),
-              label: const Text('Generate'),
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-              ),
-            ),
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: isDesktop 
-            ? const BorderRadius.vertical(bottom: Radius.circular(28))
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.surface,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: theme.colorScheme.primaryContainer,
+          shape: isDesktop 
+            ? const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              )
             : null,
+          automaticallyImplyLeading: false, // Disable default back button
+          leading: isDesktop 
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () async {
+                  if (await _onWillPop()) {
+                    Navigator.pop(context);
+                  }
+                },
+              )
+            : null,
+          title: Text(
+            widget.invoiceToEdit != null ? 'Edit Invoice' : 'Create Invoice',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+            if (!isDesktop)
+              TextButton.icon(
+                onPressed: () async {
+                  if (await _onWillPop()) {
+                    Navigator.pop(context);
+                  }
+                },
+                icon: const Icon(Icons.close),
+                label: const Text('Cancel'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
+                ),
+              )
+            else
+              FilledButton.icon(
+                onPressed: _saveInvoice,
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('Generate'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+              ),
+            const SizedBox(width: 16),
+          ],
         ),
-        child: ClipRRect(
-          borderRadius: isDesktop 
-            ? const BorderRadius.vertical(bottom: Radius.circular(28))
-            : BorderRadius.zero,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Section
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color:
-                            Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tax Invoice',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'TRN: ${Invoice.trn}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Date Section
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _DatePickerField(
-                            controller: _dateController,
-                            label: 'Date',
-                            initialDate: _date,
-                            onDateSelected: (date) {
-                              setState(() => _date = date);
-                            },
-                          ),
+        body: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: isDesktop 
+              ? const BorderRadius.vertical(bottom: Radius.circular(28))
+              : null,
+          ),
+          child: ClipRRect(
+            borderRadius: isDesktop 
+              ? const BorderRadius.vertical(bottom: Radius.circular(28))
+              : BorderRadius.zero,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Section
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _DatePickerField(
-                            controller: _deliveryDateController,
-                            label: 'Delivery Date',
-                            initialDate: _deliveryDate,
-                            onDateSelected: (date) {
-                              setState(() => _deliveryDate = date);
-                            },
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tax Invoice',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'TRN: ${Invoice.trn}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Amount Section
-                    _buildAmountSection(),
-                    const SizedBox(height: 24),
-
-                    // Calculations Section
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildCalculationRow('Amount:', _amount),
-                          _buildCalculationRow(
-                            'VAT (${(Invoice.vatRate * 100).toInt()}%):',
-                            _vat,
-                          ),
-                          _buildCalculationRow(
-                            'Amount Incl. VAT:',
-                            _amountIncludingVat,
-                          ),
-                          _buildCalculationRow('Advance:', _advance),
-                          const Divider(),
-                          _buildCalculationRow(
-                            'Balance:',
-                            _balance,
-                            isBold: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Customer and Measurement Section
-                    if (isDesktop)
+                      // Date Section
                       Row(
                         children: [
-                          Expanded(child: _buildCustomerSection()),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildMeasurementSection()),
-                        ],
-                      )
-                    else ...[
-                      _buildCustomerSection(),
-                      const SizedBox(height: 24),
-                      _buildMeasurementSection(),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Product Section
-                    _buildProductsSection(theme),
-
-                    const SizedBox(height: 24),
-
-                    // Details Section
-                    SizeTransition(
-                      sizeFactor: _animation,
-                      axisAlignment: -1.0,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: TextFormField(
-                          controller: _detailsController,
-                          decoration: InputDecoration(
-                            labelText: 'Details',
-                            labelStyle: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.description_outlined,
-                              color: theme.colorScheme.primary,
-                            ),
-                            filled: true,
-                            fillColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                              horizontal: 16,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: theme.colorScheme.primary,
-                                width: 2,
-                              ),
+                          Expanded(
+                            child: _DatePickerField(
+                              controller: _dateController,
+                              label: 'Date',
+                              initialDate: _date,
+                              onDateSelected: (date) {
+                                setState(() => _date = date);
+                              },
                             ),
                           ),
-                          maxLines: 3,
-                          style: TextStyle(color: theme.colorScheme.onSurface),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _DatePickerField(
+                              controller: _deliveryDateController,
+                              label: 'Delivery Date',
+                              initialDate: _deliveryDate,
+                              onDateSelected: (date) {
+                                setState(() => _deliveryDate = date);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Amount Section
+                      _buildAmountSection(),
+                      const SizedBox(height: 24),
+
+                      // Calculations Section
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildCalculationRow('Amount:', _amount),
+                            _buildCalculationRow(
+                              'VAT (${(Invoice.vatRate * 100).toInt()}%):',
+                              _vat,
+                            ),
+                            _buildCalculationRow(
+                              'Amount Incl. VAT:',
+                              _amountIncludingVat,
+                            ),
+                            _buildCalculationRow('Advance:', _advance),
+                            const Divider(),
+                            _buildCalculationRow(
+                              'Balance:',
+                              _balance,
+                              isBold: true,
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 24),
 
-                    // ...existing submit button...
-                  ],
+                      // Customer and Measurement Section
+                      if (isDesktop)
+                        Row(
+                          children: [
+                            Expanded(child: _buildCustomerSection()),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildMeasurementSection()),
+                          ],
+                        )
+                      else ...[
+                        _buildCustomerSection(),
+                        const SizedBox(height: 24),
+                        _buildMeasurementSection(),
+                      ],
+
+                      const SizedBox(height: 24),
+
+                      // Product Section
+                      _buildProductsSection(theme),
+
+                      const SizedBox(height: 24),
+
+                      // Details Section
+                      SizeTransition(
+                        sizeFactor: _animation,
+                        axisAlignment: -1.0,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: TextFormField(
+                            controller: _detailsController,
+                            decoration: InputDecoration(
+                              labelText: 'Details',
+                              labelStyle: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.description_outlined,
+                                color: theme.colorScheme.primary,
+                              ),
+                              filled: true,
+                              fillColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 16,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            maxLines: 3,
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                        ),
+                      ),
+
+                      // ...existing submit button...
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).padding.bottom, // Add safe area padding
-        ),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: isDesktop 
-            ? const BorderRadius.vertical(bottom: Radius.circular(28))
-            : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: FilledButton.icon(
-            onPressed: _saveInvoice,
-            icon: const Icon(Icons.receipt_long),
-            label: Text(isDesktop ? 'Generate Invoice' : 'Save'),
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+        bottomNavigationBar: Container(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.of(context).padding.bottom, // Add safe area padding
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: isDesktop 
+              ? const BorderRadius.vertical(bottom: Radius.circular(28))
+              : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: FilledButton.icon(
+              onPressed: _saveInvoice,
+              icon: const Icon(Icons.receipt_long),
+              label: Text(isDesktop ? 'Generate Invoice' : 'Save'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),

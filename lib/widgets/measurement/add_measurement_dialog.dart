@@ -7,6 +7,7 @@ import '../../services/measurement_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/fraction_helper.dart';
 import '../customer/customer_selector_dialog.dart';  // Make sure this path is correct
+import 'package:flutter/services.dart';
 
 class AddMeasurementDialog extends StatefulWidget {
   final Measurement? measurement;
@@ -33,6 +34,7 @@ class AddMeasurementDialog extends StatefulWidget {
     if (isDesktop) {
       return showDialog(
         context: context,
+        barrierDismissible: false, // Prevent closing on outside tap
         builder:
             (context) => Dialog(
               backgroundColor: Colors.transparent,
@@ -263,12 +265,81 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     }
   }
 
+  Future<bool> _showConfirmationDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm'),
+          content: const Text('Are you sure you want to discard changes?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            FilledButton(
+              child: const Text('Discard'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
+  Future<void> _handleClose() async {
+    if (_hasUnsavedChanges()) {
+      final shouldClose = await _showConfirmationDialog();
+      if (shouldClose && mounted) {
+        Navigator.pop(context);
+      }
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  bool _hasUnsavedChanges() {
+    return _selectedCustomerId != null ||
+        _billNumber.isNotEmpty ||
+        _styleController.text.isNotEmpty ||
+        _lengthArabiController.text.isNotEmpty ||
+        _lengthKuwaitiController.text.isNotEmpty ||
+        _chestController.text.isNotEmpty ||
+        _widthController.text.isNotEmpty ||
+        _sleeveController.text.isNotEmpty ||
+        _collarController.text.isNotEmpty ||
+        _underController.text.isNotEmpty ||
+        _backLengthController.text.isNotEmpty ||
+        _neckController.text.isNotEmpty ||
+        _shoulderController.text.isNotEmpty ||
+        _seamController.text.isNotEmpty ||
+        _adhesiveController.text.isNotEmpty ||
+        _underKanduraController.text.isNotEmpty ||
+        _tarbooshController.text.isNotEmpty ||
+        _openSleeveController.text.isNotEmpty ||
+        _stitchingController.text.isNotEmpty ||
+        _pleatController.text.isNotEmpty ||
+        _buttonController.text.isNotEmpty ||
+        _cuffController.text.isNotEmpty ||
+        _embroideryController.text.isNotEmpty ||
+        _neckStyleController.text.isNotEmpty ||
+        _notesController.text.isNotEmpty ||
+        _fabricNameController.text.isNotEmpty;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_hasUnsavedChanges()) {
+      return await _showConfirmationDialog();
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final theme = Theme.of(context);
 
-    return isDesktop
+    Widget content = isDesktop
         ? Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
@@ -308,7 +379,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
                       ),
                       const SizedBox(width: 8),
                       TextButton.icon(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _handleClose, // Updated here
                         icon: const Icon(Icons.close),
                         label: const Text('Close'),
                         style: TextButton.styleFrom(
@@ -349,7 +420,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
               ),
               const SizedBox(width: 8),
               TextButton.icon(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _handleClose, // Updated here
                 icon: const Icon(Icons.close),
                 label: const Text('Close'),
                 style: TextButton.styleFrom(
@@ -361,6 +432,22 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
           ),
           body: _buildContent(theme, isDesktop),
         );
+
+    // Wrap with WillPopScope to handle back button and keyboard escape
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () {
+            _handleClose();
+          },
+        },
+        child: Focus(
+          autofocus: true,
+          child: content,
+        ),
+      ),
+    );
   }
 
   Widget _buildContent(ThemeData theme, bool isDesktop) {

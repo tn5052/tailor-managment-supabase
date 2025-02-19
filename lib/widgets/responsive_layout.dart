@@ -66,11 +66,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         width: isExpanded ? 240 : 70,
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(24),
-            bottomRight: Radius.circular(24),
-          ),
-          // Adjusted shadow to be more subtle
+          // Removed borderRadius
           boxShadow: [
             BoxShadow(
               color: theme.colorScheme.shadow.withAlpha(8),
@@ -158,7 +154,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Tailor Pro',
+                'Shabab Al Yola',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -369,7 +365,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'admin@tailorpro.com',
+                        'admin@shababalyola.ae',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
