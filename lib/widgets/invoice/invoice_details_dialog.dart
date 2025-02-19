@@ -513,122 +513,389 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
     String? date, {
     required Function(T) onUpdate,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              if (status is PaymentStatus)
-                widget.invoice.remainingBalance > 0
-                    ? Chip(
-                      label: Text(status.toString().split('.').last),
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                    )
-                    : PopupMenuButton<PaymentStatus>(
-                      onSelected: (value) => onUpdate(value as T),
-                      itemBuilder:
-                          (context) =>
-                              PaymentStatus.values
-                                  .map(
-                                    (s) => PopupMenuItem(
-                                      value: s,
-                                      child: Text(s.toString().split('.').last),
-                                    ),
-                                  )
-                                  .toList(),
-                      child: Chip(
-                        label: Text(status.toString().split('.').last),
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                      ),
-                    )
-              else
-                PopupMenuButton<dynamic>(
-                  onSelected: (value) => onUpdate(value as T),
-                  itemBuilder:
-                      (context) =>
-                          InvoiceStatus.values
-                              .map(
-                                (s) => PopupMenuItem(
-                                  value: s,
-                                  child: Text(s.toString().split('.').last),
-                                ),
-                              )
-                              .toList(),
-                  child: Chip(
-                    label: Text(status.toString().split('.').last),
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                  ),
-                ),
-            ],
-          ),
-          if (date != null) ...[
-            const SizedBox(height: 8),
-            Text('Updated on $date', style: theme.textTheme.bodySmall),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotesSection(ThemeData theme) {
     return Card(
       elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Notes',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _noteController,
-                    decoration: InputDecoration(
-                      hintText: 'Add a note...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                Icon(
+                  status is PaymentStatus 
+                      ? Icons.payments_outlined 
+                      : Icons.local_shipping_outlined,
+                  color: _getStatusColor(theme, status),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _addNote,
-                  icon: const Icon(Icons.add),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            if (widget.invoice.notes.isNotEmpty)
-              ListView.builder(
+            _buildStatusDropdown(theme, status, onUpdate),
+            if (date != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Updated on $date',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+            if (status is PaymentStatus) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: widget.invoice.remainingBalance <= 0
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.invoice.remainingBalance <= 0
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.red.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      widget.invoice.remainingBalance <= 0
+                          ? 'Overpaid Amount'
+                          : 'Remaining Balance',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: widget.invoice.remainingBalance <= 0
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                    ),
+                    Text(
+                      'AED ${NumberFormat('#,##0.00').format(widget.invoice.remainingBalance.abs())}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: widget.invoice.remainingBalance <= 0
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown<T>(
+    ThemeData theme,
+    T status,
+    Function(T) onUpdate,
+  ) {
+    final isPaymentStatus = status is PaymentStatus;
+    final values = isPaymentStatus 
+        ? PaymentStatus.values 
+        : InvoiceStatus.values;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<dynamic>(
+          value: status,
+          isExpanded: true,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          borderRadius: BorderRadius.circular(12),
+          items: values.map((s) {
+            final isSelected = s == status;
+            return DropdownMenuItem(
+              value: s,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _getStatusColor(theme, s),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _getStatusLabel(s),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: isSelected 
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.bold : null,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: isPaymentStatus && widget.invoice.remainingBalance > 0
+              ? null  // Disable dropdown if payment is not complete
+              : (value) => onUpdate(value as T),
+        ),
+      ),
+    );
+  }
+
+  String _getStatusLabel(dynamic status) {
+    final label = status.toString().split('.').last;
+    return label[0].toUpperCase() + label.substring(1).toLowerCase();
+  }
+
+  Color _getStatusColor(ThemeData theme, dynamic status) {
+    if (status is PaymentStatus) {
+      switch (status) {
+        case PaymentStatus.paid:
+          return Colors.green;
+        case PaymentStatus.partial:
+          return Colors.orange;
+        case PaymentStatus.unpaid:
+          return Colors.red;
+      }
+    } else if (status is InvoiceStatus) {
+      switch (status) {
+        case InvoiceStatus.delivered:
+          return Colors.green;
+        case InvoiceStatus.pending:
+          return Colors.orange;
+        case InvoiceStatus.cancelled:
+          return Colors.red;
+      }
+    }
+    return theme.colorScheme.primary;
+  }
+
+  Widget _buildNotesSection(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.notes_rounded,
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Notes & Comments',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        'Add notes or comments to this invoice',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.invoice.notes.length} Notes',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _noteController,
+                      maxLines: 3,
+                      minLines: 1,
+                      decoration: InputDecoration(
+                        hintText: 'Type your note here...',
+                        hintStyle: TextStyle(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: FilledButton.tonalIcon(
+                      onPressed: _addNote,
+                      icon: const Icon(Icons.add_comment_rounded),
+                      label: const Text('Add Note'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (widget.invoice.notes.isNotEmpty) ...[
+              Text(
+                'Previous Notes',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: widget.invoice.notes.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: const Icon(Icons.note),
-                    title: Text(widget.invoice.notes[index]),
-                    subtitle: Text(
-                      'Added on ${DateFormat('MMM dd, yyyy').format(DateTime.now())}',
+                  final note = widget.invoice.notes[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.comment_outlined,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        note,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      subtitle: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now()),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: IconButton.outlined(
+                        onPressed: () => _deleteNote(index),
+                        icon: const Icon(Icons.delete_outline),
+                        color: theme.colorScheme.error,
+                      ),
                     ),
                   );
                 },
+              ),
+            ] else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No notes yet',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add your first note to this invoice',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
           ],
         ),
@@ -778,83 +1045,117 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
 
   void _handlePayment() async {
     final controller = TextEditingController();
+    final isRefund = widget.invoice.remainingBalance <= 0;
+    
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Add Payment'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+      builder: (context) => AlertDialog(
+        title: Text(isRefund ? 'Process Refund' : 'Add Payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Amount',
+                prefixText: 'AED ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '\$',
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                Text(
+                  isRefund ? 'Overpaid:' : 'Remaining:',
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Remaining:',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                    Text(
-                      NumberFormat.currency(
-                        symbol: '',
-                      ).format(widget.invoice.remainingBalance),
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      controller.text =
-                          widget.invoice.remainingBalance.toString();
-                    },
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Complete Balance'),
+                Text(
+                  'AED ${NumberFormat('#,##0.00').format(widget.invoice.remainingBalance.abs())}',
+                  style: TextStyle(
+                    color: isRefund ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('CANCEL'),
+            const SizedBox(height: 16),
+            if (!isRefund) 
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    controller.text = widget.invoice.remainingBalance.toString();
+                  },
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Complete Balance'),
+                ),
               ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('ADD PAYMENT'),
+            if (isRefund)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    controller.text = widget.invoice.remainingBalance.abs().toString();
+                  },
+                  icon: const Icon(Icons.currency_exchange),
+                  label: const Text('Full Refund'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                ),
               ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isRefund ? 'PROCESS REFUND' : 'ADD PAYMENT'),
+          ),
+        ],
+      ),
     );
 
     if (result == true && controller.text.isNotEmpty) {
       final amount = double.tryParse(controller.text) ?? 0;
       if (amount > 0) {
+        final paymentAmount = isRefund ? -amount : amount;
+        final note = isRefund 
+            ? 'Refund processed: AED ${NumberFormat('#,##0.00').format(amount)}'
+            : 'Payment received: AED ${NumberFormat('#,##0.00').format(amount)}';
+
         setState(() {
-          widget.invoice.addPayment(amount, 'Payment received');
-          if (widget.invoice.remainingBalance <= 0) {
-            widget.invoice.markAsPaid();
-          }
+          widget.invoice.addPayment(paymentAmount, note);
+          _updateInternalPaymentStatus();
         });
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(note),
+            backgroundColor: isRefund ? Colors.red : Colors.green,
+          ),
+        );
+
         await _invoiceService.updateInvoice(widget.invoice);
       }
     }
     controller.dispose();
+  }
+
+  void _updateInternalPaymentStatus() {
+    if (widget.invoice.remainingBalance <= 0) {
+      widget.invoice.paymentStatus = PaymentStatus.paid;
+      widget.invoice.paidAt = DateTime.now();
+    } else if (widget.invoice.payments.isNotEmpty) {
+      widget.invoice.paymentStatus = PaymentStatus.partial;
+    } else {
+      widget.invoice.paymentStatus = PaymentStatus.unpaid;
+    }
   }
 
   Future<void> _viewMeasurementDetails(BuildContext context) async {
@@ -890,6 +1191,44 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
         SnackBar(
           content: Text('Error loading measurement: $e'),
           backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteNote(int index) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Note'),
+        content: const Text('Are you sure you want to delete this note?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true) {
+      setState(() {
+        widget.invoice.deleteNote(index);
+      });
+      if (!mounted) return;
+      await _invoiceService.updateInvoice(widget.invoice);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note deleted successfully'),
+          backgroundColor: Colors.green,
         ),
       );
     }

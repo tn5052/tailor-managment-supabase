@@ -228,6 +228,12 @@ class Invoice {
     notes.add(note);
   }
 
+  void deleteNote(int index) {
+    if (index >= 0 && index < notes.length) {
+      notes.removeAt(index);
+    }
+  }
+
   double calculateProductsTotal() {
     return products.fold(0.0, (sum, product) => sum + product.price);
   }

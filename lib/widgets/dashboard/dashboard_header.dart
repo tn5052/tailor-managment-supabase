@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/number_formatter.dart';
 import '../../models/invoice.dart';
 
@@ -53,10 +52,7 @@ class DashboardHeader extends StatelessWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white70,
                       ),
-                    )
-                    .animate()
-                    .fadeIn()
-                    .slideX(delay: 200.ms),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Dashboard Overview',
@@ -64,10 +60,7 @@ class DashboardHeader extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
-                    .animate()
-                    .fadeIn()
-                    .slideX(delay: 400.ms),
+                    ),
                   ],
                 ),
               ),
@@ -100,13 +93,13 @@ class DashboardHeader extends StatelessWidget {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white30),
                   ),
-                ).animate().fadeIn().slideX(delay: 600.ms),
+                ),
               ],
             ),
           ],
         ],
       ),
-    ).animate().fadeIn().scale(delay: 100.ms);
+    );
   }
 }
 
@@ -164,7 +157,7 @@ class _AnimatedRefreshButtonState extends State<_AnimatedRefreshButton>
           ),
         ),
       ),
-    ).animate().fadeIn().scale(delay: 500.ms);
+    );
   }
 }
 
@@ -216,6 +209,6 @@ class _QuickStat extends StatelessWidget {
           ],
         ),
       ],
-    ).animate().fadeIn().slideX(delay: 500.ms);
+    );
   }
 }
