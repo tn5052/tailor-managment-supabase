@@ -51,6 +51,8 @@ dependencies:
   appwrite: ^14.0.0
   image_picker: ^1.1.2
 
+  carousel_slider: ^4.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
