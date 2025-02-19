@@ -4,6 +4,9 @@ import '../../models/customer.dart';
 import '../../models/measurement.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/fraction_helper.dart';
+import '../../services/measurement_service.dart';
+import '../invoice/pdf_preview_widget.dart';
+import 'measurement_template.dart';
 
 class DetailDialog extends StatefulWidget {
   final Measurement measurement;
@@ -150,9 +153,7 @@ class _DetailDialogState extends State<DetailDialog> {
         ),
         actions: [
           FilledButton.tonal(
-            onPressed: () {
-              /* TODO: Add print functionality */
-            },
+            onPressed: () => _showMeasurementPreview(context),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -888,8 +889,106 @@ class _DetailDialogState extends State<DetailDialog> {
       MeasurementItem('Back Length', FractionHelper.formatFraction(widget.measurement.backLength)),
       MeasurementItem('Neck', FractionHelper.formatFraction(widget.measurement.neck)),
       MeasurementItem('Shoulder', FractionHelper.formatFraction(widget.measurement.shoulder)),
-      // ...rest of the measurements...
+      MeasurementItem('Seam', widget.measurement.seam),
+      MeasurementItem('Adhesive', widget.measurement.adhesive),
+      MeasurementItem('Under Kandura', widget.measurement.underKandura),
     ];
+  }
+
+  void _showMeasurementPreview(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    
+    try {
+      final pdfBytes = await MeasurementTemplate.generateMeasurement(widget.measurement,  customer?.name ?? 'Unknown Customer',
+);
+
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: isDesktop ? 800 : MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.9,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Measurement Preview',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(28),
+                    ),
+                    child: PdfPreviewWidget(pdfBytes: pdfBytes),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _sharePdf(pdfBytes);
+                        },
+                        icon: const Icon(Icons.ios_share),
+                        label: const Text('Share PDF'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate measurement PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _sharePdf(List<int> pdfBytes) async {
+    final measurementService = MeasurementService();
+    await measurementService.sharePdf(
+      pdfBytes,
+      'measurement_${widget.measurement.billNumber}.pdf',
+    );
   }
 }
 

@@ -1,6 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/measurement.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class MeasurementService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -46,5 +49,21 @@ class MeasurementService {
           debugPrint('Error in measurements stream: $error');
           return [];
         });
+  }
+
+  Future<void> sharePdf(List<int> pdfBytes, String fileName) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(pdfBytes);
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Measurement Details',
+      );
+    } catch (e) {
+      print('Error sharing PDF: $e');
+      rethrow;
+    }
   }
 }
