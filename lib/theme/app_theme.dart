@@ -56,47 +56,47 @@ class AppTheme {
     shadow: neutralColor.withOpacity(0.08),
   );
 
+  // Updated Dark Theme Colors
+  static const darkBg = Color(0xFF161618);        // Deep charcoal background
+  static const darkSurface = Color(0xFF1E1E21);   // Slightly lighter surface
+  static const darkAccent = Color(0xFF82B1FF);    // Bright blue accent
+  static const darkSecondary = Color(0xFF98FB98);  // Soft green
+  static const darkText = Color(0xFFE8EAED);      // Crisp white text
+
   static final darkColorScheme = ColorScheme.dark(
-    // Primary Colors
-    primary: primaryColor.withOpacity(0.9),
-    onPrimary: Colors.white,
-    primaryContainer: primaryColor.withOpacity(0.15),
-    onPrimaryContainer: primaryColor.withOpacity(0.9),
+    // Main Colors
+    primary: darkAccent,
+    onPrimary: darkBg,
+    primaryContainer: darkAccent.withOpacity(0.15),
+    onPrimaryContainer: darkAccent,
     
     // Secondary Colors
-    secondary: secondaryColor.withOpacity(0.9),
-    onSecondary: Colors.white,
-    secondaryContainer: secondaryColor.withOpacity(0.15),
-    onSecondaryContainer: secondaryColor.withOpacity(0.9),
-    
-    // Tertiary Colors
-    tertiary: tertiaryColor.withOpacity(0.9),
-    onTertiary: Colors.white,
-    tertiaryContainer: tertiaryColor.withOpacity(0.15),
-    onTertiaryContainer: tertiaryColor.withOpacity(0.9),
+    secondary: darkSecondary,
+    onSecondary: darkBg,
+    secondaryContainer: darkSecondary.withOpacity(0.15),
+    onSecondaryContainer: darkSecondary,
     
     // Background Colors
-    background: const Color(0xFF1A1C1E),
-    onBackground: Colors.white,
+    background: darkBg,
+    onBackground: darkText,
     
     // Surface Colors
-    surface: const Color(0xFF1A1C1E),
-    onSurface: Colors.white,
-    surfaceContainer: const Color(0xFF1F2123),
-    surfaceContainerLow: const Color(0xFF1D1F21),
-    surfaceContainerHigh: const Color(0xFF252729),
-    surfaceContainerHighest: const Color(0xFF292B2D),
+    surface: darkSurface,
+    onSurface: darkText,
+    surfaceContainer: const Color(0xFF222226),
+    surfaceContainerLow: const Color(0xFF1E1E21),
+    surfaceContainerHigh: const Color(0xFF27272B),
+    surfaceContainerHighest: const Color(0xFF2A2A2E),
     
-    // Status Colors
-    error: errorColor.withOpacity(0.9),
-    onError: Colors.white,
-    errorContainer: errorColor.withOpacity(0.15),
+    // Error Colors
+    error: const Color(0xFFFF8A8A),
+    onError: darkBg,
+    errorContainer: const Color(0xFF642626),
+    onErrorContainer: const Color(0xFFFFCCCC),
     
     // Outline Colors
-    outline: Colors.white.withOpacity(0.2),
-    outlineVariant: Colors.white.withOpacity(0.1),
-    
-    shadow: Colors.black.withOpacity(0.2),
+    outline: darkText.withOpacity(0.2),
+    outlineVariant: darkText.withOpacity(0.1),
   );
 
   static ThemeData lightTheme = ThemeData(
@@ -218,40 +218,121 @@ class AppTheme {
     useMaterial3: true,
     colorScheme: darkColorScheme,
     brightness: Brightness.dark,
+    scaffoldBackgroundColor: darkBg,
     
-    // Typography with adjusted colors for dark theme
+    // Typography with simplified colors
     textTheme: TextTheme(
       headlineLarge: TextStyle(
-        color: darkColorScheme.onSurface,
+        color: darkText,
         fontSize: 32,
         fontWeight: FontWeight.bold,
       ),
-      // ...rest of the text styles similar to light theme but with dark scheme colors...
+      headlineMedium: TextStyle(
+        color: darkText,
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+      titleLarge: TextStyle(
+        color: darkText,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: TextStyle(
+        color: darkText,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: TextStyle(
+        color: darkText.withOpacity(0.87),
+        fontSize: 16,
+      ),
+      bodyMedium: TextStyle(
+        color: darkText.withOpacity(0.87),
+        fontSize: 14,
+      ),
+      labelLarge: TextStyle(
+        color: darkAccent,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
     ),
 
     // Component Themes
     appBarTheme: AppBarTheme(
-      backgroundColor: darkColorScheme.surface,
+      backgroundColor: darkSurface,
+      foregroundColor: darkText,
       elevation: 0,
-      scrolledUnderElevation: 2,
-      shadowColor: darkColorScheme.shadow,
     ),
 
     cardTheme: CardTheme(
-      color: darkColorScheme.surfaceContainer,
-      elevation: 1,
-      shadowColor: darkColorScheme.shadow,
+      color: darkSurface,
+      elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
     ),
 
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: darkColorScheme.surfaceContainerHighest,
-      // ...rest of the input decoration theme...
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: darkBg,
+        backgroundColor: darkAccent,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 12,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
     ),
-    
-    // ...rest of the component themes with dark colors...
+
+    // FAB theme
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: darkAccent,
+      foregroundColor: darkBg,
+      elevation: 2,
+    ),
+
+    // Switch theme
+    switchTheme: SwitchThemeData(
+      thumbColor: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return darkAccent;
+        }
+        return darkText.withOpacity(0.4);
+      }),
+      trackColor: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return darkAccent.withOpacity(0.3);
+        }
+        return darkText.withOpacity(0.1);
+      }),
+    ),
+
+    // Icon theme
+    iconTheme: IconThemeData(
+      color: darkText.withOpacity(0.87),
+      size: 24,
+    ),
+
+    // Divider theme
+    dividerTheme: DividerThemeData(
+      color: darkText.withOpacity(0.1),
+      thickness: 1,
+    ),
+
+    // Navigation bar theme
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: darkSurface,
+      indicatorColor: darkAccent.withOpacity(0.2),
+      labelTextStyle: MaterialStateProperty.all(
+        TextStyle(
+          color: darkText,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
   );
 }

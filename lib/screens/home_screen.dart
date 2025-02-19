@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-          const VerticalDivider(thickness: 1, width: 1),
+          // Removing the VerticalDivider
           Expanded(
             child: _screens[_selectedIndex],
           ),

@@ -70,10 +70,12 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
             topRight: Radius.circular(24),
             bottomRight: Radius.circular(24),
           ),
+          // Adjusted shadow to be more subtle
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.shadow.withAlpha(13),
-              blurRadius: 16,
+              color: theme.colorScheme.shadow.withAlpha(8),
+              blurRadius: 12,
+              offset: const Offset(2, 0),
             ),
           ],
         ),

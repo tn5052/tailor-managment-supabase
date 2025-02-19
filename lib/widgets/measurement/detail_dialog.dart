@@ -159,7 +159,7 @@ class _DetailDialogState extends State<DetailDialog> {
                 const Icon(Icons.print_outlined, size: 20),
                 if (isDesktop) ...[
                   const SizedBox(width: 8),
-                  const Text('PRINT'),
+                  const Text('Generate PDF'),
                 ],
               ],
             ),
