@@ -110,7 +110,7 @@ class _DetailDialogState extends State<DetailDialog> {
 
   Widget _buildScaffold(ThemeData theme, bool isDesktop) {
     return Scaffold(
-      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.background,
+      backgroundColor: isDesktop ? Colors.transparent : theme.colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: isDesktop ? theme.colorScheme.surface : theme.colorScheme.primaryContainer,

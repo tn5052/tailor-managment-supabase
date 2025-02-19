@@ -24,7 +24,7 @@ class CustomerSelectorDialog extends StatefulWidget {
         builder:
             (context) => Dialog(
               backgroundColor: Colors.transparent,
-              child: Container(
+              child: SizedBox(
                 width: 600,
                 height: MediaQuery.of(context).size.height * 0.8,
                 child: CustomerSelectorDialog(
@@ -134,7 +134,7 @@ class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
               hintText: 'Search by name, phone, or bill number...',
               prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
               filled: true,
-              fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,

@@ -1,8 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import '../widgets/invoice/invoice_template.dart';
 import '../models/invoice.dart';
 
@@ -124,6 +124,92 @@ class InvoiceService {
       );
     } catch (e) {
       throw Exception('Failed to generate invoice: $e');
+    }
+  }
+
+  Future<List<Invoice>> getInvoicesByDateRange(DateTime start, DateTime end) async {
+    try {
+      final response = await _client
+          .from('invoices')
+          .select()
+          .gte('date', start.toIso8601String())
+          .lte('date', end.toIso8601String())
+          .order('date');
+      
+      return (response as List).map((map) => Invoice.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Error fetching invoices by date range: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getKPIs() async {
+    try {
+      final response = await _client
+          .from('invoices')
+          .select('amount_including_vat, payment_status, delivery_status')
+          .order('date');
+
+      double totalRevenue = 0;
+      double pendingPayments = 0;
+      int pendingDeliveries = 0;
+      
+      final invoices = (response as List).map((map) => Invoice.fromMap(map)).toList();
+      
+      for (var invoice in invoices) {
+        totalRevenue += invoice.amountIncludingVat;
+        if (invoice.paymentStatus != PaymentStatus.paid) {
+          pendingPayments += invoice.remainingBalance;
+        }
+        if (invoice.deliveryStatus == InvoiceStatus.pending) {
+          pendingDeliveries++;
+        }
+      }
+
+      return {
+        'totalRevenue': totalRevenue,
+        'pendingPayments': pendingPayments,
+        'totalOrders': invoices.length,
+        'pendingDeliveries': pendingDeliveries,
+      };
+    } catch (e) {
+      debugPrint('Error fetching KPIs: $e');
+      return {
+        'totalRevenue': 0.0,
+        'pendingPayments': 0.0,
+        'totalOrders': 0,
+        'pendingDeliveries': 0,
+      };
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getRevenueData() async {
+    try {
+      final now = DateTime.now();
+      final startDate = now.subtract(const Duration(days: 30));
+      
+      final response = await _client
+          .from('invoices')
+          .select('date, amount_including_vat')
+          .gte('date', startDate.toIso8601String())
+          .lte('date', now.toIso8601String())
+          .order('date');
+
+      final Map<String, double> dailyRevenue = {};
+      
+      for (var row in response) {
+        final date = DateTime.parse(row['date']).toString().split(' ')[0];
+        dailyRevenue[date] = (dailyRevenue[date] ?? 0) + 
+            (row['amount_including_vat'] as num).toDouble();
+      }
+
+      return dailyRevenue.entries.map((e) => {
+        'date': e.key,
+        'amount': e.value,
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching revenue data: $e');
+      return [];
     }
   }
 }

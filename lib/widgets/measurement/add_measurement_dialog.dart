@@ -322,7 +322,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
             ),
           )
         : Scaffold(
-          backgroundColor: theme.colorScheme.background,
+          backgroundColor: theme.colorScheme.surface,
           appBar: AppBar(
             elevation: 0,
             backgroundColor: theme.colorScheme.primaryContainer,

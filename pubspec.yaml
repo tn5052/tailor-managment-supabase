@@ -43,6 +43,9 @@ dependencies:
   webview_flutter: ^4.10.0
   font_awesome_flutter: ^10.7.0  # Add this line
   google_fonts: ^6.2.1
+  fl_chart: ^0.70.2
+  flutter_animate: ^4.5.2
+  timeago: ^3.2.2
 
 dev_dependencies:
   flutter_test:

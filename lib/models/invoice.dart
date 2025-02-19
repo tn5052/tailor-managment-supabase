@@ -118,7 +118,7 @@ class Invoice {
     return Invoice(
       id: map['id'],
       invoiceNumber: map['invoice_number'],
-      date: DateTime.parse(map['date']),
+      date: DateTime.parse(map['date']), // This is the correct field to use
       deliveryDate: DateTime.parse(map['delivery_date']),
       amount: map['amount'],
       vat: map['vat'],
@@ -166,7 +166,7 @@ class Invoice {
     return {
       'id': id,
       'invoice_number': invoiceNumber,
-      'date': date.toIso8601String(),
+      'date': date.toIso8601String(), // This is the correct field to use
       'delivery_date': deliveryDate.toIso8601String(),
       'amount': amount,
       'vat': vat,
@@ -224,6 +224,19 @@ class Invoice {
 
   double calculateProductsTotal() {
     return products.fold(0.0, (sum, product) => sum + product.price);
+  }
+
+  // Add helper methods for date-based queries
+  bool isInDateRange(DateTime start, DateTime end) {
+    return date.isAfter(start) && date.isBefore(end);
+  }
+
+  static DateTime getStartOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  static DateTime getEndOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 23, 59, 59);
   }
 }
 

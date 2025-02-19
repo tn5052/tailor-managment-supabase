@@ -64,6 +64,15 @@ class SideMenu extends StatelessWidget {
                 _buildNavItem(
                   context,
                   index: 0,
+                  icon: Icons.dashboard_outlined,
+                  selectedIcon: Icons.dashboard,
+                  label: 'Dashboard',
+                  isExtended: isExtended,
+                ),
+                const SizedBox(height: 8),
+                _buildNavItem(
+                  context,
+                  index: 1,
                   icon: Icons.people_outlined,
                   selectedIcon: Icons.people,
                   label: 'Customers',
@@ -72,7 +81,7 @@ class SideMenu extends StatelessWidget {
                 const SizedBox(height: 8),
                 _buildNavItem(
                   context,
-                  index: 1,
+                  index: 2,
                   icon: Icons.straighten_outlined,
                   selectedIcon: Icons.straighten,
                   label: 'Measurements',
@@ -81,7 +90,7 @@ class SideMenu extends StatelessWidget {
                 const SizedBox(height: 8),
                 _buildNavItem(
                   context,
-                  index: 2,
+                  index: 3,
                   icon: Icons.receipt_long_outlined,
                   selectedIcon: Icons.receipt_long,
                   label: 'Invoices',
@@ -283,6 +292,11 @@ class MobileBottomNav extends StatelessWidget {
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.dashboard_outlined),
+          selectedIcon: Icon(Icons.dashboard),
+          label: 'Dashboard',
+        ),
         NavigationDestination(
           icon: Icon(Icons.people_outlined),
           selectedIcon: Icon(Icons.people),
