@@ -71,12 +71,16 @@ class Invoice {
     required double advance,
     required Customer customer,
     String? details,
-    String? measurementId,
+    String?
+    measurementId, // Make sure this is null when no measurement is selected
     String? measurementName,
     List<Product>? products,
   }) {
     final productsList = products ?? [];
-    final productsTotal = productsList.fold(0.0, (sum, product) => sum + product.price);
+    final productsTotal = productsList.fold(
+      0.0,
+      (sum, product) => sum + product.price,
+    );
     final finalAmount = amount > 0 ? amount : productsTotal;
     final vat = finalAmount * vatRate;
     final amountIncludingVat = finalAmount + vat;
@@ -98,7 +102,8 @@ class Invoice {
       customerPhone: customer.phone,
       details: details ?? '',
       customerBillNumber: customer.billNumber,
-      measurementId: measurementId,
+      measurementId:
+          measurementId, // This will be null if no measurement is selected
       measurementName: measurementName,
       isDelivered: false,
       paymentStatus:
@@ -156,9 +161,10 @@ class Invoice {
               )
               .toList(),
       isDelivered: map['is_delivered'] ?? false,
-      products: (map['products'] as List<dynamic>? ?? [])
-          .map((p) => Product.fromMap(p))
-          .toList(),
+      products:
+          (map['products'] as List<dynamic>? ?? [])
+              .map((p) => Product.fromMap(p))
+              .toList(),
     );
   }
 
@@ -259,24 +265,15 @@ class Product {
   Product({required this.name, required this.price});
 
   Product copyWith({String? name, double? price}) {
-    return Product(
-      name: name ?? this.name,
-      price: price ?? this.price,
-    );
+    return Product(name: name ?? this.name, price: price ?? this.price);
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'price': price,
-    };
+    return {'name': name, 'price': price};
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
-    return Product(
-      name: map['name'],
-      price: map['price'],
-    );
+    return Product(name: map['name'], price: map['price']);
   }
 
   @override

@@ -337,9 +337,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
   Future<void> _saveInvoice() async {
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a customer')),
+      );
       return;
     }
 
@@ -361,14 +361,49 @@ class _InvoiceScreenState extends State<InvoiceScreen>
           ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
   }
 
+  Future<Invoice> _createNewInvoice() async {
+    final invoiceNumber = await _invoiceService.generateInvoiceNumber();
+    
+    // Only include measurement details if a measurement is selected
+    String? measurementId;
+    String? measurementName;
+    
+    if (_selectedMeasurement != null) {
+      measurementId = _selectedMeasurement!.id;
+      measurementName = _getMeasurementSubtitle(_selectedMeasurement!);
+    }
+
+    final invoice = Invoice.create(
+      invoiceNumber: invoiceNumber,
+      date: _date!,
+      deliveryDate: _deliveryDate!,
+      amount: _amount,
+      advance: _advance,
+      customer: _selectedCustomer!,
+      details: _detailsController.text,
+      measurementId: measurementId,  // This will be null if no measurement is selected
+      measurementName: measurementName,
+      products: _products,
+    );
+
+    await _invoiceService.addInvoice(invoice);
+    return invoice;
+  }
+
   Invoice _updateExistingInvoice() {
+    // Only include measurement details if a measurement is selected
+    String? measurementId = _selectedMeasurement?.id;
+    String? measurementName = _selectedMeasurement != null 
+        ? _getMeasurementSubtitle(_selectedMeasurement!)
+        : null;
+
     final updatedInvoice = Invoice(
       id: widget.invoiceToEdit!.id,
       invoiceNumber: widget.invoiceToEdit!.invoiceNumber,
@@ -385,10 +420,8 @@ class _InvoiceScreenState extends State<InvoiceScreen>
       customerPhone: _selectedCustomer!.phone,
       details: _detailsController.text,
       customerBillNumber: _selectedCustomer!.billNumber,
-      measurementId: _selectedMeasurement?.id,
-      measurementName: _selectedMeasurement != null 
-          ? _getMeasurementSubtitle(_selectedMeasurement!)
-          : null,
+      measurementId: measurementId,  // This will be null if no measurement is selected
+      measurementName: measurementName,
       deliveryStatus: widget.invoiceToEdit!.deliveryStatus,
       paymentStatus: widget.invoiceToEdit!.paymentStatus,
       deliveredAt: widget.invoiceToEdit!.deliveredAt,
@@ -400,30 +433,6 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
     _invoiceService.updateInvoice(updatedInvoice);
     return updatedInvoice;
-  }
-
-  Future<Invoice> _createNewInvoice() async {
-    final invoiceNumber = await _invoiceService.generateInvoiceNumber();
-
-    final invoice = Invoice.create(
-      invoiceNumber: invoiceNumber,
-      date: _date!,
-      deliveryDate: _deliveryDate!,
-      amount: _amount,
-      advance: _advance,
-      customer: _selectedCustomer!,
-      details: _detailsController.text,
-      measurementId: _selectedMeasurement?.id,
-      measurementName:
-          _selectedMeasurement != null
-              ? _getMeasurementSubtitle(_selectedMeasurement!)
-              : null,
-      products: _products,
-    );
-
-    await _invoiceService.addInvoice(invoice);
-
-    return invoice;
   }
 
   double get _vat => _amount * Invoice.vatRate;

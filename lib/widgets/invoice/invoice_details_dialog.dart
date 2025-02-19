@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../models/invoice.dart';
 import '../../services/invoice_service.dart';
 import 'pdf_preview_widget.dart';
+import '../measurement/detail_dialog.dart';
+import '../../services/measurement_service.dart';
 
 class InvoiceDetailsDialog extends StatefulWidget {
   final Invoice invoice;
@@ -427,8 +429,21 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
               leading: Icon(Icons.straighten, color: theme.colorScheme.primary),
               title: Text('Measurement'),
               subtitle: Text(
-                widget.invoice.measurementName!,
-                style: TextStyle(color: theme.colorScheme.primary),
+              widget.invoice.measurementName!,
+              style: TextStyle(color: theme.colorScheme.primary),
+              ),
+              trailing: FilledButton.icon(
+              onPressed: () => _viewMeasurementDetails(context),
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('View Details'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                minimumSize: const Size(120, 40),
+                shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               ),
             ),
           ),
@@ -840,5 +855,43 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
       }
     }
     controller.dispose();
+  }
+
+  Future<void> _viewMeasurementDetails(BuildContext context) async {
+    if (!mounted) return;
+
+    final measurementService = MeasurementService();
+    try {
+      final measurement = await measurementService.getMeasurement(widget.invoice.measurementId!);
+      
+      if (!mounted) return;
+      if (measurement == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Measurement not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Store context in local variable before async gap
+      final currentContext = context;
+      if (!mounted) return;
+
+      await DetailDialog.show(
+        currentContext,
+        measurement: measurement,
+        customerId: widget.invoice.customerId,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading measurement: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
