@@ -56,6 +56,49 @@ class AppTheme {
     shadow: neutralColor.withOpacity(0.08),
   );
 
+  static final darkColorScheme = ColorScheme.dark(
+    // Primary Colors
+    primary: primaryColor.withOpacity(0.9),
+    onPrimary: Colors.white,
+    primaryContainer: primaryColor.withOpacity(0.15),
+    onPrimaryContainer: primaryColor.withOpacity(0.9),
+    
+    // Secondary Colors
+    secondary: secondaryColor.withOpacity(0.9),
+    onSecondary: Colors.white,
+    secondaryContainer: secondaryColor.withOpacity(0.15),
+    onSecondaryContainer: secondaryColor.withOpacity(0.9),
+    
+    // Tertiary Colors
+    tertiary: tertiaryColor.withOpacity(0.9),
+    onTertiary: Colors.white,
+    tertiaryContainer: tertiaryColor.withOpacity(0.15),
+    onTertiaryContainer: tertiaryColor.withOpacity(0.9),
+    
+    // Background Colors
+    background: const Color(0xFF1A1C1E),
+    onBackground: Colors.white,
+    
+    // Surface Colors
+    surface: const Color(0xFF1A1C1E),
+    onSurface: Colors.white,
+    surfaceContainer: const Color(0xFF1F2123),
+    surfaceContainerLow: const Color(0xFF1D1F21),
+    surfaceContainerHigh: const Color(0xFF252729),
+    surfaceContainerHighest: const Color(0xFF292B2D),
+    
+    // Status Colors
+    error: errorColor.withOpacity(0.9),
+    onError: Colors.white,
+    errorContainer: errorColor.withOpacity(0.15),
+    
+    // Outline Colors
+    outline: Colors.white.withOpacity(0.2),
+    outlineVariant: Colors.white.withOpacity(0.1),
+    
+    shadow: Colors.black.withOpacity(0.2),
+  );
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: lightColorScheme,
@@ -169,5 +212,46 @@ class AppTheme {
         borderRadius: BorderRadius.circular(8),
       ),
     ),
+  );
+
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    colorScheme: darkColorScheme,
+    brightness: Brightness.dark,
+    
+    // Typography with adjusted colors for dark theme
+    textTheme: TextTheme(
+      headlineLarge: TextStyle(
+        color: darkColorScheme.onSurface,
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+      ),
+      // ...rest of the text styles similar to light theme but with dark scheme colors...
+    ),
+
+    // Component Themes
+    appBarTheme: AppBarTheme(
+      backgroundColor: darkColorScheme.surface,
+      elevation: 0,
+      scrolledUnderElevation: 2,
+      shadowColor: darkColorScheme.shadow,
+    ),
+
+    cardTheme: CardTheme(
+      color: darkColorScheme.surfaceContainer,
+      elevation: 1,
+      shadowColor: darkColorScheme.shadow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: darkColorScheme.surfaceContainerHighest,
+      // ...rest of the input decoration theme...
+    ),
+    
+    // ...rest of the component themes with dark colors...
   );
 }

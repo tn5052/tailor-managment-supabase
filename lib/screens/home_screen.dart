@@ -4,6 +4,7 @@ import 'customer_list_screen.dart';
 import 'measurement_list_screen.dart';
 import 'invoice_list_screen.dart';
 import 'dashboard_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const CustomerListScreen(),
     const MeasurementListScreen(),
     InvoiceListScreen(),
+    const SettingsScreen(),
   ];
 
   @override

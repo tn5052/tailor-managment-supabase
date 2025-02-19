@@ -114,6 +114,12 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                       selectedIcon: PhosphorIcon(PhosphorIcons.receipt(PhosphorIconsStyle.fill)),
                       label: 'Invoices',
                     ),
+                    _buildNavItem(
+                      index: 4,
+                      icon: PhosphorIcon(PhosphorIcons.gear()),
+                      selectedIcon: PhosphorIcon(PhosphorIcons.gear(PhosphorIconsStyle.fill)),
+                      label: 'Settings',
+                    ),
                   ],
                 ),
               ),
@@ -167,7 +173,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: isHovering 
-                      ? theme.colorScheme.surfaceVariant.withAlpha(100)
+                      ? theme.colorScheme.surfaceContainerHighest.withAlpha(100)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -272,7 +278,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         padding: EdgeInsets.all(isExpanded ? 16 : 12),
         decoration: BoxDecoration(
           color: isFooterHovered 
-              ? theme.colorScheme.surfaceVariant.withAlpha(50)
+              ? theme.colorScheme.surfaceContainerHighest.withAlpha(50)
               : Colors.transparent,
           border: Border(
             top: BorderSide(
@@ -452,6 +458,11 @@ class MobileBottomNav extends StatelessWidget {
               GButton(
                 icon: PhosphorIcons.receipt(),
                 text: 'Invoices',
+                iconSize: 22,
+              ),
+              GButton(
+                icon: PhosphorIcons.gear(),
+                text: 'Settings',
                 iconSize: 22,
               ),
             ],
