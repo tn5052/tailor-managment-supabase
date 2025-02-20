@@ -191,4 +191,25 @@ class ComplaintService {
 
     return response.map((data) => Complaint.fromMap(data)).toList();
   }
+
+  Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
+    final response = await _supabase
+        .from('complaints')
+        .select('''
+          *,
+          customers!customer_id (
+            name
+          ),
+          invoices!invoice_id (
+            invoice_number
+          )
+        ''')
+        .eq('id', complaintId)
+        .single();
+    
+    return {
+      'customerName': response['customers']['name'],
+      'invoiceNumber': response['invoices']?['invoice_number'],
+    };
+  }
 }

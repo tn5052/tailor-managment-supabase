@@ -16,7 +16,7 @@ class ComplaintsScreen extends StatefulWidget {
 
 class _ComplaintsScreenState extends State<ComplaintsScreen> {
   final ComplaintService _complaintService = ComplaintService(Supabase.instance.client);
-  bool _isGridView = false;
+  bool _isGridView = true; // Changed to true for default grid view
   String _searchQuery = '';
   ComplaintStatus? _filterStatus;
 
@@ -125,6 +125,10 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   }
 
   Widget _buildComplaintsList(ThemeData theme) {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width >= 1200;
+    final itemWidth = isDesktop ? size.width / 4 : size.width / 3;
+    
     return FutureBuilder<List<Complaint>>(
       future: _searchQuery.isEmpty
           ? _complaintService.getAllComplaints()
@@ -150,33 +154,33 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
         if (_isGridView) {
           return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.5,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+            padding: const EdgeInsets.all(12),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isDesktop ? 4 : 3,
+              childAspectRatio: itemWidth / (itemWidth * 0.7), // More compact ratio
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: complaints.length,
             itemBuilder: (context, index) {
               return ComplaintCard(
                 complaint: complaints[index],
                 onTap: () => _showComplaintDetails(complaints[index]),
+                isGridView: true,
               );
             },
           );
         }
 
-        return ListView.builder(
+        return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: complaints.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ComplaintCard(
-                complaint: complaints[index],
-                onTap: () => _showComplaintDetails(complaints[index]),
-              ),
+            return ComplaintCard(
+              complaint: complaints[index],
+              onTap: () => _showComplaintDetails(complaints[index]),
+              isGridView: false,
             );
           },
         );
