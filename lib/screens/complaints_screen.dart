@@ -15,7 +15,9 @@ class ComplaintsScreen extends StatefulWidget {
 }
 
 class _ComplaintsScreenState extends State<ComplaintsScreen> {
-  final ComplaintService _complaintService = ComplaintService(Supabase.instance.client);
+  final ComplaintService _complaintService = ComplaintService(
+    Supabase.instance.client,
+  );
   bool _isGridView = true; // Changed to true for default grid view
   String _searchQuery = '';
   ComplaintStatus? _filterStatus;
@@ -23,7 +25,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Complaints Management'),
@@ -39,9 +41,21 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       body: Column(
         children: [
           _buildSearchAndFilters(theme),
-          _buildStatistics(theme),
           Expanded(
-            child: _buildComplaintsList(theme),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildStatistics(theme),
+                  // Make complaints list scrollable within available space
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: MediaQuery.of(context).size.height - 300,
+                    ),
+                    child: _buildComplaintsList(theme),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -74,12 +88,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           DropdownButton<ComplaintStatus>(
             value: _filterStatus,
             hint: const Text('Status'),
-            items: ComplaintStatus.values.map((status) {
-              return DropdownMenuItem(
-                value: status,
-                child: Text(status.toString().split('.').last),
-              );
-            }).toList(),
+            items:
+                ComplaintStatus.values.map((status) {
+                  return DropdownMenuItem(
+                    value: status,
+                    child: Text(status.toString().split('.').last),
+                  );
+                }).toList(),
             onChanged: (value) => setState(() => _filterStatus = value),
           ),
         ],
@@ -88,51 +103,250 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   }
 
   Widget _buildStatistics(ThemeData theme) {
+    final size = MediaQuery.of(context).size;
+    final isMobile = size.width < 600;
+
     return FutureBuilder<Map<String, int>>(
       future: _complaintService.getComplaintStatistics(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-        
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         final stats = snapshot.data!;
-        return Container(
-          height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: stats.entries.map((entry) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        entry.value.toString(),
-                        style: theme.textTheme.titleLarge,
-                      ),
-                      Text(
-                        entry.key.split('.').last,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+        final totalComplaints = stats.values.fold(
+          0,
+          (sum, count) => sum + count,
+        );
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 24,
+              vertical: isMobile ? 12 : 16,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: isMobile ? size.width / 3 - 24 : 220,
+                  child: _buildTotalCard(theme, totalComplaints),
                 ),
-              );
-            }).toList(),
+                ...ComplaintStatus.values.map((status) {
+                  return Container(
+                    width: isMobile ? size.width / 3 - 24 : 200,
+                    margin: EdgeInsets.only(left: isMobile ? 12 : 16),
+                    child: _buildStatusCard(
+                      theme,
+                      status,
+                      stats[status.toString()] ?? 0,
+                      totalComplaints,
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
+  Widget _buildTotalCard(ThemeData theme, int total) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 6 : 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.receipt_long,
+                    color: theme.colorScheme.primary,
+                    size: isMobile ? 16 : 20,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.trending_up,
+                  color: theme.colorScheme.primary,
+                  size: isMobile ? 16 : 20,
+                ),
+              ],
+            ),
+            SizedBox(height: isMobile ? 12 : 16),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                total.toString(),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Total',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                fontSize: isMobile ? 12 : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(
+    ThemeData theme,
+    ComplaintStatus status,
+    int count,
+    int total,
+  ) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final percentage =
+        total > 0 ? (count / total * 100).toStringAsFixed(1) : '0';
+    final color = _getStatusColor(status, theme);
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 6 : 8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getStatusIcon(status),
+                    color: color,
+                    size: isMobile ? 16 : 20,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$percentage%',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: isMobile ? 10 : 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: isMobile ? 12 : 16),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                count.toString(),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              status.toString().split('.').last,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: isMobile ? 12 : null,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: total > 0 ? count / total : 0,
+                backgroundColor: color.withOpacity(0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: isMobile ? 3 : 4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(ComplaintStatus status, ThemeData theme) {
+    switch (status) {
+      case ComplaintStatus.pending:
+        return Colors.orange;
+      case ComplaintStatus.inProgress:
+        return theme.colorScheme.primary;
+      case ComplaintStatus.resolved:
+        return theme.colorScheme.tertiary;
+      case ComplaintStatus.closed:
+        return theme.colorScheme.outline;
+      case ComplaintStatus.rejected:
+        return theme.colorScheme.error;
+    }
+  }
+
+  IconData _getStatusIcon(ComplaintStatus status) {
+    switch (status) {
+      case ComplaintStatus.pending:
+        return Icons.pending_outlined;
+      case ComplaintStatus.inProgress:
+        return Icons.running_with_errors_outlined;
+      case ComplaintStatus.resolved:
+        return Icons.check_circle_outline;
+      case ComplaintStatus.closed:
+        return Icons.task_alt;
+      case ComplaintStatus.rejected:
+        return Icons.cancel_outlined;
+    }
+  }
+
   Widget _buildComplaintsList(ThemeData theme) {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width >= 1200;
-    final itemWidth = isDesktop ? size.width / 4 : size.width / 3;
-    
+    final isMobile = size.width < 600;
+    final itemWidth =
+        isDesktop ? size.width / 4 : (isMobile ? size.width : size.width / 3);
+
     return FutureBuilder<List<Complaint>>(
-      future: _searchQuery.isEmpty
-          ? _complaintService.getAllComplaints()
-          : _complaintService.searchComplaints(_searchQuery),
+      future:
+          _searchQuery.isEmpty
+              ? _complaintService.getAllComplaints()
+              : _complaintService.searchComplaints(_searchQuery),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -154,12 +368,17 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
         if (_isGridView) {
           return GridView.builder(
-            padding: const EdgeInsets.all(12),
+            shrinkWrap: true, // Add this
+            physics: const NeverScrollableScrollPhysics(), // Add this
+            padding: EdgeInsets.all(isMobile ? 8 : 12),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isDesktop ? 4 : 3,
-              childAspectRatio: itemWidth / (itemWidth * 0.7), // More compact ratio
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              crossAxisCount: isDesktop ? 4 : (isMobile ? 1 : 3),
+              childAspectRatio:
+                  isMobile
+                      ? (size.width / 140) // More compact for mobile
+                      : (itemWidth / (itemWidth * 0.7)), // Desktop ratio
+              crossAxisSpacing: isMobile ? 8 : 12,
+              mainAxisSpacing: isMobile ? 8 : 12,
             ),
             itemCount: complaints.length,
             itemBuilder: (context, index) {
@@ -173,6 +392,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         }
 
         return ListView.separated(
+          shrinkWrap: true, // Add this
+          physics: const NeverScrollableScrollPhysics(), // Add this
           padding: const EdgeInsets.all(16),
           itemCount: complaints.length,
           separatorBuilder: (context, index) => const SizedBox(height: 8),

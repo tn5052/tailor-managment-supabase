@@ -98,6 +98,23 @@ class ComplaintService {
         .eq('id', complaintId);
   }
 
+  // Remove update from complaint
+  Future<void> removeComplaintUpdate(String complaintId, String updateId) async {
+    final complaintData = await _supabase
+        .from('complaints')
+        .select('updates')
+        .eq('id', complaintId)
+        .single();
+
+    List<dynamic> updates = List<dynamic>.from(complaintData['updates'])
+      ..removeWhere((update) => update['id'] == updateId);
+
+    await _supabase
+        .from('complaints')
+        .update({'updates': updates})
+        .eq('id', complaintId);
+  }
+
   // Search complaints
   Future<List<Complaint>> searchComplaints(String query) async {
     final response = await _supabase
@@ -211,5 +228,25 @@ class ComplaintService {
       'customerName': response['customers']['name'],
       'invoiceNumber': response['invoices']?['invoice_number'],
     };
+  }
+
+  Future<void> updateComplaintPriority(
+    String complaintId,
+    ComplaintPriority priority,
+  ) async {
+    await _supabase
+        .from('complaints')
+        .update({'priority': priority.toString()})
+        .eq('id', complaintId);
+  }
+
+  Future<void> reassignComplaint(String complaintId, String assignedTo) async {
+    await _supabase
+        .from('complaints')
+        .update({
+          'assigned_to': assignedTo,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', complaintId);
   }
 }

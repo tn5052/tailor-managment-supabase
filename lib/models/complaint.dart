@@ -22,11 +22,11 @@ class Complaint {
   final String title;
   final String description;
   ComplaintStatus status;
-  final ComplaintPriority priority;
+  ComplaintPriority priority;
   final DateTime createdAt;
   DateTime? resolvedAt;
   final List<ComplaintUpdate> updates;
-  final String assignedTo;
+  String assignedTo;
   final List<String> attachments;
 
   Complaint({
