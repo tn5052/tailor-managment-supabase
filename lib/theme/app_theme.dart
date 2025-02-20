@@ -76,10 +76,6 @@ class AppTheme {
     secondaryContainer: darkSecondary.withOpacity(0.15),
     onSecondaryContainer: darkSecondary,
     
-    // Background Colors
-    background: darkBg,
-    onBackground: darkText,
-    
     // Surface Colors
     surface: darkSurface,
     onSurface: darkText,
@@ -296,14 +292,14 @@ class AppTheme {
 
     // Switch theme
     switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return darkAccent;
         }
         return darkText.withOpacity(0.4);
       }),
-      trackColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return darkAccent.withOpacity(0.3);
         }
         return darkText.withOpacity(0.1);
@@ -326,7 +322,7 @@ class AppTheme {
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: darkSurface,
       indicatorColor: darkAccent.withOpacity(0.2),
-      labelTextStyle: MaterialStateProperty.all(
+      labelTextStyle: WidgetStateProperty.all(
         TextStyle(
           color: darkText,
           fontSize: 14,

@@ -114,6 +114,12 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                     ),
                     _buildNavItem(
                       index: 4,
+                      icon: PhosphorIcon(PhosphorIcons.warning()),
+                      selectedIcon: PhosphorIcon(PhosphorIcons.warning(PhosphorIconsStyle.fill)),
+                      label: 'Complaints',
+                    ),
+                    _buildNavItem(
+                      index: 5,
                       icon: PhosphorIcon(PhosphorIcons.gear()),
                       selectedIcon: PhosphorIcon(PhosphorIcons.gear(PhosphorIconsStyle.fill)),
                       label: 'Settings',
@@ -459,10 +465,11 @@ class MobileBottomNav extends StatelessWidget {
                 iconSize: 22,
               ),
               GButton(
-                icon: PhosphorIcons.gear(),
-                text: 'Settings',
+                icon: PhosphorIcons.warning(),
+                text: 'Complaints',
                 iconSize: 22,
               ),
+ 
             ],
             selectedIndex: selectedIndex,
             onTabChange: onDestinationSelected,

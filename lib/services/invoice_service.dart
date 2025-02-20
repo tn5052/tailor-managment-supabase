@@ -7,10 +7,10 @@ import '../widgets/invoice/invoice_template.dart';
 import '../models/invoice.dart';
 
 class InvoiceService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
 
   Future<void> addInvoice(Invoice invoice) async {
-    await _client.from('invoices').insert({
+    await _supabase.from('invoices').insert({
       'id': invoice.id,
       'invoice_number': invoice.invoiceNumber,
       'date': invoice.date.toIso8601String(),
@@ -49,7 +49,7 @@ class InvoiceService {
   }
 
   Future<void> updateInvoice(Invoice invoice) async {
-    await _client
+    await _supabase
         .from('invoices')
         .update({
           'delivery_status': invoice.deliveryStatus.toString(),
@@ -77,11 +77,11 @@ class InvoiceService {
   }
 
   Future<void> deleteInvoice(String invoiceId) async {
-    await _client.from('invoices').delete().eq('id', invoiceId);
+    await _supabase.from('invoices').delete().eq('id', invoiceId);
   }
 
   Stream<List<Invoice>> getInvoicesStream() {
-    return _client
+    return _supabase
         .from('invoices')
         .stream(primaryKey: ['id'])
         .order('date', ascending: false)
@@ -91,7 +91,7 @@ class InvoiceService {
   Future<String> generateInvoiceNumber() async {
     try {
       final response =
-          await _client
+          await _supabase
               .from('invoices')
               .select('invoice_number')
               .order('invoice_number', ascending: false)
@@ -129,7 +129,7 @@ class InvoiceService {
 
   Future<List<Invoice>> getInvoicesByDateRange(DateTime start, DateTime end) async {
     try {
-      final response = await _client
+      final response = await _supabase
           .from('invoices')
           .select()
           .gte('date', start.toIso8601String())
@@ -145,7 +145,7 @@ class InvoiceService {
 
   Future<Map<String, dynamic>> getKPIs() async {
     try {
-      final response = await _client
+      final response = await _supabase
           .from('invoices')
           .select('amount_including_vat, payment_status, delivery_status')
           .order('date');
@@ -188,7 +188,7 @@ class InvoiceService {
       final now = DateTime.now();
       final startDate = now.subtract(const Duration(days: 30));
       
-      final response = await _client
+      final response = await _supabase
           .from('invoices')
           .select('date, amount_including_vat')
           .gte('date', startDate.toIso8601String())
@@ -211,5 +211,27 @@ class InvoiceService {
       debugPrint('Error fetching revenue data: $e');
       return [];
     }
+  }
+
+  // Get invoices by customer ID
+  Future<List<Invoice>> getCustomerInvoices(String customerId) async {
+    final response = await _supabase
+        .from('invoices')
+        .select()
+        .eq('customer_id', customerId)
+        .order('date', ascending: false);
+
+    return response.map((data) => Invoice.fromMap(data)).toList();
+  }
+
+  // Add this method to get a single invoice by ID
+  Future<Invoice> getInvoiceById(String invoiceId) async {
+    final response = await _supabase
+        .from('invoices')
+        .select()
+        .eq('id', invoiceId)
+        .single();
+        
+    return Invoice.fromMap(response);
   }
 }
