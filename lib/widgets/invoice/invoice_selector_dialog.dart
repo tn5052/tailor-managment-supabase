@@ -150,7 +150,7 @@ class _InvoiceSelectorDialogState extends State<InvoiceSelectorDialog> {
                     )
                   : null,
               filled: true,
-              fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
@@ -196,7 +196,7 @@ class _InvoiceSelectorDialogState extends State<InvoiceSelectorDialog> {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
           ),
           child: PhosphorIcon(
@@ -280,7 +280,7 @@ class _InvoiceCardState extends State<_InvoiceCard> {
           color: widget.isSelected
               ? theme.colorScheme.primaryContainer.withOpacity(0.3)
               : _isHovered
-                  ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
+                  ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
                   : null,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(

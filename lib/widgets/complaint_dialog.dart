@@ -109,8 +109,8 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
     final inputDecoration = InputDecoration(
       filled: true,
       fillColor: isDark 
-          ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
-          : theme.colorScheme.surfaceVariant.withOpacity(0.7),
+          ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
+          : theme.colorScheme.surfaceContainerHighest.withOpacity(0.7),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
@@ -336,8 +336,8 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                   ),
                 ),
                 dropdownColor: isDark
-                    ? theme.colorScheme.surfaceVariant
-                    : theme.colorScheme.surfaceVariant,
+                    ? theme.colorScheme.surfaceContainerHighest
+                    : theme.colorScheme.surfaceContainerHighest,
                 style: TextStyle(
                   color: theme.colorScheme.onSurface,
                 ),
