@@ -234,4 +234,23 @@ class InvoiceService {
         
     return Invoice.fromMap(response);
   }
+
+  Future<void> processRefund(String invoiceId, double amount, String reason) async {
+    final invoice = await getInvoiceById(invoiceId);
+    
+    if (invoice.isRefunded) {
+      throw Exception('Invoice is already refunded');
+    }
+
+    if (amount <= 0) {
+      throw Exception('Refund amount must be greater than 0');
+    }
+
+    if (amount > invoice.amountIncludingVat) {
+      throw Exception('Refund amount cannot exceed invoice total');
+    }
+
+    invoice.processRefund(amount, reason);
+    await updateInvoice(invoice);
+  }
 }

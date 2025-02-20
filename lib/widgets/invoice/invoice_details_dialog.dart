@@ -500,6 +500,62 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                   ),
                 ),
               ),
+            if (widget.invoice.paymentStatus == PaymentStatus.paid &&
+                !widget.invoice.isRefunded)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: FilledButton.icon(
+                  onPressed: _handleRefund,
+                  icon: const Icon(Icons.currency_exchange),
+                  label: const Text('Process Refund'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            if (widget.invoice.isRefunded)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Refunded',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Amount: AED ${NumberFormat('#,##0.00').format(widget.invoice.refundAmount)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                    Text(
+                      'Date: ${DateFormat('MMM dd, yyyy').format(widget.invoice.refundedAt!)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                    Text(
+                      'Reason: ${widget.invoice.refundReason}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -672,6 +728,8 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
           return Colors.orange;
         case PaymentStatus.unpaid:
           return Colors.red;
+        case PaymentStatus.refunded:
+          return Colors.grey;
       }
     } else if (status is InvoiceStatus) {
       switch (status) {
@@ -1231,6 +1289,92 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
           backgroundColor: Colors.green,
         ),
       );
+    }
+  }
+
+  Future<void> _handleRefund() async {
+    final controller = TextEditingController();
+    final reasonController = TextEditingController();
+    
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Process Refund'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Refund Amount',
+                prefixText: 'AED ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Refund Reason',
+                hintText: 'Enter reason for refund',
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Total Paid: AED ${NumberFormat('#,##0.00').format(widget.invoice.amountIncludingVat)}',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.isEmpty || reasonController.text.isEmpty) {
+                return;
+              }
+              Navigator.pop(context, {
+                'amount': double.parse(controller.text),
+                'reason': reasonController.text,
+              });
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('PROCESS REFUND'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      try {
+        await _invoiceService.processRefund(
+          widget.invoice.id,
+          result['amount'],
+          result['reason'],
+        );
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refund processed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process refund: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

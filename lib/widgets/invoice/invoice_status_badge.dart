@@ -110,6 +110,12 @@ class InvoiceStatusBadge extends StatelessWidget {
             icon: Icons.paid_outlined,
             label: 'Paid',
           );
+        case PaymentStatus.refunded:
+          return _StatusConfig(
+            color: Colors.grey,
+            icon: Icons.replay_outlined,
+            label: 'Refunded',
+          );
       }
     }
     throw ArgumentError('Invalid status type');

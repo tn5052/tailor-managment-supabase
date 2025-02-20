@@ -94,6 +94,7 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
             ),
           ),
           PopupMenuButton<String>(
+            enabled: !_isUpdating,
             icon: Icon(Icons.more_vert, color: theme.colorScheme.onPrimaryContainer),
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
@@ -440,81 +441,97 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
   }
 
   Widget _buildMainInfo(ThemeData theme, DateFormat dateFormat) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        Card(
-          elevation: 0,
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                    child: Icon(
-                      Icons.person_outline,
-                      color: theme.colorScheme.primary,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                        child: Icon(
+                          Icons.person_outline,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(widget.complaint.title),
+                      subtitle: Text(
+                        'Assigned to: ${widget.complaint.assignedTo}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  title: Text(widget.complaint.title),
-                  subtitle: Text(
-                    'Assigned to: ${widget.complaint.assignedTo}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const Divider(),
+                    _buildInfoRow(
+                      'Status:',
+                      widget.complaint.status.toString().split('.').last,
+                      theme,
+                    ),
+                    _buildInfoRow(
+                      'Priority:',
+                      widget.complaint.priority.toString().split('.').last,
+                      theme,
+                    ),
+                    _buildInfoRow(
+                      'Created:',
+                      dateFormat.format(widget.complaint.createdAt),
+                      theme,
+                    ),
+                    if (widget.complaint.resolvedAt != null)
+                      _buildInfoRow(
+                        'Resolved:',
+                        dateFormat.format(widget.complaint.resolvedAt!),
+                        theme,
+                      ),
+                  ],
                 ),
-                const Divider(),
-                _buildInfoRow(
-                  'Status:',
-                  widget.complaint.status.toString().split('.').last,
-                  theme,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Description',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.complaint.description,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
-                _buildInfoRow(
-                  'Priority:',
-                  widget.complaint.priority.toString().split('.').last,
-                  theme,
+              ),
+            ),
+          ],
+        ),
+        if (_isUpdating)
+          Positioned.fill(
+            child: Container(
+              color: theme.colorScheme.surface.withOpacity(0.7),
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.colorScheme.primary,
                 ),
-                _buildInfoRow(
-                  'Created:',
-                  dateFormat.format(widget.complaint.createdAt),
-                  theme,
-                ),
-                if (widget.complaint.resolvedAt != null)
-                  _buildInfoRow(
-                    'Resolved:',
-                    dateFormat.format(widget.complaint.resolvedAt!),
-                    theme,
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 0,
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Description',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.complaint.description,
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -571,6 +588,7 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
             Expanded(
               child: TextField(
                 controller: _commentController,
+                enabled: !_isUpdating,
                 decoration: InputDecoration(
                   hintText: 'Add a comment...',
                   filled: true,
@@ -588,8 +606,14 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
             ),
             const SizedBox(width: 16),
             ElevatedButton(
-              onPressed: _addUpdate,
-              child: const Text('Add Update'),
+              onPressed: _isUpdating ? null : _addUpdate,
+              child: _isUpdating 
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Add Update'),
             ),
           ],
         ),

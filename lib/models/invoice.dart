@@ -3,7 +3,7 @@ import 'customer.dart';
 
 enum InvoiceStatus { pending, delivered, cancelled }
 
-enum PaymentStatus { unpaid, partial, paid }
+enum PaymentStatus { unpaid, partial, paid, refunded }
 
 class Invoice {
   static const String trn = '100566119200003';
@@ -34,6 +34,9 @@ class Invoice {
   List<Payment> payments;
   final bool isDelivered;
   final List<Product> products;
+  double? refundAmount;
+  DateTime? refundedAt;
+  String? refundReason;
 
   Invoice({
     required this.id,
@@ -61,6 +64,9 @@ class Invoice {
     this.notes = const [],
     this.payments = const [],
     this.products = const [],
+    this.refundAmount,
+    this.refundedAt,
+    this.refundReason,
   });
 
   factory Invoice.create({
@@ -165,6 +171,9 @@ class Invoice {
           (map['products'] as List<dynamic>? ?? [])
               .map((p) => Product.fromMap(p))
               .toList(),
+      refundAmount: map['refund_amount']?.toDouble(),
+      refundedAt: map['refunded_at'] != null ? DateTime.parse(map['refunded_at']) : null,
+      refundReason: map['refund_reason'],
     );
   }
 
@@ -195,6 +204,9 @@ class Invoice {
       'payments': payments.map((p) => p.toMap()).toList(),
       'is_delivered': isDelivered,
       'products': products.map((p) => p.toMap()).toList(),
+      'refund_amount': refundAmount,
+      'refunded_at': refundedAt?.toIso8601String(),
+      'refund_reason': refundReason,
     };
   }
 
@@ -250,6 +262,18 @@ class Invoice {
   static DateTime getEndOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59);
   }
+
+  void processRefund(double amount, String reason) {
+    refundAmount = amount;
+    refundedAt = DateTime.now();
+    refundReason = reason;
+    paymentStatus = PaymentStatus.refunded;
+    
+    // Add a negative payment to track the refund
+    addPayment(-amount, 'Refund: $reason');
+  }
+
+  bool get isRefunded => paymentStatus == PaymentStatus.refunded;
 }
 
 class Payment {
