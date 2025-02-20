@@ -51,6 +51,8 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
                     const SizedBox(height: 24),
                     _buildUpdatesSection(theme),
                     const SizedBox(height: 24),
+                    _buildRefundSection(theme),
+                    const SizedBox(height: 24),
                     _buildActionBar(theme),
                   ],
                 ),
@@ -578,6 +580,108 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
     );
   }
 
+  Widget _buildRefundSection(ThemeData theme) {
+    if (widget.complaint.invoiceId == null) return const SizedBox.shrink();
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.errorContainer.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.currency_exchange, color: theme.colorScheme.error),
+                const SizedBox(width: 8),
+                Text(
+                  'Refund Details',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (!widget.complaint.hasRefundRequest)
+              FilledButton.icon(
+                onPressed: _handleRefundRequest,
+                icon: const Icon(Icons.add),
+                label: const Text('Request Refund'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                ),
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoRow(
+                    'Status:',
+                    widget.complaint.refundStatus.toString().split('.').last,
+                    theme,
+                    color: _getRefundStatusColor(widget.complaint.refundStatus),
+                  ),
+                  _buildInfoRow(
+                    'Amount:',
+                    'AED ${NumberFormat('#,##0.00').format(widget.complaint.refundAmount)}',
+                    theme,
+                  ),
+                  _buildInfoRow(
+                    'Requested:',
+                    DateFormat('MMM dd, yyyy').format(widget.complaint.refundRequestedAt!),
+                    theme,
+                  ),
+                  if (widget.complaint.refundCompletedAt != null)
+                    _buildInfoRow(
+                      'Completed:',
+                      DateFormat('MMM dd, yyyy').format(widget.complaint.refundCompletedAt!),
+                      theme,
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Reason: ${widget.complaint.refundReason}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  if (widget.complaint.refundStatus == RefundStatus.pending)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _processRefund(RefundStatus.rejected),
+                              icon: const Icon(Icons.close),
+                              label: const Text('Reject'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _processRefund(RefundStatus.approved),
+                              icon: const Icon(Icons.check),
+                              label: const Text('Approve'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionBar(ThemeData theme) {
     return Column(
       children: [
@@ -698,6 +802,150 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
       } catch (e) {
         // Handle error
       }
+    }
+  }
+
+  Future<void> _handleRefundRequest() async {
+    if (widget.complaint.invoiceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No invoice associated with this complaint'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final amountController = TextEditingController();
+    final reasonController = TextEditingController();
+    
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Request Refund'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: amountController,
+              decoration: const InputDecoration(
+                labelText: 'Refund Amount',
+                prefixText: 'AED ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Refund Reason',
+                hintText: 'Enter reason for refund request',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (amountController.text.isEmpty || reasonController.text.isEmpty) {
+                return;
+              }
+              Navigator.pop(context, {
+                'amount': double.parse(amountController.text),
+                'reason': reasonController.text,
+              });
+            },
+            child: const Text('REQUEST REFUND'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      try {
+        await _complaintService.requestRefund(
+          widget.complaint.id,
+          result['amount'],
+          result['reason'],
+          widget.complaint.invoiceId!,
+        );
+        
+        setState(() {
+          widget.complaint.refundStatus = RefundStatus.pending;
+          widget.complaint.refundAmount = result['amount'];
+          widget.complaint.refundReason = result['reason'];
+          widget.complaint.refundRequestedAt = DateTime.now();
+        });
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refund request submitted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to request refund: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _processRefund(RefundStatus status) async {
+    try {
+      await _complaintService.processRefund(
+        widget.complaint.id,
+        status,
+        widget.complaint.invoiceId!,
+      );
+
+      setState(() {
+        widget.complaint.refundStatus = status;
+        if (status == RefundStatus.completed) {
+          widget.complaint.refundCompletedAt = DateTime.now();
+        }
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Refund ${status == RefundStatus.approved ? 'approved' : 'rejected'}'),
+          backgroundColor: status == RefundStatus.approved ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to process refund: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Color _getRefundStatusColor(RefundStatus status) {
+    switch (status) {
+      case RefundStatus.none:
+        return Colors.grey;
+      case RefundStatus.pending:
+        return Colors.orange;
+      case RefundStatus.approved:
+        return Colors.blue;
+      case RefundStatus.rejected:
+        return Colors.red;
+      case RefundStatus.completed:
+        return Colors.green;
     }
   }
 }

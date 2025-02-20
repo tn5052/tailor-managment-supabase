@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/complaint.dart';
+import '../services/invoice_service.dart';
 
 class ComplaintService {
   final SupabaseClient _supabase;
@@ -248,5 +249,67 @@ class ComplaintService {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', complaintId);
+  }
+
+  Future<void> requestRefund(
+    String complaintId, 
+    double amount, 
+    String reason,
+    String invoiceId,
+  ) async {
+    await _supabase.from('complaints').update({
+      'refund_status': RefundStatus.pending.toString(),
+      'refund_amount': amount,
+      'refund_requested_at': DateTime.now().toIso8601String(),
+      'refund_reason': reason,
+    }).eq('id', complaintId);
+  }
+
+  Future<void> processRefund(
+    String complaintId, 
+    RefundStatus status,
+    String invoiceId,
+  ) async {
+    // Get invoice service instance
+    final invoiceService = InvoiceService();
+    
+    try {
+      if (status == RefundStatus.approved) {
+        // First get the complaint details
+        final complaint = await getComplaintById(complaintId);
+        
+        if (complaint.refundAmount == null || complaint.refundReason == null) {
+          throw Exception('Invalid refund request');
+        }
+
+        // Process refund in invoice first
+        await invoiceService.processRefund(
+          invoiceId,
+          complaint.refundAmount!,
+          complaint.refundReason!,
+        );
+
+        // Update complaint status
+        await _supabase.from('complaints').update({
+          'refund_status': RefundStatus.completed.toString(),
+          'refund_completed_at': DateTime.now().toIso8601String(),
+        }).eq('id', complaintId);
+      } else {
+        // Just update the status if rejected
+        await _supabase.from('complaints').update({
+          'refund_status': status.toString(),
+        }).eq('id', complaintId);
+      }
+    } catch (e) {
+      throw Exception('Failed to process refund: $e');
+    }
+  }
+
+  Stream<List<Complaint>> getComplaintsStream() {
+    return _supabase
+        .from('complaints')
+        .stream(primaryKey: ['id'])
+        .order('created_at')
+        .map((data) => data.map((json) => Complaint.fromMap(json)).toList());
   }
 }

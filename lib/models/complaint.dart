@@ -15,6 +15,14 @@ enum ComplaintPriority {
   urgent
 }
 
+enum RefundStatus {
+  none,
+  pending,
+  approved,
+  rejected,
+  completed
+}
+
 class Complaint {
   final String id;
   final String customerId;
@@ -28,6 +36,11 @@ class Complaint {
   final List<ComplaintUpdate> updates;
   String assignedTo;
   final List<String> attachments;
+  RefundStatus refundStatus;
+  double? refundAmount;
+  DateTime? refundRequestedAt;
+  DateTime? refundCompletedAt;
+  String? refundReason;
 
   Complaint({
     required this.id,
@@ -42,6 +55,11 @@ class Complaint {
     this.updates = const [],
     required this.assignedTo,
     this.attachments = const [],
+    this.refundStatus = RefundStatus.none,
+    this.refundAmount,
+    this.refundRequestedAt,
+    this.refundCompletedAt,
+    this.refundReason,
   });
 
   factory Complaint.create({
@@ -96,6 +114,11 @@ class Complaint {
       'updates': updates.map((update) => update.toMap()).toList(),
       'assigned_to': assignedTo,
       'attachments': attachments,
+      'refund_status': refundStatus.toString(),
+      'refund_amount': refundAmount,
+      'refund_requested_at': refundRequestedAt?.toIso8601String(),
+      'refund_completed_at': refundCompletedAt?.toIso8601String(),
+      'refund_reason': refundReason,
     };
   }
 
@@ -121,8 +144,22 @@ class Complaint {
           .toList(),
       assignedTo: map['assigned_to'],
       attachments: List<String>.from(map['attachments']),
+      refundStatus: RefundStatus.values.firstWhere(
+        (e) => e.toString() == map['refund_status'],
+        orElse: () => RefundStatus.none,
+      ),
+      refundAmount: map['refund_amount']?.toDouble(),
+      refundRequestedAt: map['refund_requested_at'] != null 
+          ? DateTime.parse(map['refund_requested_at']) 
+          : null,
+      refundCompletedAt: map['refund_completed_at'] != null 
+          ? DateTime.parse(map['refund_completed_at']) 
+          : null,
+      refundReason: map['refund_reason'],
     );
   }
+
+  bool get hasRefundRequest => refundStatus != RefundStatus.none;
 }
 
 class ComplaintUpdate {
