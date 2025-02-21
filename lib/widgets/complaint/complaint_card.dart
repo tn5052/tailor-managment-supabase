@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/complaint.dart';
-import '../theme/app_theme.dart';
-import '../services/customer_service.dart';
-import '../services/invoice_service.dart';
+import '../../models/complaint.dart';
+import '../../theme/app_theme.dart';
+import '../../services/customer_service.dart';
+import '../../services/invoice_service.dart';
 
 class ComplaintCard extends StatefulWidget {
   final Complaint complaint;

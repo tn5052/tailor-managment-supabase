@@ -12,6 +12,7 @@ import '../widgets/dashboard/performance_metrics.dart';
 import '../widgets/dashboard/dashboard_header.dart';
 import '../services/measurement_service.dart';
 import '../services/complaint_service.dart';  // Add this import
+import 'package:supabasetest/screens/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -39,6 +40,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        actions: [
+          if (ResponsiveLayout.isMobile(context))
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+        ],
+      ),
       body: StreamBuilder<List<Invoice>>(
         stream: _invoicesStream,
         builder: (context, invoiceSnapshot) {
@@ -97,10 +113,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     return Column(
       children: [
-        DashboardHeader(
-          invoices: invoices,
-          onRefresh: () => setState(() {}),
-          isMobile: true,
+        SafeArea(
+          child: DashboardHeader(
+            invoices: invoices,
+            onRefresh: () => setState(() {}),
+            isMobile: true,
+          ),
         ),
         const SizedBox(height: 24),
         OverviewGrid(invoices: invoices, isExpanded: true),

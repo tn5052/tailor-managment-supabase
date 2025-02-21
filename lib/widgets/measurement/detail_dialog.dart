@@ -117,40 +117,50 @@ class _DetailDialogState extends State<DetailDialog> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: isDesktop ? theme.colorScheme.surface : theme.colorScheme.primaryContainer,
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: Icon(Icons.straighten, color: theme.colorScheme.primary),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        title: isDesktop 
+            ? Row(
                 children: [
-                  Text(
-                    customer?.name ?? 'Measurement Details',
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: isDesktop 
-                          ? theme.colorScheme.onSurface
-                          : theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  CircleAvatar(
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Icon(Icons.straighten, color: theme.colorScheme.primary),
                   ),
-                  Text(
-                    'Bill #${widget.measurement.billNumber}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDesktop 
-                          ? theme.colorScheme.onSurface.withOpacity(0.6)
-                          : theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customer?.name ?? 'Measurement Details',
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Bill #${widget.measurement.billNumber}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              )
+            : Text(
+                'Measurement Details',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
               ),
-            ),
-          ],
-        ),
+        leading: !isDesktop
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+                color: theme.colorScheme.onPrimaryContainer,
+              )
+            : null,
         actions: [
           FilledButton.tonal(
             onPressed: () => _showMeasurementPreview(context),
@@ -166,16 +176,7 @@ class _DetailDialogState extends State<DetailDialog> {
             ),
           ),
           const SizedBox(width: 8),
-          if (!isDesktop)
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-              label: const Text('Close'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-              ),
-            )
-          else
+          if (isDesktop)
             IconButton(
               icon: const Icon(Icons.close),
               onPressed: () => Navigator.pop(context),
@@ -300,11 +301,16 @@ class _DetailDialogState extends State<DetailDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            ListView.separated(
+            GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 2.5,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
               itemCount: measurements.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = measurements[index];
                 return _buildMobileMeasurementItem(theme, item, color);
@@ -334,23 +340,28 @@ class _DetailDialogState extends State<DetailDialog> {
               item.isHighlighted ? color.withOpacity(0.3) : theme.dividerColor,
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: Text(
-              item.label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
-              ),
+          Text(
+            item.label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.8),
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(height: 4),
           Text(
             item.value,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: item.isHighlighted ? color : null,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -900,87 +911,135 @@ class _DetailDialogState extends State<DetailDialog> {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     
     try {
-      final pdfBytes = await MeasurementTemplate.generateMeasurement(widget.measurement,  customer?.name ?? 'Unknown Customer',
-);
-
-      if (!context.mounted) return;
       showDialog(
         context: context,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: isDesktop ? 800 : MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.9,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Measurement Preview',
-                        style: theme.textTheme.titleLarge,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(28),
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      final pdfBytes = await MeasurementTemplate.generateMeasurement(
+        widget.measurement,
+        customer?.name ?? 'Unknown Customer',
+      );
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Dismiss loading indicator
+
+      if (isDesktop) {
+        // Desktop preview dialog
+        await showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width: 800,
+              height: MediaQuery.of(context).size.height * 0.9,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Measurement Preview',
+                          style: theme.textTheme.titleLarge,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
+                  ),
+                  Expanded(
                     child: PdfPreviewWidget(pdfBytes: pdfBytes),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _sharePdf(pdfBytes);
-                        },
-                        icon: const Icon(Icons.ios_share),
-                        label: const Text('Share PDF'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  _buildPreviewActions(context, theme, pdfBytes),
+                ],
+              ),
             ),
           ),
-        ),
-      );
+        );
+      } else {
+        // Mobile preview
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (context) => Scaffold(
+              appBar: AppBar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                title: Text(
+                  'Measurement Preview',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                actions: [
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _sharePdf(pdfBytes);
+                    },
+                    icon: const Icon(Icons.ios_share),
+                    label: const Text('Share'),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+              body: SafeArea(
+                child: PdfPreviewWidget(pdfBytes: pdfBytes),
+              ),
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate measurement PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate measurement PDF: $e'),
+            backgroundColor: theme.colorScheme.error,
+          ),
+        );
+      }
     }
+  }
+
+  Widget _buildPreviewActions(BuildContext context, ThemeData theme, List<int> pdfBytes) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _sharePdf(pdfBytes);
+            },
+            icon: const Icon(Icons.ios_share),
+            label: const Text('Share PDF'),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _sharePdf(List<int> pdfBytes) async {

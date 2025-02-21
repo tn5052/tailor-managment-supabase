@@ -745,6 +745,9 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
   }
 
   Widget _buildNotesSection(ThemeData theme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Card(
       elevation: 0,
       color: theme.colorScheme.surface,
@@ -753,54 +756,63 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
         side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header section with adaptive padding and sizing
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(isMobile ? 6 : 8),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isMobile ? 8 : 12),
                   ),
                   child: Icon(
                     Icons.notes_rounded,
                     color: theme.colorScheme.primary,
-                    size: 24,
+                    size: isMobile ? 20 : 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isMobile ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Notes & Comments',
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: (isMobile 
+                          ? theme.textTheme.titleMedium 
+                          : theme.textTheme.titleLarge)?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
-                      Text(
-                        'Add notes or comments to this invoice',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      if (!isMobile)
+                        Text(
+                          'Add notes or comments to this invoice',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 8 : 12,
+                    vertical: isMobile ? 4 : 6,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${widget.invoice.notes.length} Notes',
-                    style: theme.textTheme.labelMedium?.copyWith(
+                    style: (isMobile 
+                      ? theme.textTheme.labelSmall 
+                      : theme.textTheme.labelMedium)?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
@@ -808,153 +820,208 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: isMobile ? 16 : 24),
+
+            // Note input section
             Container(
+              constraints: BoxConstraints(
+                maxHeight: isMobile ? 120 : double.infinity,
+              ),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isMobile ? 12 : 16),
                 border: Border.all(
                   color: theme.colorScheme.outline.withOpacity(0.2),
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
+                  Flexible(
                     child: TextField(
                       controller: _noteController,
-                      maxLines: 3,
+                      maxLines: isMobile ? 2 : 3,
                       minLines: 1,
+                      style: isMobile 
+                        ? theme.textTheme.bodyMedium 
+                        : theme.textTheme.bodyLarge,
                       decoration: InputDecoration(
                         hintText: 'Type your note here...',
                         hintStyle: TextStyle(
                           color: theme.colorScheme.onSurface.withOpacity(0.5),
                         ),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.all(16),
+                        contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: FilledButton.tonalIcon(
-                      onPressed: _addNote,
-                      icon: const Icon(Icons.add_comment_rounded),
-                      label: const Text('Add Note'),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    padding: EdgeInsets.all(isMobile ? 8 : 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: _addNote,
+                          icon: Icon(Icons.add_comment_rounded, 
+                            size: isMobile ? 18 : 24),
+                          label: Text(isMobile ? 'Add' : 'Add Note'),
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                isMobile ? 8 : 12),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isMobile ? 12 : 16,
+                              vertical: isMobile ? 8 : 12,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: isMobile ? 16 : 24),
+
+            // Previous notes section
             if (widget.invoice.notes.isNotEmpty) ...[
               Text(
                 'Previous Notes',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: (isMobile 
+                  ? theme.textTheme.titleSmall 
+                  : theme.textTheme.titleMedium)?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.invoice.notes.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final note = widget.invoice.notes[index];
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: theme.colorScheme.outline.withOpacity(0.2),
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.comment_outlined,
-                          color: theme.colorScheme.primary,
-                          size: 20,
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: isMobile 
+                    ? MediaQuery.of(context).size.height * 0.3 
+                    : double.infinity,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: isMobile 
+                    ? const AlwaysScrollableScrollPhysics() 
+                    : const NeverScrollableScrollPhysics(),
+                  itemCount: widget.invoice.notes.length,
+                  separatorBuilder: (context, index) => 
+                    SizedBox(height: isMobile ? 8 : 12),
+                  itemBuilder: (context, index) {
+                    final note = widget.invoice.notes[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(isMobile ? 12 : 16),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.2),
                         ),
                       ),
-                      title: Text(
-                        note,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface,
+                      child: ListTile(
+                        dense: isMobile,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 12 : 16,
+                          vertical: isMobile ? 4 : 8,
                         ),
-                      ),
-                      subtitle: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        leading: Container(
+                          padding: EdgeInsets.all(isMobile ? 6 : 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now()),
-                            style: theme.textTheme.bodySmall?.copyWith(
+                          child: Icon(
+                            Icons.comment_outlined,
+                            color: theme.colorScheme.primary,
+                            size: isMobile ? 16 : 20,
+                          ),
+                        ),
+                        title: Text(
+                          note,
+                          style: (isMobile 
+                            ? theme.textTheme.bodyMedium 
+                            : theme.textTheme.bodyLarge)?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        subtitle: Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: isMobile ? 12 : 14,
                               color: theme.colorScheme.onSurface.withOpacity(0.5),
                             ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.now()),
+                                style: (isMobile 
+                                  ? theme.textTheme.labelSmall 
+                                  : theme.textTheme.bodySmall)?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          onPressed: () => _deleteNote(index),
+                          icon: Icon(Icons.delete_outline, 
+                            size: isMobile ? 20 : 24),
+                          color: theme.colorScheme.error,
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: isMobile ? 32 : 40,
+                            minHeight: isMobile ? 32 : 40,
                           ),
-                        ],
-                      ),
-                      trailing: IconButton.outlined(
-                        onPressed: () => _deleteNote(index),
-                        icon: const Icon(Icons.delete_outline),
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ] else
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.notes_rounded,
-                        size: 48,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No notes yet',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.outline,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add your first note to this invoice',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
+            ] else
+              _buildEmptyNotesPlaceholder(theme, isMobile),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyNotesPlaceholder(ThemeData theme, bool isMobile) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(isMobile ? 20 : 32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.notes_rounded,
+              size: isMobile ? 36 : 48,
+              color: theme.colorScheme.outline,
+            ),
+            SizedBox(height: isMobile ? 12 : 16),
+            Text(
+              'No notes yet',
+              style: (isMobile 
+                ? theme.textTheme.titleSmall 
+                : theme.textTheme.titleMedium)?.copyWith(
+                color: theme.colorScheme.outline,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: isMobile ? 4 : 8),
+            Text(
+              'Add your first note to this invoice',
+              style: (isMobile 
+                ? theme.textTheme.bodySmall 
+                : theme.textTheme.bodyMedium)?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

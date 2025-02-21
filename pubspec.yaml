@@ -40,17 +40,15 @@ dependencies:
   pdf: ^3.11.3
   path_provider: ^2.1.2
   share_plus: ^10.1.4
-  webview_flutter: ^4.10.0
   font_awesome_flutter: ^10.8.0  # Add this line
   google_fonts: ^6.2.1
   fl_chart: ^0.70.2
   flutter_animate: ^4.5.2
   timeago: ^3.2.2
   phosphor_flutter: ^2.1.0
-  google_nav_bar: ^5.0.6
   shared_preferences: ^2.5.2
   provider: ^6.1.2
-
+  pdfx: ^2.6.0  # Add this line
 
   flutter_web_auth_2: ^4.0.0
 

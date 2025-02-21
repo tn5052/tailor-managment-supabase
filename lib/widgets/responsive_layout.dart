@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobileBody;
@@ -421,70 +420,79 @@ class MobileBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    // Calculate font size based on screen width, with min and max constraints
+    final fontSize = (width * 0.03).clamp(11.0, 14.0);
+    final iconSize = (width * 0.055).clamp(20.0, 24.0);
     
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withAlpha(10),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: GNav(
-            gap: 8,
-            activeColor: theme.colorScheme.primary,
-            color: theme.colorScheme.onSurfaceVariant,
-            tabBackgroundColor: theme.colorScheme.primaryContainer.withAlpha(100),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            duration: const Duration(milliseconds: 300),
-            tabs: [
-              GButton(
-                icon: PhosphorIcons.squaresFour(),
-                text: 'Dashboard',
-                iconSize: 22,
-              ),
-              GButton(
-                icon: PhosphorIcons.users(),
-                text: 'Customers',
-                iconSize: 22,
-              ),
-              GButton(
-                icon: PhosphorIcons.ruler(),
-                text: 'Measures',
-                iconSize: 22,
-              ),
-              GButton(
-                icon: PhosphorIcons.receipt(),
-                text: 'Invoices',
-                iconSize: 22,
-              ),
-              GButton(
-                icon: PhosphorIcons.warning(),
-                text: 'Complaints',
-                iconSize: 22,
-              ),
- 
-            ],
-            selectedIndex: selectedIndex,
-            onTabChange: onDestinationSelected,
-            style: GnavStyle.google,
-            textStyle: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
-            iconSize: 22,
-            hoverColor: theme.colorScheme.primaryContainer.withAlpha(50),
-            curve: Curves.easeInOut,
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          ),
+    return NavigationBar(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onDestinationSelected,
+      height: 60,
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      destinations: [
+        _buildDestination(
+          icon: PhosphorIcons.squaresFour(),
+          selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+          label: 'Dashboard',
+          fontSize: fontSize,
+          iconSize: iconSize,
+          theme: theme,
         ),
+        _buildDestination(
+          icon: PhosphorIcons.users(),
+          selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
+          label: 'Customers',
+          fontSize: fontSize,
+          iconSize: iconSize,
+          theme: theme,
+        ),
+        _buildDestination(
+          icon: PhosphorIcons.ruler(),
+          selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
+          label: 'Measures',
+          fontSize: fontSize,
+          iconSize: iconSize,
+          theme: theme,
+        ),
+        _buildDestination(
+          icon: PhosphorIcons.receipt(),
+          selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
+          label: 'Invoices',
+          fontSize: fontSize,
+          iconSize: iconSize,
+          theme: theme,
+        ),
+        _buildDestination(
+          icon: PhosphorIcons.warning(),
+          selectedIcon: PhosphorIcons.warning(PhosphorIconsStyle.fill),
+          label: 'Issues',
+          fontSize: fontSize,
+          iconSize: iconSize,
+          theme: theme,
+        ),
+      ],
+    );
+  }
+
+  NavigationDestination _buildDestination({
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+    required double fontSize,
+    required double iconSize,
+    required ThemeData theme,
+  }) {
+    return NavigationDestination(
+      icon: PhosphorIcon(
+        icon,
+        size: iconSize,
       ),
+      selectedIcon: PhosphorIcon(
+        selectedIcon,
+        size: iconSize,
+      ),
+      label: label,
     );
   }
 }
