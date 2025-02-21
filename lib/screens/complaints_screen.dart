@@ -82,9 +82,11 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         bottom: 8.0, // Adjusted bottom padding
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // Ensure vertical alignment
         children: [
           Expanded(
             child: Container(  // Wrapped TextField in Container for shadow
+              height: 48, // Fixed height for search bar
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
@@ -121,7 +123,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           ),
           const SizedBox(width: 8),
           Container(
-            height: 48,
+            width: isDesktop ? 100 : 48, // Adjust width based on desktop/mobile
+            height: 48, // Match search bar height
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
@@ -143,6 +146,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                     horizontal: isDesktop ? 16 : 12,
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center, // Center content
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Stack(

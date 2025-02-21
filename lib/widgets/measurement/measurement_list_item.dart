@@ -24,232 +24,178 @@ class MeasurementListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final defaultTextSize = screenWidth < 360 ? 12.0 : 14.0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8), // reduced from 12
+      margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
       ),
       color: theme.colorScheme.surface.withOpacity(0.8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap:
-            () => _showDetailsDialog(
-              context,
-              measurement.customerId,
-            ), //customer),
-        child: Container(
-          padding: const EdgeInsets.all(12.0), // increased from 8.0
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showDetailsDialog(context, measurement.customerId),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary,
-                    child: const Icon(Icons.straighten, color: Colors.white),
-                  ),
-                  const SizedBox(width: 12), // increased from 8
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        flex: 2,
-                                        child: FutureBuilder<String>(
-                                          future: _supabaseService.getCustomerName(measurement.customerId),
-                                          builder: (context, snapshot) {
-                                            return Text(
-                                              snapshot.data ?? 'Loading...',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 16,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            );
-                                          },
-                                        ),
+              // Leading section with avatar and main info
+              Expanded(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: screenWidth < 360 ? 16 : 20,
+                      backgroundColor: theme.colorScheme.primary,
+                      child: Icon(
+                        Icons.straighten,
+                        color: Colors.white,
+                        size: screenWidth < 360 ? 16 : 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Customer name and bill number row
+                          Row(
+                            children: [
+                              Flexible(
+                                child: FutureBuilder<String>(
+                                  future: _supabaseService.getCustomerName(measurement.customerId),
+                                  builder: (context, snapshot) {
+                                    final name = snapshot.data ?? 'Loading...';
+                                    return Text(
+                                      name.length > 7 ? '${name.substring(0, 7)}...' : name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: defaultTextSize + 2,
                                       ),
-                                      const SizedBox(
-                                        width: 12,
-                                      ), // increased from 8
-                                      Flexible(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.receipt_outlined,
-                                                size: 12,
-                                                color:
-                                                    theme.colorScheme.primary,
-                                              ),
-                                              const SizedBox(width: 3),
-                                              Flexible(
-                                                child: Text(
-                                                  '#${measurement.billNumber}',
-                                                  style: TextStyle(
-                                                    color:
-                                                        theme
-                                                            .colorScheme
-                                                            .primary,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    measurement.style,
-                                    style: TextStyle(
-                                      color: theme.textTheme.bodyMedium?.color
-                                          ?.withOpacity(0.6),
-                                      fontSize: 12,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                            if (isDesktop)
-                              _buildDateColumn(theme, measurement)
-                            else
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '#${measurement.billNumber}',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontSize: defaultTextSize - 2,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Date and style info
+                          Row(
+                            children: [
+                              Text(
+                                DateFormat('MMM dd, yyyy').format(measurement.lastUpdated),
+                                style: TextStyle(
+                                  fontSize: defaultTextSize - 2,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                width: 3,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                               Expanded(
-                                flex: 1,
-                                child: _buildDateColumn(theme, measurement),
+                                child: Text(
+                                  measurement.style,
+                                  style: TextStyle(
+                                    fontSize: defaultTextSize - 2,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                          ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Actions menu
+              PopupMenuButton<String>(
+                position: PopupMenuPosition.under,
+                icon: Icon(
+                  Icons.more_vert,
+                  size: screenWidth < 360 ? 20 : 24,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.edit_outlined,
+                          size: screenWidth < 360 ? 18 : 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Edit',
+                          style: TextStyle(fontSize: defaultTextSize),
                         ),
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    position: PopupMenuPosition.under,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: screenWidth < 360 ? 18 : 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: defaultTextSize,
+                          ),
+                        ),
+                      ],
                     ),
-                    itemBuilder:
-                        (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit_outlined),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _showDeleteDialog(context);
-                      } else if (value == 'edit') {
-                        _showEditMeasurementDialog(context, measurement, index);
-                      }
-                    },
                   ),
                 ],
-              ),
-              const SizedBox(height: 12), // reduced from 16
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    MeasurementBadge(
-                      text: 'Style: ${measurement.style}',
-                      color: theme.colorScheme.primary,
-                    ),
-                    ...buildStyleDetailBadges(context, theme).map(
-                      (badge) => Padding(
-                        padding: const EdgeInsets.only(
-                          left: 4,
-                        ), // reduced from 6
-                        child: badge,
-                      ),
-                    ),
-                    if (measurement.notes.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 4,
-                        ), // reduced from 6
-                        child: MeasurementBadge(
-                          text: 'Notes: ${measurement.notes}',
-                          color: Colors.grey,
-                          maxWidth: 150,
-                        ),
-                      ),
-                  ],
-                ),
+                onSelected: (value) {
+                  if (value == 'delete') {
+                    _showDeleteDialog(context);
+                  } else if (value == 'edit') {
+                    _showEditMeasurementDialog(context, measurement, index);
+                  }
+                },
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDateColumn(ThemeData theme, Measurement measurement) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            'Updated: ${DateFormat('MMM dd, yyyy').format(measurement.lastUpdated)}',
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ),
     );
   }

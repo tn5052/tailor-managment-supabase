@@ -27,74 +27,104 @@ class InvoiceSearchBar extends StatelessWidget {
     final isDesktop = screenWidth >= 1024;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-      ), // Add horizontal padding
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: TextField(
-              controller: searchController,
-              onChanged: onSearchChanged,
-              decoration: InputDecoration(
-                hintText:
-                    'Search invoices by number, customer, bill #, or phone',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon:
-                    filter.searchQuery.isNotEmpty
-                        ? IconButton(
+            child: Container(
+              height: 48, // Fixed height
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.shadow.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: searchController,
+                onChanged: onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: isDesktop
+                      ? 'Search invoices by number, customer, bill #, or phone'
+                      : 'Search invoices...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: filter.searchQuery.isNotEmpty
+                      ? IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: onClearSearch,
                         )
-                        : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            height: 48,
-            child: FilledButton.tonalIcon(
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          Container(
+            width: 48, // Fixed width for mobile
+            height: 48, // Match search bar height
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              onPressed: () => _showFilterDialog(context),
-              icon: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Icon(Icons.filter_list),
-                  if (filter.hasActiveFilters)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          shape: BoxShape.circle,
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showFilterDialog(context),
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.filter_list,
+                      color: filter.hasActiveFilters
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    if (filter.hasActiveFilters)
+                      Positioned(
+                        right: 12,
+                        top: 12,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-              label: Text(isDesktop ? 'Filters' : ''),
             ),
           ),
           const SizedBox(width: 8),
-          InvoiceGroupMenu(
-            currentGroup: filter.groupBy,
-            onGroupChanged:
-                (group) => onFilterChanged(filter.copyWith(groupBy: group)),
+          // Keep group menu with consistent height
+          SizedBox(
+            height: 48, // Match other elements height
+            child: InvoiceGroupMenu(
+              currentGroup: filter.groupBy,
+              onGroupChanged: (group) =>
+                  onFilterChanged(filter.copyWith(groupBy: group)),
+            ),
           ),
         ],
       ),
