@@ -36,24 +36,15 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 2,
-        backgroundColor: theme.colorScheme.primaryContainer,
         title: Text(
           'Invoices',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.titleLarge,
         ),
+        centerTitle: !isDesktop,
         actions: [
           if (isDesktop) ...[
             FilledButton.icon(
               onPressed: () => InvoiceScreen.show(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-              ),
               icon: const Icon(Icons.add),
               label: const Text('New Invoice'),
             ),

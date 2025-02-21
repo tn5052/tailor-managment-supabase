@@ -62,16 +62,11 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 2,
-        backgroundColor: theme.colorScheme.primaryContainer,
         title: Text(
           'Measurements',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.titleLarge,
         ),
+        centerTitle: !isDesktop,
         actions: [
           if (isDesktop) ...[
             FilledButton.icon(

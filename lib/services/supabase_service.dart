@@ -47,7 +47,7 @@ class SupabaseService {
         .order(
           'bill_number',
           ascending: false,
-        ) // Changed from created_at to bill_number
+        ) // Changed from created_at to bill_numberFT
         .map((maps) => maps.map((map) => Customer.fromMap(map)).toList())
         .handleError((error) {
           debugPrint('Error in customers stream: $error');
@@ -58,17 +58,16 @@ class SupabaseService {
   // Get last bill number
   Future<int> getLastBillNumber() async {
     try {
-      final response =
-          await _client
-              .from('customers')
-              .select('bill_number')
-              .order('created_at', ascending: false)
-              .limit(1)
-              .single();
+      final response = await _client
+          .from('customers')
+          .select('bill_number')
+          .order('bill_number', ascending: false)
+          .limit(1)
+          .maybeSingle();
 
-      final data = response;
+      if (response == null) return 0;
 
-      final String lastBillNumber = data['bill_number'] ?? '';
+      final String lastBillNumber = response['bill_number'] ?? '';
       final RegExp regex = RegExp(r'TMS-(\d+)');
       final Match? match = regex.firstMatch(lastBillNumber);
 
@@ -76,6 +75,23 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Error fetching last bill number: $e');
       return 0;
+    }
+  }
+
+  // Add this new method to check for duplicate bill numbers
+  Future<bool> isBillNumberUnique(String billNumber) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select('bill_number')
+          .eq('bill_number', billNumber)
+          .limit(1)
+          .maybeSingle();
+      
+      return response == null; // If no record found, the bill number is unique
+    } catch (e) {
+      debugPrint('Error checking bill number uniqueness: $e');
+      return false;
     }
   }
 

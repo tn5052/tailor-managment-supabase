@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/customer.dart';
 import '../services/supabase_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -40,24 +39,15 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 2,
-        backgroundColor: theme.colorScheme.primaryContainer,
         title: Text(
           'Customers',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.titleLarge,
         ),
+        centerTitle: !isDesktop,
         actions: [
           if (isDesktop) ...[
             FilledButton.icon(
               onPressed: () => _showAddCustomerDialog(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-              ),
               icon: const Icon(Icons.add),
               label: const Text('Add Customer'),
             ),
@@ -583,36 +573,40 @@ class _AddCustomerFormState extends State<_AddCustomerForm> {
 
   String? _validateBillNumber(String? value) {
     if (widget.isEditing) return null;
-    if (!_useCustomBillNumber || value == null || value.isEmpty) {
-      return null;
+    if (!_useCustomBillNumber) return null;
+    if (value == null || value.isEmpty) {
+      return 'Please enter a bill number';
+    }
+    if (!value.startsWith('C-')) {
+      return 'Bill number must start with TMS-';
+    }
+    final RegExp regex = RegExp(r'TMS-\d{3,}');
+    if (!regex.hasMatch(value)) {
+      return 'Format should be TMS-XXX (where X is a number)';
     }
     return null;
-  }
-
-  Future<bool> _checkDuplicateBillNumber(String billNumber) async {
-    final response = await Supabase.instance.client
-        .from('customers')
-        .select('bill_number')
-        .eq('bill_number', billNumber);
-    return (response as List<dynamic>).isEmpty;
   }
 
   Future<void> _saveCustomer() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
-        final billNumber =
-            widget.isEditing
-                ? widget.customer!.billNumber
-                : await _generateBillNumber();
+        String billNumber;
+        if (widget.isEditing) {
+          billNumber = widget.customer!.billNumber;
+        } else {
+          billNumber = _useCustomBillNumber 
+              ? _billNumberController.text
+              : await _generateBillNumber();
 
-        if (_useCustomBillNumber && !widget.isEditing) {
-          final isValid = await _checkDuplicateBillNumber(
-            _billNumberController.text,
-          );
-          if (!isValid) {
+          // Check for duplicate bill number
+          final isUnique = await _supabaseService.isBillNumberUnique(billNumber);
+          if (!isUnique) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Bill number already exists')),
+              const SnackBar(
+                content: Text('This bill number already exists. Please try another.'),
+                backgroundColor: Colors.red,
+              ),
             );
             return;
           }
@@ -620,8 +614,7 @@ class _AddCustomerFormState extends State<_AddCustomerForm> {
 
         final customer = Customer(
           id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
-          billNumber:
-              _useCustomBillNumber ? _billNumberController.text : billNumber,
+          billNumber: billNumber,
           name: _nameController.text,
           phone: _phoneController.text,
           whatsapp: _whatsappController.text,

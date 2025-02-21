@@ -25,10 +25,15 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktop = MediaQuery.of(context).size.width >= 1200;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Complaints Management'),
+        title: Text(
+          'Complaints',
+          style: theme.textTheme.titleLarge,
+        ),
+        centerTitle: !isDesktop,
         actions: [
           IconButton(
             icon: PhosphorIcon(
