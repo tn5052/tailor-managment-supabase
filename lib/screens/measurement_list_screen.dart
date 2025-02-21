@@ -4,6 +4,7 @@ import '../widgets/measurement/measurement_list.dart';
 import '../widgets/measurement/add_measurement_dialog.dart';
 import '../widgets/measurement/measurement_search_bar.dart';
 import '../services/measurement_service.dart';
+import '../../models/measurement_filter.dart';  // Add this import
 
 class MeasurementListScreen extends StatefulWidget {
   const MeasurementListScreen({super.key});
@@ -15,9 +16,7 @@ class MeasurementListScreen extends StatefulWidget {
 class _MeasurementListScreenState extends State<MeasurementListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final MeasurementService _measurementService = MeasurementService();
-  String _searchQuery = '';
-  DateTime? _selectedDate;
-  bool get isDesktop => MediaQuery.of(context).size.width >= 1024;
+  MeasurementFilter _filter = const MeasurementFilter(); // Replace _searchQuery and _selectedDate with filter
 
   @override
   void dispose() {
@@ -25,28 +24,47 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
     super.dispose();
   }
 
-  bool _filterMeasurement(Measurement measurement, String query) {
-    if (query.isEmpty && _selectedDate == null) return true;
+  bool _filterMeasurement(Measurement measurement) {
+    if (!_filter.hasActiveFilters && _filter.groupBy == MeasurementGroupBy.none) {
+      return true;
+    }
 
-    final queryLower = query.toLowerCase();
-    final matchesQuery =
-        query.isEmpty ||
-        measurement.billNumber.toLowerCase().contains(queryLower);
+    bool matches = true;
 
-    if (_selectedDate == null) return matchesQuery;
+    // Search query filter
+    if (_filter.searchQuery.isNotEmpty) {
+      final queryLower = _filter.searchQuery.toLowerCase();
+      matches = matches && (
+        measurement.billNumber.toLowerCase().contains(queryLower) ||
+        measurement.style.toLowerCase().contains(queryLower)
+      );
+    }
 
-    final measurementDate = DateTime(
-      measurement.date.year,
-      measurement.date.month,
-      measurement.date.day,
-    );
-    final filterDate = DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-    );
+    // Date range filter
+    if (_filter.dateRange != null) {
+      matches = matches && (
+        measurement.date.isAfter(_filter.dateRange!.start.subtract(const Duration(days: 1))) &&
+        measurement.date.isBefore(_filter.dateRange!.end.add(const Duration(days: 1)))
+      );
+    }
 
-    return matchesQuery && measurementDate.isAtSameMomentAs(filterDate);
+    // Style filter
+    if (_filter.style != null) {
+      matches = matches && measurement.style == _filter.style;
+    }
+
+    // Design type filter
+    if (_filter.designType != null) {
+      matches = matches && measurement.designType == _filter.designType;
+    }
+
+    // Only recent updates filter
+    if (_filter.onlyRecentUpdates) {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      matches = matches && measurement.lastUpdated.isAfter(sevenDaysAgo);
+    }
+
+    return matches;
   }
 
   void _showAddMeasurementDialog() {
@@ -90,20 +108,22 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-              ), // Add padding only to search bar
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: MeasurementSearchBar(
                 searchController: _searchController,
-                onSearchChanged:
-                    (value) => setState(() => _searchQuery = value),
+                onSearchChanged: (value) => setState(() {
+                  _filter = _filter.copyWith(searchQuery: value);
+                }),
                 onClearSearch: () {
                   _searchController.clear();
-                  setState(() => _searchQuery = '');
+                  setState(() {
+                    _filter = _filter.copyWith(searchQuery: '');
+                  });
                 },
-                selectedDate: _selectedDate,
-                onDateChanged: (date) => setState(() => _selectedDate = date),
-                searchQuery: _searchQuery,
+                filter: _filter,
+                onFilterChanged: (newFilter) {
+                  setState(() => _filter = newFilter);
+                },
               ),
             ),
             Expanded(
@@ -123,14 +143,13 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
 
                   final measurements = measurementSnapshot.data ?? [];
                   final filteredMeasurements =
-                      measurements
-                          .where((m) => _filterMeasurement(m, _searchQuery))
-                          .toList();
+                      measurements.where((m) => _filterMeasurement(m)).toList();
 
                   return MeasurementList(
                     isDesktop: isDesktop,
                     isTablet: isTablet,
                     measurements: filteredMeasurements,
+                    groupBy: _filter.groupBy, // Add this line
                   );
                 },
               ),
