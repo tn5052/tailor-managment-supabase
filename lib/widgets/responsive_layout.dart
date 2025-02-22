@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'dart:math' as math;
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobileBody;
@@ -424,7 +423,6 @@ class MobileBottomNav extends StatefulWidget {
 
 class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProviderStateMixin {
   late AnimationController _menuController;
-  bool get _isMenuOpen => _menuController.status == AnimationStatus.completed;
   OverlayEntry? _overlayEntry;
 
   @override
@@ -443,17 +441,15 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
     super.dispose();
   }
 
-  // Reduce radius for tighter menu
+  /* Commenting out circular menu code temporarily
   double get _menuRadius => MediaQuery.of(context).size.width * 0.25;
-  
-  // Adjust arc span for better visual balance with reduced radius
-  final double _arcSpan = 130.0; // degrees
+  final double _arcSpan = 130.0;
   
   List<_MenuItem> get menuItems {
     // Calculate even spacing between items
     final itemCount = 4;
     final angleStep = _arcSpan / (itemCount - 1);
-    final startAngle = -180 + (180 - _arcSpan) / 2; // Center the arc
+    final startAngle = -180 + (180 - _arcSpan) / 2;
 
     return [
       _MenuItem(
@@ -462,24 +458,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
         label: 'Add Customer',
         onTapMessage: 'Add New Customer',
       ),
-      _MenuItem(
-        angleDeg: startAngle + angleStep,
-        icon: PhosphorIcons.ruler(),
-        label: 'Add Measures',
-        onTapMessage: 'Add New Measurement',
-      ),
-      _MenuItem(
-        angleDeg: startAngle + (angleStep * 2),
-        icon: PhosphorIcons.receipt(),
-        label: 'Add Invoice',
-        onTapMessage: 'Add New Invoice',
-      ),
-      _MenuItem(
-        angleDeg: startAngle + (angleStep * 3),
-        icon: PhosphorIcons.warning(),
-        label: 'Add Complaint',
-        onTapMessage: 'Add New Complaint',
-      ),
+      // ...rest of the menu items...
     ];
   }
 
@@ -513,11 +492,12 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
       }
     });
   }
+  */
 
   @override
   Widget build(BuildContext context) {
-    final theme  = Theme.of(context);
-    final width  = MediaQuery.of(context).size.width;
+    final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
     final fontSize = (width * 0.03).clamp(10.0, 12.0);
     final iconSize = (width * 0.055).clamp(22.0, 24.0);
 
@@ -590,151 +570,60 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
             ),
           ),
         ),
-        // FAB with circular animated menu.
+        // Updated FAB with proper circular design
         Positioned(
           left: 0,
           right: 0,
-          bottom: 50, // Adjusted position
+          bottom: 50,
           child: Center(
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none, // Ensure menu items are not clipped
-              children: [
-                // Circular Menu Items
-                for (var item in menuItems)
-                  AnimatedBuilder(
-                    animation: _menuController,
-                    builder: (context, child) {
-                      final double angleRad = item.angleDeg * (math.pi / 180);
-                      final double dx = _menuRadius * math.cos(angleRad) * _menuController.value;
-                      final double dy = _menuRadius * math.sin(angleRad) * _menuController.value;
-                      
-                      return Transform.translate(
-                        offset: Offset(dx, dy),
-                        child: IgnorePointer(
-                          ignoring: !_isMenuOpen,
-                          child: Transform.scale(
-                            scale: _menuController.value,
-                            child: Opacity(
-                              opacity: _menuController.value,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: theme.colorScheme.shadow.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      spreadRadius: 0,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  shape: const CircleBorder(),
-                                  color: theme.brightness == Brightness.dark
-                                      ? theme.colorScheme.surfaceContainerHighest
-                                      : theme.colorScheme.surface,
-                                  elevation: 0,
-                                  child: InkWell(
-                                    customBorder: const CircleBorder(),
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(item.onTapMessage),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: theme.colorScheme.outline.withOpacity(0.1),
-                                          width: 1,
-                                        ),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            theme.colorScheme.surfaceContainerHighest,
-                                            theme.colorScheme.surface,
-                                          ],
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        item.icon,
-                                        size: 24,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+            child: Material(
+              shape: const CircleBorder(),
+              elevation: 4,
+              color: Colors.transparent,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Add New Item (Menu temporarily disabled)')),
+                  );
+                },
+                child: Container(
+                  height: 56,
+                  width: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.secondary,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 2),
+                      ),
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.2),
+                        blurRadius: 16,
+                        spreadRadius: -2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-
-                // The Floating Action Button
-                Material(
-                  shape: const CircleBorder(),
-                  elevation: 8,
-                  color: Colors.transparent,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _toggleMenu,
-                    child: Container(
-                      height: 60,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primary,
-                            theme.colorScheme.secondary,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.4),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 4),
-                          ),
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.3),
-                            blurRadius: 24,
-                            spreadRadius: -2,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: TweenAnimationBuilder(
-                          tween: Tween<double>(begin: 0, end: _isMenuOpen ? 1 : 0),
-                          duration: const Duration(milliseconds: 300),
-                          builder: (context, double value, child) {
-                            return Transform.rotate(
-                              angle: value * 0.5 * math.pi,
-                              child: child,
-                            );
-                          },
-                          child: PhosphorIcon(
-                            PhosphorIcons.plus(),
-                            size: 28,
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                      ),
+                  child: Center(
+                    child: PhosphorIcon(
+                      PhosphorIcons.plus(),
+                      size: 24,
+                      color: theme.colorScheme.onPrimary,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -783,16 +672,3 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
   }
 }
 
-class _MenuItem {
-  final double angleDeg;
-  final IconData icon;
-  final String label;
-  final String onTapMessage;
-
-  _MenuItem({
-    required this.angleDeg,
-    required this.icon,
-    required this.label,
-    required this.onTapMessage,
-  });
-}

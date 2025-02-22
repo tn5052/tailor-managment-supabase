@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/responsive_layout.dart';
-import 'customer_list_screen.dart';
-import 'measurement_list_screen.dart';
-import 'invoice_list_screen.dart';
+import 'customer_screen.dart';
+import 'measurement_screen.dart';
+import 'invoice_screen.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'complaints_screen.dart';
