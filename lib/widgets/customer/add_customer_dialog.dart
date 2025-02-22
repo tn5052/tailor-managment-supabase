@@ -59,9 +59,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     if (_useCustomBillNumber && _billNumberController.text.isNotEmpty) {
       return _billNumberController.text;
     }
-
-    final lastNumber = await _supabaseService.getLastBillNumber();
-    return 'TMS-${(lastNumber + 1).toString().padLeft(3, '0')}';
+    return await _supabaseService.generateUniqueBillNumber();
   }
 
   String? _validateBillNumber(String? value) {
@@ -70,12 +68,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     if (value == null || value.isEmpty) {
       return 'Please enter a bill number';
     }
-    if (!value.startsWith('C-')) {
-      return 'Bill number must start with TMS-';
-    }
-    final RegExp regex = RegExp(r'TMS-\d{3,}');
-    if (!regex.hasMatch(value)) {
-      return 'Format should be TMS-XXX (where X is a number)';
+    // Only allow numeric values
+    if (!RegExp(r'^\d+$').hasMatch(value)) {
+      return 'Please enter only numbers';
     }
     return null;
   }
@@ -87,22 +82,32 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         if (widget.isEditing) {
           billNumber = widget.customer!.billNumber;
         } else {
-          billNumber = _useCustomBillNumber 
-              ? _billNumberController.text
-              : await _generateBillNumber();
-
-          final isUnique = await _supabaseService.isBillNumberUnique(billNumber);
-          if (!isUnique) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('This bill number already exists. Please try another.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
+          if (_useCustomBillNumber) {
+            billNumber = _billNumberController.text;
+            final isUnique = await _supabaseService.isBillNumberUnique(billNumber);
+            if (!isUnique) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('This bill number already exists. Please try another.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+          } else {
+            billNumber = await _generateBillNumber();
           }
         }
+
+        // Show loading indicator
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saving customer...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
 
         final customer = Customer(
           id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
@@ -114,11 +119,23 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
           gender: _selectedGender,
         );
 
-        if (widget.isEditing) {
-          await _supabaseService.updateCustomer(customer);
-        } else {
-          await _supabaseService.addCustomer(customer);
+        // Retry logic for saving
+        int retries = 0;
+        while (retries < 3) {
+          try {
+            if (widget.isEditing) {
+              await _supabaseService.updateCustomer(customer);
+            } else {
+              await _supabaseService.addCustomer(customer);
+            }
+            break; // Success, exit loop
+          } catch (e) {
+            retries++;
+            if (retries == 3) throw e; // Throw on final retry
+            await Future.delayed(Duration(milliseconds: 500 * retries));
+          }
         }
+
         if (!mounted) return;
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +150,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -192,6 +212,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                   if (_useCustomBillNumber) ...[
                     TextFormField(
                       controller: _billNumberController,
+                      keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Custom Bill Number',
                         prefixIcon: Icon(Icons.receipt_outlined),

@@ -15,6 +15,7 @@ class SupabaseService {
       'whatsapp': customer.whatsapp,
       'address': customer.address,
       'gender': customer.gender.name,
+      'created_at': DateTime.now().toIso8601String(),  // Add creation timestamp
     });
   }
 
@@ -38,21 +39,37 @@ class SupabaseService {
     await _client.from('customers').delete().eq('id', customerId);
   }
 
-  // Get all customers stream
+  // Get all customers stream: using realtime when possible, falling back to polling if needed.
   Stream<List<Customer>> getCustomersStream() {
-    return _client
-        .from('customers')
-        .stream(primaryKey: ['id'])
-        // Remove the deleted condition since it doesn't exist
-        .order(
-          'bill_number',
-          ascending: false,
-        ) // Changed from created_at to bill_numberFT
-        .map((maps) => maps.map((map) => Customer.fromMap(map)).toList())
-        .handleError((error) {
-          debugPrint('Error in customers stream: $error');
-          return [];
-        });
+    try {
+      final realtimeStream = _client
+          .from('customers')
+          .stream(primaryKey: ['id'])
+          .order('created_at', ascending: false)
+          .map((maps) => maps.map((map) => Customer.fromMap(map)).toList());
+      // Listen for errors and switch to polling if required.
+      return realtimeStream.handleError((error) {
+        debugPrint('Realtime stream error: $error');
+      });
+    } catch (e) {
+      debugPrint('Realtime subscription failed; switching to polling: $e');
+      // Fallback polling stream polling every 5 seconds.
+      return (() async* {
+        while (true) {
+          try {
+            final data = await _client
+                .from('customers')
+                .select()
+                .order('created_at', ascending: false);
+            yield (data as List).map((map) => Customer.fromMap(map)).toList();
+          } catch (err) {
+            debugPrint('Polling error: $err');
+            yield <Customer>[];
+          }
+          await Future.delayed(const Duration(seconds: 5));
+        }
+      })();
+    }
   }
 
   // Get last bill number
@@ -62,20 +79,49 @@ class SupabaseService {
           .from('customers')
           .select('bill_number')
           .order('bill_number', ascending: false)
-          .limit(1)
-          .maybeSingle();
+          .limit(50);  // Get more numbers to analyze
 
-      if (response == null) return 0;
+      if (response.isEmpty) return 0;
 
-      final String lastBillNumber = response['bill_number'] ?? '';
-      final RegExp regex = RegExp(r'TMS-(\d+)');
-      final Match? match = regex.firstMatch(lastBillNumber);
-
-      return match != null ? int.parse(match.group(1)!) : 0;
+      // Find the highest number by checking all recent entries
+      int highest = 0;
+      for (var item in response) {
+        final String billStr = item['bill_number']?.toString() ?? '0';
+        final int? number = int.tryParse(billStr);
+        if (number != null && number > highest) {
+          highest = number;
+        }
+      }
+      return highest;
     } catch (e) {
       debugPrint('Error fetching last bill number: $e');
       return 0;
     }
+  }
+
+  Future<String> generateUniqueBillNumber() async {
+    int retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
+      try {
+        final lastNumber = await getLastBillNumber();
+        final newNumber = (lastNumber + 1 + retries).toString();
+        
+        // Verify uniqueness
+        final isUnique = await isBillNumberUnique(newNumber);
+        if (isUnique) {
+          return newNumber;
+        }
+      } catch (e) {
+        debugPrint('Error in attempt $retries: $e');
+      }
+      retries++;
+    }
+    
+    // If all retries failed, generate a timestamp-based number as fallback
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return (timestamp % 100000).toString();
   }
 
   // Add this new method to check for duplicate bill numbers
