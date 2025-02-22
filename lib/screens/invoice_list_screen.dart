@@ -6,6 +6,7 @@ import '../widgets/invoice/invoice_details_dialog.dart';
 import '../widgets/invoice/invoice_search_bar.dart';
 import '../services/invoice_service.dart';
 import '../widgets/invoice/invoice_group_view.dart';
+import 'complaints_screen.dart'; // Import ComplaintsScreen
 
 class InvoiceListScreen extends StatefulWidget {
   const InvoiceListScreen({super.key});
@@ -41,15 +42,58 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
           style: theme.textTheme.titleLarge,
         ),
         centerTitle: !isDesktop,
-        actions: [
-          if (isDesktop) ...[
-            FilledButton.icon(
-              onPressed: () => InvoiceScreen.show(context),
-              icon: const Icon(Icons.add),
-              label: const Text('New Invoice'),
-            ),
-            const SizedBox(width: 16),
-          ],
+        actions: <Widget>[
+          Row(
+            children: [
+              if (!isDesktop)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ComplaintsScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.feedback_outlined,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Issues',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (isDesktop) ...[
+                FilledButton.icon(
+                  onPressed: () => InvoiceScreen.show(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Invoice'),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ],
+          ),
         ],
       ),
       body: Column(

@@ -4,9 +4,14 @@ import '../models/measurement.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:async';
 
 class MeasurementService {
   final SupabaseClient _client = Supabase.instance.client;
+  StreamController<List<Measurement>>? _measurementsController;
+  StreamSubscription? _subscription;
+  Timer? _reconnectionTimer;
+  bool _isConnected = false;
 
   // Add measurement
   Future<void> addMeasurement(Measurement measurement) async {
@@ -37,18 +42,66 @@ class MeasurementService {
     return Measurement.fromMap(response);
   }
 
-  // Get measurements stream
+  // Get measurements stream with improved error handling
   Stream<List<Measurement>> getMeasurementsStream() {
-    return _client
-        .from('measurements')
-        .stream(primaryKey: ['id'])
-        // Remove the deleted condition
-        .order('date', ascending: false)
-        .map((maps) => maps.map((map) => Measurement.fromMap(map)).toList())
-        .handleError((error) {
-          debugPrint('Error in measurements stream: $error');
-          return [];
-        });
+    _measurementsController?.close();
+    _measurementsController = StreamController<List<Measurement>>.broadcast(
+      onListen: () => _initializeStream(),
+      onCancel: () => _disposeStream(),
+    );
+
+    return _measurementsController!.stream;
+  }
+
+  void _initializeStream() {
+    _reconnectToStream();
+  }
+
+  void _disposeStream() {
+    _subscription?.cancel();
+    _reconnectionTimer?.cancel();
+    _isConnected = false;
+  }
+
+  Future<void> _reconnectToStream() async {
+    if (_isConnected) return;
+
+    try {
+      _subscription?.cancel();
+      _subscription = _client
+          .from('measurements')
+          .stream(primaryKey: ['id'])
+          .order('date', ascending: false)
+          .map((maps) => maps.map((map) => Measurement.fromMap(map)).toList())
+          .listen(
+            (data) {
+              if (!(_measurementsController?.isClosed ?? true)) {
+                _measurementsController?.add(data);
+              }
+              _isConnected = true;
+              _reconnectionTimer?.cancel();
+            },
+            onError: (error) {
+              debugPrint('Error in measurements stream: $error');
+              _isConnected = false;
+              _scheduleReconnection();
+            },
+            cancelOnError: false,
+          );
+    } catch (e) {
+      debugPrint('Error establishing stream connection: $e');
+      _isConnected = false;
+      _scheduleReconnection();
+    }
+  }
+
+  void _scheduleReconnection() {
+    _reconnectionTimer?.cancel();
+    _reconnectionTimer = Timer(const Duration(seconds: 5), () {
+      if (!_isConnected && !(_measurementsController?.isClosed ?? true)) {
+        _reconnectToStream();
+      }
+    });
   }
 
   Future<void> sharePdf(List<int> pdfBytes, String fileName) async {

@@ -517,7 +517,7 @@ class _FilterChip extends StatelessWidget {
         ),
         selected: selected,
         onSelected: onSelected,
-        backgroundColor: theme.colorScheme.surfaceVariant,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
         selectedColor: theme.colorScheme.secondaryContainer,
       ),
     );

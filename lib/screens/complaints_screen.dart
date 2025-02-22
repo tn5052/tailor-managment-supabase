@@ -19,7 +19,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   final ComplaintService _complaintService = ComplaintService(
     Supabase.instance.client,
   );
-  bool _isGridView = true; // Changed to true for default grid view
+  final bool _isGridView = true; // Changed to true for default grid view
   String _searchQuery = '';
   ComplaintStatus? _filterStatus;
   ComplaintPriority? _filterPriority;

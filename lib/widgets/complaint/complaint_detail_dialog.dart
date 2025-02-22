@@ -948,7 +948,7 @@ class _ComplaintDetailDialogState extends State<ComplaintDetailDialog> {
                 decoration: InputDecoration(
                   hintText: 'Add update...',
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant,
+                  fillColor: theme.colorScheme.surfaceContainerHighest,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,

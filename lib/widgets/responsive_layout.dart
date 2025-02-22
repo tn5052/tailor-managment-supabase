@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'dart:math' as math;
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobileBody;
@@ -407,7 +408,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
   }
 }
 
-class MobileBottomNav extends StatelessWidget {
+class MobileBottomNav extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
@@ -418,81 +419,380 @@ class MobileBottomNav extends StatelessWidget {
   });
 
   @override
+  State<MobileBottomNav> createState() => _MobileBottomNavState();
+}
+
+class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProviderStateMixin {
+  late AnimationController _menuController;
+  bool get _isMenuOpen => _menuController.status == AnimationStatus.completed;
+  OverlayEntry? _overlayEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    _menuController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    _menuController.dispose();
+    super.dispose();
+  }
+
+  // Reduce radius for tighter menu
+  double get _menuRadius => MediaQuery.of(context).size.width * 0.25;
+  
+  // Adjust arc span for better visual balance with reduced radius
+  final double _arcSpan = 130.0; // degrees
+  
+  List<_MenuItem> get menuItems {
+    // Calculate even spacing between items
+    final itemCount = 4;
+    final angleStep = _arcSpan / (itemCount - 1);
+    final startAngle = -180 + (180 - _arcSpan) / 2; // Center the arc
+
+    return [
+      _MenuItem(
+        angleDeg: startAngle,
+        icon: PhosphorIcons.userPlus(),
+        label: 'Add Customer',
+        onTapMessage: 'Add New Customer',
+      ),
+      _MenuItem(
+        angleDeg: startAngle + angleStep,
+        icon: PhosphorIcons.ruler(),
+        label: 'Add Measures',
+        onTapMessage: 'Add New Measurement',
+      ),
+      _MenuItem(
+        angleDeg: startAngle + (angleStep * 2),
+        icon: PhosphorIcons.receipt(),
+        label: 'Add Invoice',
+        onTapMessage: 'Add New Invoice',
+      ),
+      _MenuItem(
+        angleDeg: startAngle + (angleStep * 3),
+        icon: PhosphorIcons.warning(),
+        label: 'Add Complaint',
+        onTapMessage: 'Add New Complaint',
+      ),
+    ];
+  }
+
+  void _toggleMenu() {
+    if (_menuController.isCompleted) {
+      _closeMenu();
+    } else {
+      _openMenu();
+    }
+  }
+
+  void _openMenu() {
+    _menuController.forward();
+    _overlayEntry = OverlayEntry(
+      builder: (context) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _closeMenu,
+        child: Container(
+          color: Colors.transparent,
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _closeMenu() {
+    _menuController.reverse().then((_) {
+      if (_overlayEntry != null) {
+        _overlayEntry?.remove();
+        _overlayEntry = null;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final width = MediaQuery.of(context).size.width;
-    // Calculate font size based on screen width, with min and max constraints
-    final fontSize = (width * 0.03).clamp(11.0, 14.0);
-    final iconSize = (width * 0.055).clamp(20.0, 24.0);
-    
-    return NavigationBar(
-      selectedIndex: selectedIndex,
-      onDestinationSelected: onDestinationSelected,
-      height: 60,
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: [
-        _buildDestination(
-          icon: PhosphorIcons.squaresFour(),
-          selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
-          label: 'Dashboard',
-          fontSize: fontSize,
-          iconSize: iconSize,
-          theme: theme,
+    final theme  = Theme.of(context);
+    final width  = MediaQuery.of(context).size.width;
+    final fontSize = (width * 0.03).clamp(10.0, 12.0);
+    final iconSize = (width * 0.055).clamp(22.0, 24.0);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: BottomAppBar(
+              color: theme.colorScheme.surface,
+              height: 60,
+              padding: EdgeInsets.zero,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildDestination(
+                    icon: PhosphorIcons.squaresFour(),
+                    selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+                    label: 'Dashboard',
+                    fontSize: fontSize,
+                    iconSize: iconSize,
+                    theme: theme,
+                    isSelected: widget.selectedIndex == 0,
+                    onTap: () => widget.onDestinationSelected(0),
+                  ),
+                  _buildDestination(
+                    icon: PhosphorIcons.users(),
+                    selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
+                    label: 'Customers',
+                    fontSize: fontSize,
+                    iconSize: iconSize,
+                    theme: theme,
+                    isSelected: widget.selectedIndex == 1,
+                    onTap: () => widget.onDestinationSelected(1),
+                  ),
+                  const SizedBox(width: 56), // space for FAB
+                  _buildDestination(
+                    icon: PhosphorIcons.ruler(),
+                    selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
+                    label: 'Measures',
+                    fontSize: fontSize,
+                    iconSize: iconSize,
+                    theme: theme,
+                    isSelected: widget.selectedIndex == 2,
+                    onTap: () => widget.onDestinationSelected(2),
+                  ),
+                  _buildDestination(
+                    icon: PhosphorIcons.receipt(),
+                    selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
+                    label: 'Invoices',
+                    fontSize: fontSize,
+                    iconSize: iconSize,
+                    theme: theme,
+                    isSelected: widget.selectedIndex == 3,
+                    onTap: () => widget.onDestinationSelected(3),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        _buildDestination(
-          icon: PhosphorIcons.users(),
-          selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
-          label: 'Customers',
-          fontSize: fontSize,
-          iconSize: iconSize,
-          theme: theme,
-        ),
-        _buildDestination(
-          icon: PhosphorIcons.ruler(),
-          selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
-          label: 'Measures',
-          fontSize: fontSize,
-          iconSize: iconSize,
-          theme: theme,
-        ),
-        _buildDestination(
-          icon: PhosphorIcons.receipt(),
-          selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
-          label: 'Invoices',
-          fontSize: fontSize,
-          iconSize: iconSize,
-          theme: theme,
-        ),
-        _buildDestination(
-          icon: PhosphorIcons.warning(),
-          selectedIcon: PhosphorIcons.warning(PhosphorIconsStyle.fill),
-          label: 'Issues',
-          fontSize: fontSize,
-          iconSize: iconSize,
-          theme: theme,
+        // FAB with circular animated menu.
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 50, // Adjusted position
+          child: Center(
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none, // Ensure menu items are not clipped
+              children: [
+                // Circular Menu Items
+                for (var item in menuItems)
+                  AnimatedBuilder(
+                    animation: _menuController,
+                    builder: (context, child) {
+                      final double angleRad = item.angleDeg * (math.pi / 180);
+                      final double dx = _menuRadius * math.cos(angleRad) * _menuController.value;
+                      final double dy = _menuRadius * math.sin(angleRad) * _menuController.value;
+                      
+                      return Transform.translate(
+                        offset: Offset(dx, dy),
+                        child: IgnorePointer(
+                          ignoring: !_isMenuOpen,
+                          child: Transform.scale(
+                            scale: _menuController.value,
+                            child: Opacity(
+                              opacity: _menuController.value,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.colorScheme.shadow.withOpacity(0.2),
+                                      blurRadius: 10,
+                                      spreadRadius: 0,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  shape: const CircleBorder(),
+                                  color: theme.brightness == Brightness.dark
+                                      ? theme.colorScheme.surfaceContainerHighest
+                                      : theme.colorScheme.surface,
+                                  elevation: 0,
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(item.onTapMessage),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: theme.colorScheme.outline.withOpacity(0.1),
+                                          width: 1,
+                                        ),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            theme.colorScheme.surfaceContainerHighest,
+                                            theme.colorScheme.surface,
+                                          ],
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        item.icon,
+                                        size: 24,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                // The Floating Action Button
+                Material(
+                  shape: const CircleBorder(),
+                  elevation: 8,
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _toggleMenu,
+                    child: Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.primary,
+                            theme.colorScheme.secondary,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.4),
+                            blurRadius: 16,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
+                            blurRadius: 24,
+                            spreadRadius: -2,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0, end: _isMenuOpen ? 1 : 0),
+                          duration: const Duration(milliseconds: 300),
+                          builder: (context, double value, child) {
+                            return Transform.rotate(
+                              angle: value * 0.5 * math.pi,
+                              child: child,
+                            );
+                          },
+                          child: PhosphorIcon(
+                            PhosphorIcons.plus(),
+                            size: 28,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  NavigationDestination _buildDestination({
+  Widget _buildDestination({
     required IconData icon,
     required IconData selectedIcon,
     required String label,
     required double fontSize,
     required double iconSize,
     required ThemeData theme,
+    required bool isSelected,
+    required VoidCallback onTap,
   }) {
-    return NavigationDestination(
-      icon: PhosphorIcon(
-        icon,
-        size: iconSize,
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                PhosphorIcon(
+                  isSelected ? selectedIcon : icon,
+                  size: iconSize,
+                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      selectedIcon: PhosphorIcon(
-        selectedIcon,
-        size: iconSize,
-      ),
-      label: label,
     );
   }
+}
+
+class _MenuItem {
+  final double angleDeg;
+  final IconData icon;
+  final String label;
+  final String onTapMessage;
+
+  _MenuItem({
+    required this.angleDeg,
+    required this.icon,
+    required this.label,
+    required this.onTapMessage,
+  });
 }
