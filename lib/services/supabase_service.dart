@@ -17,6 +17,8 @@ class SupabaseService {
       'gender': customer.gender.name,
       'created_at': DateTime.now().toIso8601String(), // Add creation timestamp
       'referred_by': customer.referredBy, // Save the referredBy value
+      'family_id': customer.familyId,
+      'family_relation': customer.familyRelation?.name,
     });
   }
 
@@ -32,6 +34,8 @@ class SupabaseService {
           'address': customer.address,
           'gender': customer.gender.name,
           'referred_by': customer.referredBy, // Update the referredBy value
+          'family_id': customer.familyId,
+          'family_relation': customer.familyRelation?.name,
         })
         .eq('id', customer.id);
   }
@@ -208,6 +212,78 @@ class SupabaseService {
       return (response as List).map((map) => Customer.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Error fetching referred customers: $e');
+      return [];
+    }
+  }
+
+  Future<List<Customer>> getFamilyMembers(String familyId) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .or('id.eq.${familyId},family_id.eq.${familyId}')
+          .order('family_relation', ascending: true)
+          .order('created_at', ascending: false);
+      
+      return (response as List).map((map) => Customer.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Error fetching family members: $e');
+      return [];
+    }
+  }
+
+  Future<bool> addFamilyMember(String customerId, String familyMemberId, FamilyRelation relation) async {
+    try {
+      await _client.rpc('add_family_member', params: {
+        'customer_id': customerId,
+        'family_member_id': familyMemberId,
+        'relation': relation.name,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error adding family member: $e');
+      return false;
+    }
+  }
+
+  Future<bool> removeFamilyMember(String customerId) async {
+    try {
+      await _client
+          .from('customers')
+          .update({
+            'family_id': null,
+            'family_relation': null,
+          })
+          .eq('id', customerId);
+      return true;
+    } catch (e) {
+      debugPrint('Error removing family member: $e');
+      return false;
+    }
+  }
+
+  // Add this method to get all related family groups
+  Future<List<List<Customer>>> getCustomerFamilyGroups() async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .not('family_id', 'is', null)
+          .order('family_id', ascending: true)
+          .order('family_relation', ascending: true);
+
+      // Group customers by family_id
+      final Map<String, List<Customer>> familyGroups = {};
+      for (var map in response) {
+        final customer = Customer.fromMap(map);
+        final familyId = customer.familyId!;
+        familyGroups.putIfAbsent(familyId, () => []);
+        familyGroups[familyId]!.add(customer);
+      }
+
+      return familyGroups.values.toList();
+    } catch (e) {
+      debugPrint('Error fetching family groups: $e');
       return [];
     }
   }

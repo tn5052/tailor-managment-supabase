@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/customer.dart';
 import '../../services/supabase_service.dart';
+import 'family_badge.dart';
 
 class CustomerList extends StatelessWidget {
   final String searchQuery;
@@ -278,6 +279,54 @@ class _CustomerCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (customer.familyId != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      FamilyBadge(
+                        customer: customer,
+                        onTap: () => _showFamilyMembers(context, customer),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFamilyMembers(BuildContext context, Customer customer) async {
+    final theme = Theme.of(context);
+    final familyMembers = await SupabaseService().getFamilyMembers(customer.familyId!);
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Family Members',
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              ...familyMembers.map((member) => ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                  child: Text(member.name[0]),
+                ),
+                title: Text(member.name),
+                subtitle: Text(member.familyRelationDisplay),
+              )),
             ],
           ),
         ),

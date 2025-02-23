@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/customer.dart';
 import '../../services/supabase_service.dart';
 import 'customer_selector_dialog.dart'; // Import CustomerSelectorDialog
+import 'family_selector_section.dart'; // Import FamilySelectorSection
 
 class AddCustomerDialog extends StatefulWidget {
   final Customer? customer;
@@ -33,6 +34,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   Customer? _referredBy;
   int _referralCount = 0;
 
+  // Add these fields
+  Customer? _familyMember;
+  FamilyRelation? _familyRelation;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +52,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       // Load referring customer if exists
       if (widget.customer!.referredBy != null) {
         _loadReferringCustomer(widget.customer!.referredBy!);
+      }
+
+      if (widget.customer!.familyId != null) {
+        _loadFamilyMember(widget.customer!.familyId!);
       }
     } else {
       _selectedGender = Gender.male;
@@ -65,6 +74,20 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       }
     } catch (e) {
       debugPrint('Error loading referring customer: $e');
+    }
+  }
+
+  Future<void> _loadFamilyMember(String familyId) async {
+    try {
+      final member = await _supabaseService.getCustomerById(familyId);
+      if (member != null) {
+        setState(() {
+          _familyMember = member;
+          _familyRelation = widget.customer!.familyRelation;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading family member: $e');
     }
   }
 
@@ -141,7 +164,16 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
           address: _addressController.text,
           gender: _selectedGender,
           referredBy: _referredBy?.id, // Save the ID of the referred customer
+          familyId: _familyMember?.id,
+          familyRelation: _familyRelation,
         );
+
+        // If editing and family connection was removed, remove it from database
+        if (widget.isEditing && 
+            widget.customer?.familyId != null && 
+            _familyMember == null) {
+          await _supabaseService.removeFamilyMember(widget.customer!.id);
+        }
 
         // Retry logic for saving
         int retries = 0;
@@ -183,90 +215,138 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     }
   }
 
+  Future<void> _confirmRemoveReferral(BuildContext context) {
+    final theme = Theme.of(context);
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Referral'),
+        content: Text(
+          'Are you sure you want to remove ${_referredBy?.name} as the referring customer?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton.tonal(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _referredBy = null;
+                _referralCount = 0;
+              });
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.errorContainer,
+              foregroundColor: theme.colorScheme.onErrorContainer,
+            ),
+            child: const Text('REMOVE'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReferralSection(ThemeData theme) {
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    final brightness = theme.brightness;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 16), // Reduced from 24
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
+        color: brightness == Brightness.light
+            ? theme.colorScheme.primaryContainer.withOpacity(0.1)
+            : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.colorScheme.outline.withOpacity(0.1),
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            contentPadding: const EdgeInsets.all(12), // Reduced from 16
-            minVerticalPadding: 0, // Add this to reduce vertical padding
-            leading: CircleAvatar(
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-              radius: 20, // Reduced from 24
-              child: _referredBy != null
-                  ? Text(
+          // Header with remove option
+          Row(
+            children: [
+              Icon(
+                Icons.person_add_outlined,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Referral',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              if (_referredBy != null) ...[
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.link_off, size: 18),
+                  tooltip: 'Remove referral',
+                  onPressed: () => _confirmRemoveReferral(context),
+                ),
+              ],
+            ],
+          ),
+
+          if (_referredBy != null) ...[
+            const SizedBox(height: 8),
+            // Selected referrer info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: brightness == Brightness.light
+                    ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
+                    : theme.colorScheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+                    child: Text(
                       _referredBy!.name[0].toUpperCase(),
                       style: TextStyle(
                         color: theme.colorScheme.primary,
-                        fontSize: 20,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : Icon(
-                      Icons.person_add_outlined,
-                      color: theme.colorScheme.primary,
-                      size: 24,
                     ),
-            ),
-            title: Text(
-              'Customer Referral',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            subtitle: _referredBy != null
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
+                  ),
+                  const SizedBox(width: 12),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Referred by ',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          _referredBy!.name,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _referredBy!.name,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        Text(
+                          '#${_referredBy!.billNumber} · ${_referredBy!.phone}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
                           ),
                         ),
                       ],
                     ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Select the customer who referred this person (Optional)',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                   ),
-            trailing: _referredBy != null
-                ? IconButton.filledTonal(
-                    icon: const Icon(Icons.edit, size: 20),
+                  // Edit button
+                  IconButton.filledTonal(
                     onPressed: () async {
                       final customer = await CustomerSelectorDialog.show(
                         context,
@@ -280,60 +360,51 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                         });
                       }
                     },
-                    tooltip: 'Change referral',
-                  )
-                : null,
-          ),
-          if (_referredBy != null) ...[
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), // Reduced padding
-              child: isDesktop 
-                ? Row(
-                    children: _buildReferralBadges(theme),
-                  )
-                : Wrap(
-                    spacing: 6, // Reduced from 8
-                    runSpacing: 6, // Reduced from 8
-                    children: _buildReferralBadges(theme),
+                    icon: const Icon(Icons.edit, size: 16),
                   ),
+                ],
+              ),
             ),
-            if (_referralCount > 0)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), // Reduced padding
+
+            if (_referralCount > 0) ...[
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => _showReferralsList(context),
                 child: Container(
-                  padding: const EdgeInsets.all(8), // Reduced from 12
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorScheme.secondary.withOpacity(0.2),
-                    ),
+                    color: theme.colorScheme.secondaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.verified_outlined,
+                        Icons.people_outline,
+                        size: 16,
                         color: theme.colorScheme.secondary,
-                        size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Trusted Referrer - Has referred $_referralCount ${_referralCount == 1 ? 'customer' : 'customers'}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.secondary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      Text(
+                        '$_referralCount ${_referralCount == 1 ? 'referral' : 'referrals'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 12,
+                        color: theme.colorScheme.secondary,
                       ),
                     ],
                   ),
                 ),
               ),
-          ],
-          if (_referredBy == null)
+            ],
+          ] else
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12), // Reduced padding
+              padding: const EdgeInsets.only(top: 4),
               child: FilledButton.tonalIcon(
                 onPressed: () async {
                   final customer = await CustomerSelectorDialog.show(
@@ -348,46 +419,17 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                     });
                   }
                 },
-                icon: const Icon(Icons.person_search),
+                icon: const Icon(Icons.person_search, size: 18),
                 label: const Text('SELECT REFERRING CUSTOMER'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  foregroundColor: theme.colorScheme.onSecondaryContainer,
+                ),
               ),
             ),
         ],
       ),
     );
-  }
-
-  List<Widget> _buildReferralBadges(ThemeData theme) {
-    return [
-      _buildInfoBadge(
-        theme,
-        Icons.phone_outlined,
-        _referredBy!.phone,
-        theme.colorScheme.primary,
-      ),
-      const SizedBox(width: 12),
-      _buildInfoBadge(
-        theme,
-        Icons.receipt_outlined,
-        '#${_referredBy!.billNumber}',
-        theme.colorScheme.secondary,
-      ),
-      const SizedBox(width: 12),
-      Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _referralCount > 0 ? () => _showReferralsList(context) : null,
-          borderRadius: BorderRadius.circular(8),
-          child: _buildInfoBadge(
-            theme,
-            Icons.people_outline,
-            '$_referralCount ${_referralCount == 1 ? 'referral' : 'referrals'}',
-            theme.colorScheme.tertiary,
-            showClickHint: _referralCount > 0,
-          ),
-        ),
-      ),
-    ];
   }
 
   Future<void> _showReferralsList(BuildContext context) async {
@@ -495,45 +537,6 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     );
   }
 
-  Widget _buildInfoBadge(
-    ThemeData theme,
-    IconData icon,
-    String text,
-    Color color, {
-    bool showClickHint = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reduced padding
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (showClickHint) ...[
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 12,
-              color: color.withOpacity(0.5),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   InputDecoration _buildInputDecoration(ThemeData theme, {
     required String label,
@@ -657,6 +660,18 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
           ],
           
           _buildReferralSection(theme),
+
+          // Add after referral section and before form
+          FamilySelectorSection(
+            selectedFamilyMember: _familyMember,
+            selectedRelation: _familyRelation,
+            onFamilyMemberSelected: (customer) {
+              setState(() => _familyMember = customer);
+            },
+            onRelationChanged: (relation) {
+              setState(() => _familyRelation = relation);
+            },
+          ),
           
           Divider(color: theme.colorScheme.outlineVariant),
           SizedBox(height: isDesktop ? 16 : 12),
