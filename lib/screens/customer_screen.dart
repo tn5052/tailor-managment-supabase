@@ -140,23 +140,30 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   }
 
   Future<void> _showAddCustomerDialog(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+    final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width >= 1024;
     
     return showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 40.0 : 8.0,
-          vertical: 24.0,
+          horizontal: isDesktop ? 40.0 : 0, // Remove horizontal padding on mobile
+          vertical: isDesktop ? 24.0 : 0, // Remove vertical padding on mobile
         ),
         child: Container(
-          width: isDesktop ? 600 : MediaQuery.of(context).size.width,
+          width: isDesktop ? 600 : screenSize.width,
+          height: isDesktop ? null : screenSize.height, // Full height on mobile
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
+            maxHeight: isDesktop ? screenSize.height * 0.9 : screenSize.height,
           ),
           child: Card(
             margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                isDesktop ? 28 : 0, // No border radius on mobile
+              ),
+            ),
             child: SingleChildScrollView(
               child: const AddCustomerDialog(),
             ),

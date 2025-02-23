@@ -15,7 +15,8 @@ class SupabaseService {
       'whatsapp': customer.whatsapp,
       'address': customer.address,
       'gender': customer.gender.name,
-      'created_at': DateTime.now().toIso8601String(),  // Add creation timestamp
+      'created_at': DateTime.now().toIso8601String(), // Add creation timestamp
+      'referred_by': customer.referredBy, // Save the referredBy value
     });
   }
 
@@ -30,6 +31,7 @@ class SupabaseService {
           'whatsapp': customer.whatsapp,
           'address': customer.address,
           'gender': customer.gender.name,
+          'referred_by': customer.referredBy, // Update the referredBy value
         })
         .eq('id', customer.id);
   }
@@ -79,7 +81,7 @@ class SupabaseService {
           .from('customers')
           .select('bill_number')
           .order('bill_number', ascending: false)
-          .limit(50);  // Get more numbers to analyze
+          .limit(50); // Get more numbers to analyze
 
       if (response.isEmpty) return 0;
 
@@ -102,12 +104,12 @@ class SupabaseService {
   Future<String> generateUniqueBillNumber() async {
     int retries = 0;
     const maxRetries = 5;
-    
+
     while (retries < maxRetries) {
       try {
         final lastNumber = await getLastBillNumber();
         final newNumber = (lastNumber + 1 + retries).toString();
-        
+
         // Verify uniqueness
         final isUnique = await isBillNumberUnique(newNumber);
         if (isUnique) {
@@ -118,7 +120,7 @@ class SupabaseService {
       }
       retries++;
     }
-    
+
     // If all retries failed, generate a timestamp-based number as fallback
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     return (timestamp % 100000).toString();
@@ -127,13 +129,14 @@ class SupabaseService {
   // Add this new method to check for duplicate bill numbers
   Future<bool> isBillNumberUnique(String billNumber) async {
     try {
-      final response = await _client
-          .from('customers')
-          .select('bill_number')
-          .eq('bill_number', billNumber)
-          .limit(1)
-          .maybeSingle();
-      
+      final response =
+          await _client
+              .from('customers')
+              .select('bill_number')
+              .eq('bill_number', billNumber)
+              .limit(1)
+              .maybeSingle();
+
       return response == null; // If no record found, the bill number is unique
     } catch (e) {
       debugPrint('Error checking bill number uniqueness: $e');
@@ -144,15 +147,68 @@ class SupabaseService {
   // Get customer name by ID
   Future<String> getCustomerName(String customerId) async {
     try {
-      final response = await _client
-          .from('customers')
-          .select('name')
-          .eq('id', customerId)
-          .single();
+      final response =
+          await _client
+              .from('customers')
+              .select('name')
+              .eq('id', customerId)
+              .single();
       return response['name'] as String;
     } catch (e) {
       debugPrint('Error fetching customer name: $e');
       return 'Unknown Customer';
+    }
+  }
+
+  // Get all customers
+  Future<List<Customer>> getAllCustomers() async {
+    final response = await _client.from('customers').select();
+    return (response as List).map((map) => Customer.fromMap(map)).toList();
+  }
+
+  // Add this new method
+  Future<Customer?> getCustomerById(String id) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .eq('id', id)
+          .single();
+      return Customer.fromMap(response);
+    } catch (e) {
+      debugPrint('Error fetching customer by ID: $e');
+      return null;
+    }
+  }
+
+  // Fix the getReferralCount method
+  Future<int> getReferralCount(String customerId) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .eq('referred_by', customerId);
+      
+      // Count the number of records in the response
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error fetching referral count: $e');
+      return 0;
+    }
+  }
+
+  Future<List<Customer>> getReferredCustomers(String customerId) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .eq('referred_by', customerId)
+          .order('created_at', ascending: false);
+      
+      return (response as List).map((map) => Customer.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Error fetching referred customers: $e');
+      return [];
     }
   }
 }
