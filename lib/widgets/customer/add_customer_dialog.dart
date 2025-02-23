@@ -38,6 +38,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   Customer? _familyMember;
   FamilyRelation? _familyRelation;
 
+  List<Customer> _referredCustomers = [];
+  List<Customer> _familyMembers = [];
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +60,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       if (widget.customer!.familyId != null) {
         _loadFamilyMember(widget.customer!.familyId!);
       }
+
+      _loadReferredCustomers(widget.customer!.id);
+      _loadFamilyMembers(widget.customer!.id);
     } else {
       _selectedGender = Gender.male;
     }
@@ -88,6 +94,28 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       }
     } catch (e) {
       debugPrint('Error loading family member: $e');
+    }
+  }
+
+  Future<void> _loadReferredCustomers(String customerId) async {
+    try {
+      final customers = await _supabaseService.getReferredCustomers(customerId);
+      setState(() {
+        _referredCustomers = customers;
+      });
+    } catch (e) {
+      debugPrint('Error loading referred customers: $e');
+    }
+  }
+
+  Future<void> _loadFamilyMembers(String customerId) async {
+    try {
+      final familyMembers = await _supabaseService.getFamilyMembers(customerId);
+      setState(() {
+        _familyMembers = familyMembers;
+      });
+    } catch (e) {
+      debugPrint('Error loading family members: $e');
     }
   }
 
@@ -537,6 +565,205 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     );
   }
 
+  Future<void> _showReferredCustomersDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+
+    await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 400,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      child: Text(
+                        widget.customer!.name[0].toUpperCase(),
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Referred Customers by ${widget.customer!.name}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${_referredCustomers.length} ${_referredCustomers.length == 1 ? 'customer' : 'customers'}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _referredCustomers.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final customer = _referredCustomers[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                        child: Text(
+                          customer.name[0].toUpperCase(),
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      title: Text(customer.name),
+                      subtitle: Text('#${customer.billNumber} · ${customer.phone}'),
+                      trailing: Text(
+                        customer.createdAt.toString().split(' ')[0],
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showFamilyMembersDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+
+    await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 400,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      child: Text(
+                        widget.customer!.name[0].toUpperCase(),
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Family Members of ${widget.customer!.name}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${_familyMembers.length} ${_familyMembers.length == 1 ? 'member' : 'members'}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _familyMembers.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final member = _familyMembers[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                        child: Text(
+                          member.name[0].toUpperCase(),
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      title: Text(member.name),
+                      subtitle: Text(member.familyRelationDisplay),
+                      trailing: Text(
+                        member.createdAt.toString().split(' ')[0],
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   InputDecoration _buildInputDecoration(ThemeData theme, {
     required String label,
@@ -586,7 +813,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Enhanced title section with bill number
+          // Enhanced title section with bill number and referred customers button
           Row(
             children: [
               if (!isDesktop) 
@@ -608,36 +835,62 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                     ),
                     if (widget.isEditing) ...[
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.receipt_outlined,
-                              size: 16,
-                              color: theme.colorScheme.primary,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Bill #${widget.customer?.billNumber}',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w600,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withOpacity(0.2),
                               ),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.receipt_outlined,
+                                  size: 16,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Bill #${widget.customer?.billNumber}',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_referredCustomers.isNotEmpty)
+                            FilledButton.tonal(
+                              onPressed: () => _showReferredCustomersDialog(context),
+                              child: Text(
+                                '${_referredCustomers.length} Referred Customers',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          if (_familyMembers.isNotEmpty)
+                            FilledButton.tonal(
+                              onPressed: () => _showFamilyMembersDialog(context),
+                              child: Text(
+                                '${_familyMembers.length} Family Members',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ],

@@ -216,12 +216,12 @@ class SupabaseService {
     }
   }
 
-  Future<List<Customer>> getFamilyMembers(String familyId) async {
+  Future<List<Customer>> getFamilyMembers(String customerId) async {
     try {
       final response = await _client
           .from('customers')
           .select()
-          .or('id.eq.${familyId},family_id.eq.${familyId}')
+          .or('id.eq.${customerId},family_id.eq.${customerId}')
           .order('family_relation', ascending: true)
           .order('created_at', ascending: false);
       
