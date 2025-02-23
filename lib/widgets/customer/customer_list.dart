@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add this import
 import '../../models/customer.dart';
 import '../../services/supabase_service.dart';
+import '../../models/layout_type.dart';
 
 class CustomerList extends StatelessWidget {
   final String searchQuery;
   final Function(Customer, int) onEdit;
   final Function(Customer) onDelete;
+  final CustomerLayoutType layoutType;
+  final bool isDesktop;
 
   const CustomerList({
     super.key,
     required this.searchQuery,
     required this.onEdit,
     required this.onDelete,
+    required this.layoutType,
+    required this.isDesktop,
   });
 
   Widget _buildCustomerCard(BuildContext context, Customer customer) {
@@ -172,6 +177,242 @@ class CustomerList extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildGridCard(BuildContext context, Customer customer) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
+
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.1),
+        ),
+      ),
+      child: InkWell(
+        onTap: () => onEdit(customer, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bill number header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: isLight
+                    ? colorScheme.primary.withOpacity(0.1)
+                    : colorScheme.primaryContainer.withOpacity(0.4),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withOpacity(0.5),
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.receipt_outlined,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '#${customer.billNumber}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Customer info section
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        customer.name[0].toUpperCase(),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Name and Phone
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customer.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.phone_outlined,
+                              size: 14,
+                              color: colorScheme.secondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              customer.phone,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.secondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildPopupMenu(context, customer),
+                ],
+              ),
+            ),
+
+            // Relationship chips
+            if (customer.referredBy != null || customer.familyId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (customer.referredBy != null)
+                      _buildRelationshipInfo(
+                        context,
+                        customer.referredBy!,
+                        Icons.person_add_outlined,
+                        colorScheme.secondary,
+                        'Referred by',
+                      ),
+                    if (customer.familyId != null)
+                      _buildRelationshipInfo(
+                        context,
+                        customer.familyId!,
+                        Icons.family_restroom,
+                        colorScheme.tertiary,
+                        '${customer.familyRelationDisplay} of',
+                      ),
+                  ],
+                ),
+              ),
+
+            const Spacer(),
+
+            // Footer with date and gender
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                border: Border(
+                  top: BorderSide(
+                    color: colorScheme.outlineVariant.withOpacity(0.3),
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat('MMM d, y').format(customer.createdAt),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('h:mm a').format(customer.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildGenderBadge(context, customer.gender),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderBadge(BuildContext context, Gender gender) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: gender == Gender.male
+            ? colorScheme.primary.withOpacity(0.15)
+            : colorScheme.secondary.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            gender == Gender.male ? Icons.male : Icons.female,
+            size: 16,
+            color: gender == Gender.male
+                ? colorScheme.primary
+                : colorScheme.secondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            gender.name[0].toUpperCase(),
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: gender == Gender.male
+                  ? colorScheme.primary
+                  : colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildAvatar(BuildContext context, Customer customer) {
     final theme = Theme.of(context);
@@ -399,6 +640,49 @@ class CustomerList extends StatelessWidget {
     );
   }
 
+  Widget _buildRelationshipInfo(
+    BuildContext context,
+    String customerId,
+    IconData icon,
+    Color color,
+    String prefix,
+  ) {
+    final theme = Theme.of(context);
+    
+    return FutureBuilder<String>(
+      future: SupabaseService().getCustomerName(customerId),
+      builder: (context, snapshot) {
+        final name = snapshot.data ?? 'Loading...';
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  '$prefix $name',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Customer>>(
@@ -423,6 +707,22 @@ class CustomerList extends StatelessWidget {
 
         if (filteredCustomers.isEmpty) {
           return _buildNoResultsState(context);
+        }
+
+        if (layoutType == CustomerLayoutType.grid && isDesktop) {
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              childAspectRatio: 1.2, // Slightly adjusted for better fit
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: filteredCustomers.length,
+            itemBuilder: (context, index) {
+              return _buildGridCard(context, filteredCustomers[index]);
+            },
+          );
         }
 
         return ListView.builder(

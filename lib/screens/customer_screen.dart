@@ -3,6 +3,7 @@ import '../models/customer.dart';
 import '../services/supabase_service.dart';
 import '../widgets/customer/add_customer_dialog.dart';
 import '../widgets/customer/customer_list.dart';
+import '../models/layout_type.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -15,11 +16,26 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  CustomerLayoutType _layoutType = CustomerLayoutType.list;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Widget _buildLayoutToggle() {
+    return SegmentedButton<CustomerLayoutType>(
+      segments: CustomerLayoutType.values.map((type) => ButtonSegment(
+        value: type,
+        icon: Icon(type.icon),
+        label: Text(type.name.toUpperCase()),
+      )).toList(),
+      selected: {_layoutType},
+      onSelectionChanged: (Set<CustomerLayoutType> selection) {
+        setState(() => _layoutType = selection.first);
+      },
+    );
   }
 
   @override
@@ -37,6 +53,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         centerTitle: !isDesktop,
         actions: [
           if (isDesktop) ...[
+            _buildLayoutToggle(),
+            const SizedBox(width: 16),
             FilledButton.icon(
               onPressed: () => _showAddCustomerDialog(context),
               icon: const Icon(Icons.add),
@@ -99,6 +117,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     );
                   },
                 ),
+                layoutType: isDesktop ? _layoutType : CustomerLayoutType.list, // Always use list on mobile
+                isDesktop: isDesktop,
               ),
             ),
           ],
