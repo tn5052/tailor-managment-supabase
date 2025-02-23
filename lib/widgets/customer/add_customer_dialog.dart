@@ -513,6 +513,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: color),
+          
           const SizedBox(width: 6),
           Text(
             text,
