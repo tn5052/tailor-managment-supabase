@@ -907,13 +907,13 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20), // More rounded corners
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 18, color: color),
           const SizedBox(width: 8),
           Text(
             text,
@@ -938,18 +938,18 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20), // Match the container radius
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color.withOpacity(0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: color),
+              Icon(icon, size: 18, color: color),
               const SizedBox(width: 8),
               Text(
                 text,
@@ -961,11 +961,255 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
               const SizedBox(width: 4),
               Icon(
                 Icons.arrow_forward_ios,
-                size: 12,
+                size: 14,
                 color: color.withOpacity(0.7),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(ThemeData theme) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.isEditing ? 'Edit Customer' : 'Add New Customer',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: _saveCustomer,
+            child: Text(widget.isEditing ? 'SAVE' : 'ADD'),
+          ),
+          const SizedBox(width: 16),
+        ],
+        bottom: widget.isEditing ? PreferredSize(
+          preferredSize: const Size.fromHeight(72), // Increased height
+          child: Container(
+            height: 72, // Fixed height for the header section
+            child: Column(
+              children: [
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildInfoBadge(
+                        theme,
+                        'Bill #${widget.customer?.billNumber}',
+                        Icons.receipt_outlined,
+                        theme.colorScheme.primary,
+                      ),
+                      if (_referredCustomers.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        _buildActionBadge(
+                          theme,
+                          '${_referredCustomers.length} Referred',
+                          Icons.people_outline,
+                          theme.colorScheme.secondary,
+                          () => _showReferredCustomersDialog(context),
+                        ),
+                      ],
+                      if (_familyMembers.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        _buildActionBadge(
+                          theme,
+                          '${_familyMembers.length} Family',
+                          Icons.family_restroom,
+                          theme.colorScheme.tertiary,
+                          () => _showFamilyMembersDialog(context),
+                        ),
+                      ],
+                      // Add indicator that shows more content is available
+                      if (_referredCustomers.isNotEmpty || _familyMembers.isNotEmpty)
+                        Container(
+                          width: 24,
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: [
+                                theme.colorScheme.surface,
+                                theme.colorScheme.surface.withOpacity(0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ) : null,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!widget.isEditing && _useCustomBillNumber)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      theme,
+                      'Bill Number',
+                      Icons.receipt_outlined,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _billNumberController,
+                      keyboardType: TextInputType.number,
+                      decoration: _buildInputDecoration(
+                        theme,
+                        label: 'Custom Bill Number',
+                        icon: Icons.receipt_outlined,
+                        helperText: 'Must be unique',
+                      ),
+                      validator: _validateBillNumber,
+                    ),
+                  ],
+                ),
+              ),
+
+            // Basic Information Section
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      theme,
+                      'Basic Information',
+                      Icons.person_outline,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: _buildInputDecoration(
+                        theme,
+                        label: 'Name',
+                        icon: Icons.person_outline,
+                      ),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Please enter a name' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: _buildInputDecoration(
+                        theme,
+                        label: 'Phone',
+                        icon: Icons.phone_outlined,
+                      ),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Please enter a phone number' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _whatsappController,
+                      decoration: _buildInputDecoration(
+                        theme,
+                        label: 'WhatsApp (Optional)',
+                        icon: Icons.whatshot_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _addressController,
+                      maxLines: 2,
+                      decoration: _buildInputDecoration(
+                        theme,
+                        label: 'Address',
+                        icon: Icons.location_on_outlined,
+                      ),
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Please enter an address' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text(
+                          'Gender',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: SegmentedButton<Gender>(
+                            segments: const [
+                              ButtonSegment(
+                                value: Gender.male,
+                                label: Text('Male'),
+                                icon: Icon(Icons.male),
+                              ),
+                              ButtonSegment(
+                                value: Gender.female,
+                                label: Text('Female'),
+                                icon: Icon(Icons.female),
+                              ),
+                            ],
+                            selected: {_selectedGender},
+                            onSelectionChanged: (Set<Gender> selection) {
+                              setState(() {
+                                _selectedGender = selection.first;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Referral Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(
+                    theme,
+                    'Referral & Family',
+                    Icons.people_outline,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildReferralSection(theme),
+                  FamilySelectorSection(
+                    selectedFamilyMember: _familyMember,
+                    selectedRelation: _familyRelation,
+                    onFamilyMemberSelected: (customer) {
+                      setState(() => _familyMember = customer);
+                    },
+                    onRelationChanged: (relation) {
+                      setState(() => _familyRelation = relation);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
         ),
       ),
     );
@@ -977,6 +1221,11 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     final screenSize = MediaQuery.of(context).size;
     final isDesktop = screenSize.width >= 1024;
 
+    if (!isDesktop) {
+      return _buildMobileLayout(theme);
+    }
+
+    // Return existing desktop layout
     return Container(
       constraints: BoxConstraints(
         maxHeight: screenSize.height * (isDesktop ? 0.9 : 0.95),

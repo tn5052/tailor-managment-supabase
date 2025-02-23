@@ -143,64 +143,85 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     final screenSize = MediaQuery.of(context).size;
     final isDesktop = screenSize.width >= 1024;
     
-    return showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 40.0 : 0, // Remove horizontal padding on mobile
-          vertical: isDesktop ? 24.0 : 0, // Remove vertical padding on mobile
-        ),
-        child: Container(
-          width: isDesktop ? 600 : screenSize.width,
-          height: isDesktop ? null : screenSize.height, // Full height on mobile
-          constraints: BoxConstraints(
-            maxHeight: isDesktop ? screenSize.height * 0.9 : screenSize.height,
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 40.0,
+            vertical: 24.0,
           ),
-          child: Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                isDesktop ? 28 : 0, // No border radius on mobile
+          child: Container(
+            width: 600,
+            constraints: BoxConstraints(
+              maxHeight: screenSize.height * 0.9,
+            ),
+            child: Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const SingleChildScrollView(
+                child: AddCustomerDialog(),
               ),
             ),
-            child: SingleChildScrollView(
-              child: const AddCustomerDialog(),
-            ),
           ),
         ),
-      ),
+      );
+    }
+
+    // Full screen dialog for mobile
+    return showDialog(
+      context: context,
+      builder: (context) => const AddCustomerDialog(),
+      barrierDismissible: false,
+      useSafeArea: true,
     );
   }
 
   Future<void> _showEditCustomerDialog(BuildContext context, Customer customer, int index) {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     
-    return showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 40.0 : 8.0,
-          vertical: 24.0,
-        ),
-        child: Container(
-          width: isDesktop ? 600 : MediaQuery.of(context).size.width,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? 40.0 : 8.0,
+            vertical: 24.0,
           ),
-          child: Card(
-            margin: EdgeInsets.zero,
-            child: SingleChildScrollView(
-              child: AddCustomerDialog(
-                customer: customer,
-                index: index,
-                isEditing: true,
+          child: Container(
+            width: isDesktop ? 600 : MediaQuery.of(context).size.width,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: SingleChildScrollView(
+                child: AddCustomerDialog(
+                  customer: customer,
+                  index: index,
+                  isEditing: true,
+                ),
               ),
             ),
           ),
         ),
+      );
+    }
+
+    // Full screen dialog for mobile
+    return showDialog(
+      context: context,
+      builder: (context) => AddCustomerDialog(
+        customer: customer,
+        index: index,
+        isEditing: true,
       ),
+      barrierDismissible: false,
+      useSafeArea: true,
     );
   }
 }
