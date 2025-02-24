@@ -21,6 +21,14 @@ class ComplaintDialog extends StatefulWidget {
     this.customerId,
   });
 
+  // Added static show method
+  static Future<void> show(BuildContext context) {
+    return showDialog(
+      context: context,
+      builder: (context) => const ComplaintDialog(),
+    );
+  }
+
   @override
   State<ComplaintDialog> createState() => _ComplaintDialogState();
 }

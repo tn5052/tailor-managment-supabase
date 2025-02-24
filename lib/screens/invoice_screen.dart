@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/invoice.dart';
 import '../models/invoice_filter.dart';
-import '../widgets/invoice/invoice_screen.dart';
+import '../widgets/invoice/add_invoice_dailog.dart';
 import '../widgets/invoice/invoice_details_dialog.dart';
 import '../widgets/invoice/invoice_search_bar.dart';
 import '../services/invoice_service.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/invoice.dart';
 import 'invoice_status_badge.dart';
-import 'invoice_screen.dart';
+import 'add_invoice_dailog.dart';
 
 class InvoiceCard extends StatelessWidget {
   final Invoice invoice;

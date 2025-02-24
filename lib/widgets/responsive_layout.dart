@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../widgets/customer/add_customer_dialog.dart';
+import '../widgets/measurement/add_measurement_dialog.dart'; // added import for measurement dialog
+import '../widgets/invoice/add_invoice_dailog.dart'; // added import for invoice dialog
+import '../widgets/complaint/complaint_dialog.dart'; // added import for complaint dialog
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobileBody;
@@ -532,10 +536,23 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
                     opacity: value,
                     child: _FabPopover(
                       onOptionSelected: (option) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(option)),
-                        );
                         _removeFabPopover();
+                        if (option == "Add Customer") {
+                          showDialog(
+                            context: context,
+                            builder: (context) => const AddCustomerDialog(),
+                          );
+                        } else if (option == "Add Measures") {
+                          AddMeasurementDialog.show(context);
+                        } else if (option == "Add Invoice") {
+                          InvoiceScreen.show(context);
+                        } else if (option == "Add Complaint") {
+                          ComplaintDialog.show(context);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(option)),
+                          );
+                        }
                       },
                     ),
                   ),
