@@ -313,4 +313,19 @@ class SupabaseService {
     final dataToInsert = Map<String, dynamic>.from(data)..remove('id');
     await _client.from('customers').insert(dataToInsert);
   }
+
+  // Add this new method
+  Future<Customer?> getCustomerByBillNumber(String billNumber) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .eq('bill_number', billNumber)
+          .maybeSingle();
+      return response != null ? Customer.fromMap(response) : null;
+    } catch (e) {
+      debugPrint('Error in getCustomerByBillNumber: $e');
+      return null;
+    }
+  }
 }

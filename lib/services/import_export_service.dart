@@ -56,6 +56,12 @@ class ImportExportService {
     }
   }
 
+  // Add this helper method to get customer ID from bill number
+  Future<String?> _getCustomerIdFromBillNumber(String billNumber) async {
+    final customer = await _supabaseService.getCustomerByBillNumber(billNumber);
+    return customer?.id;
+  }
+
   // Modified importExcel to process both customer and measurement rows
   // separately. If record_type is 'customer', update/insert customer.
   // If 'measurement', always insert (new measurement).
@@ -123,7 +129,9 @@ class ImportExportService {
           // Auto-detect measurement info (columns 12 to last)
           final measurementIndicator = cleanField(data['style']);
           if (measurementIndicator != null && measurementIndicator.isNotEmpty) {
+            final customerId = await _getCustomerIdFromBillNumber(customerData['bill_number']!);
             final measurementData = {
+              'customer_id': customerId, // Add this line
               'bill_number': cleanField(data['bill_number']) ?? '',
               'style': cleanField(data['style']) ?? '',
               'design_type': cleanField(data['design_type']) ?? '',
@@ -160,8 +168,12 @@ class ImportExportService {
           }
         } else if (recordType == 'measurement') {
           // For measurement rows, always insert new record.
+          final billNumber = data['bill_number']?.toString() ?? '';
+          final customerId = await _getCustomerIdFromBillNumber(billNumber);
+          
           final measurementData = {
-            'bill_number': data['bill_number']?.toString() ?? '',
+            'customer_id': customerId, // Add this line
+            'bill_number': billNumber,
             'style': data['style']?.toString() ?? '',
             'design_type': data['design_type']?.toString() ?? '',
             'tarboosh_type': data['tarboosh_type']?.toString() ?? '',
@@ -261,6 +273,8 @@ class ImportExportService {
         final headers = [
           'record_type',
           'bill_number',
+          'customer_name',    // Add these customer detail columns
+          'customer_phone',
           'style',
           'design_type',
           'tarboosh_type',
@@ -292,12 +306,16 @@ class ImportExportService {
         ];
         sheet.appendRow(headers.map((h) => TextCellValue(h)).toList());
         _progressController.add('Exporting measurements...');
-        // Use getAllMeasurements for measurement-only export.
         final measurements = await _measurementService.getAllMeasurements();
         for (var measurement in measurements) {
+          // Get customer details for this measurement
+          final customer = await _supabaseService.getCustomerByBillNumber(measurement.billNumber);
+          
           sheet.appendRow([
             TextCellValue('measurement'),
             TextCellValue(measurement.billNumber),
+            TextCellValue(customer?.name ?? ''),        // Add customer name
+            TextCellValue(customer?.phone ?? ''),       // Add customer phone
             TextCellValue(measurement.style),
             TextCellValue(measurement.designType),
             TextCellValue(measurement.tarbooshType),
