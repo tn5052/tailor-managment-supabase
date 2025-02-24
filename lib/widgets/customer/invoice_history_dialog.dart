@@ -16,6 +16,7 @@ class InvoiceHistoryDialog extends StatelessWidget {
   static Future<void> show(BuildContext context, Customer customer) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 1024;
+    final theme = Theme.of(context);
 
     if (isDesktop) {
       return showDialog(
@@ -26,7 +27,7 @@ class InvoiceHistoryDialog extends StatelessWidget {
             width: 800,
             height: MediaQuery.of(context).size.height * 0.8,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(28),
             ),
             child: InvoiceHistoryDialog(customer: customer),
@@ -35,31 +36,33 @@ class InvoiceHistoryDialog extends StatelessWidget {
       );
     }
 
-    // Full screen for mobile with single close button
+    // Full screen for mobile with minimal header
     return Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => Scaffold(
           appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            backgroundColor: theme.colorScheme.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.close),
+              icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
               onPressed: () => Navigator.pop(context),
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
             ),
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Invoice History',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   customer.name,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -123,14 +126,26 @@ class InvoiceHistoryDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-            child: Icon(Icons.receipt_long, color: theme.colorScheme.primary),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.receipt_long,
+              color: theme.colorScheme.primary,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -139,24 +154,26 @@ class InvoiceHistoryDialog extends StatelessWidget {
               children: [
                 Text(
                   'Invoice History',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   customer.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: Icon(
+              Icons.close,
+              color: theme.colorScheme.onSurface,
+            ),
             onPressed: () => Navigator.pop(context),
-            color: theme.colorScheme.onPrimaryContainer,
           ),
         ],
       ),

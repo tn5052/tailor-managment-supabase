@@ -475,7 +475,7 @@ class CustomerList extends StatelessWidget {
 
                 const Spacer(),
 
-                // Footer with date and measurements
+                // Footer with date and buttons
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -486,57 +486,95 @@ class CustomerList extends StatelessWidget {
                       ),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                      // Date section
+                      Text(
+                        DateFormat('MMM d, y').format(customer.createdAt),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('h:mm a').format(customer.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Buttons row
+                      Row(
                         children: [
-                          Text(
-                            DateFormat('MMM d, y').format(customer.createdAt),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                          // Invoices Button
+                          Expanded(
+                            child: FutureBuilder<bool>(
+                              future: _hasInvoices(customer.id),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData && snapshot.data == true) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: FilledButton.icon(
+                                      onPressed: () => _showInvoices(context, customer),
+                                      icon: const Icon(Icons.receipt_outlined, size: 16),
+                                      label: const Text(
+                                        'Invoices',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: colorScheme.tertiaryContainer,
+                                        foregroundColor: colorScheme.onTertiaryContainer,
+                                        minimumSize: const Size(0, 32),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 0,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                        textStyle: theme.textTheme.labelMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
                             ),
                           ),
-                          Text(
-                            DateFormat('h:mm a').format(customer.createdAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                          // Measurements Button
+                          Expanded(
+                            child: FutureBuilder<bool>(
+                              future: _hasMeasurements(customer.id),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData && snapshot.data == true) {
+                                  return FilledButton.icon(
+                                    onPressed: () => _showMeasurementHistory(context, customer),
+                                    icon: const Icon(Icons.straighten, size: 16),
+                                    label: const Text(
+                                      'Measurements',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: colorScheme.primary,
+                                      foregroundColor: colorScheme.onPrimary,
+                                      minimumSize: const Size(0, 32),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 0,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                      textStyle: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
                             ),
                           ),
                         ],
-                      ),
-                      // Add measurements button conditionally
-                      FutureBuilder<bool>(
-                        future: _hasMeasurements(customer.id),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData && snapshot.data == true) {
-                            return FilledButton.icon(
-                              onPressed: () => _showMeasurementHistory(context, customer),
-                              icon: const Icon(Icons.straighten, size: 16),
-                              label: const Text(
-                                'Measurements',
-                                style: TextStyle(fontSize: 12),  // Smaller text
-                              ),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: colorScheme.primary,
-                                foregroundColor: colorScheme.onPrimary,
-                                minimumSize: const Size(0, 32),  // Reduced height
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,  // Reduced padding
-                                  vertical: 0,
-                                ),
-                                visualDensity: VisualDensity.compact,  // More compact
-                                textStyle: theme.textTheme.labelMedium?.copyWith(  // Smaller text style
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
                       ),
                     ],
                   ),
