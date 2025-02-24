@@ -424,6 +424,7 @@ class MobileBottomNav extends StatefulWidget {
 class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProviderStateMixin {
   late AnimationController _menuController;
   OverlayEntry? _overlayEntry;
+  OverlayEntry? _fabPopoverEntry;
 
   @override
   void initState() {
@@ -493,6 +494,65 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
     });
   }
   */
+
+  void _toggleFabPopover() {
+    if (_fabPopoverEntry == null) {
+      _showFabPopover();
+    } else {
+      _removeFabPopover();
+    }
+  }
+
+  void _showFabPopover() {
+    final overlay = Overlay.of(context);
+    _fabPopoverEntry = OverlayEntry(
+      builder: (context) => TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        tween: Tween(begin: 0.0, end: 1.0),
+        builder: (context, value, child) => GestureDetector(
+          onTap: _removeFabPopover,
+          behavior: HitTestBehavior.translucent,
+          child: Stack(
+            children: [
+              // Backdrop with fade animation
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.1 * value),
+                ),
+              ),
+              // Animated popover
+              Positioned(
+                left: MediaQuery.of(context).size.width / 2 - 100,
+                bottom: 120 + (1 - value) * 20, // Slide up effect
+                child: Transform.scale(
+                  scale: 0.2 + value * 0.8, // Scale up from 0.2 to 1.0
+                  alignment: Alignment.bottomCenter,
+                  child: Opacity(
+                    opacity: value,
+                    child: _FabPopover(
+                      onOptionSelected: (option) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(option)),
+                        );
+                        _removeFabPopover();
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_fabPopoverEntry!);
+  }
+
+  void _removeFabPopover() {
+    _fabPopoverEntry?.remove();
+    _fabPopoverEntry = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -570,7 +630,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
             ),
           ),
         ),
-        // Updated FAB with proper circular design
+        // Updated FAB with full clickable circular area
         Positioned(
           left: 0,
           right: 0,
@@ -578,18 +638,13 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
           child: Center(
             child: Material(
               shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
               elevation: 4,
               color: Colors.transparent,
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Add New Item (Menu temporarily disabled)')),
-                  );
-                },
-                child: Container(
-                  height: 56,
-                  width: 56,
+                onTap: _toggleFabPopover,
+                child: Ink(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -615,11 +670,15 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      PhosphorIcons.plus(),
-                      size: 24,
-                      color: theme.colorScheme.onPrimary,
+                  child: SizedBox(
+                    height: 56,
+                    width: 56,
+                    child: Center(
+                      child: PhosphorIcon(
+                        PhosphorIcons.plus(),
+                        size: 24,
+                        color: theme.colorScheme.onPrimary,
+                      ),
                     ),
                   ),
                 ),
@@ -670,5 +729,112 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
       ),
     );
   }
+}
+
+// Enhance _FabPopover with staggered item animations
+class _FabPopover extends StatelessWidget {
+  final void Function(String option) onOptionSelected;
+  const _FabPopover({Key? key, required this.onOptionSelected}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: ClipPath(
+        clipper: _PopoverClipper(),
+        child: Container(
+          width: 200,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildAnimatedItem("Add Customer", PhosphorIcons.userPlus(), 0),
+              _buildAnimatedItem("Add Measures", PhosphorIcons.ruler(), 1),
+              _buildAnimatedItem("Add Invoice", PhosphorIcons.receipt(), 2),
+              _buildAnimatedItem("Add Complaint", PhosphorIcons.warning(), 3),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedItem(String text, IconData icon, int index) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 200 + (index * 40)),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) => Transform.translate(
+        offset: Offset(0, 20 * (1 - value)),
+        child: Opacity(
+          opacity: value,
+          child: TextButton(
+            onPressed: () => onOptionSelected(text),
+            child: Row(
+              children: [
+                Icon(icon),
+                const SizedBox(width: 8),
+                Text(text),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Custom clipper for popover shape with bottom arrow.
+class _PopoverClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    const arrowHeight = 20.0;
+    const cornerRadius = 30.0; // updated corner radius
+    final path = Path();
+
+    // Top-left corner
+    path.moveTo(0, cornerRadius);
+    path.quadraticBezierTo(0, 0, cornerRadius, 0);
+    // Top line
+    path.lineTo(size.width - cornerRadius, 0);
+    // Top-right corner
+    path.quadraticBezierTo(size.width, 0, size.width, cornerRadius);
+    // Right side
+    path.lineTo(size.width, size.height - arrowHeight - cornerRadius);
+    // Bottom-right corner
+    path.quadraticBezierTo(size.width, size.height - arrowHeight, size.width - cornerRadius, size.height - arrowHeight);
+    // Bottom line to right arrow base
+    const arrowWidth = 40.0; // increased arrow width
+    final arrowXEnd = (size.width + arrowWidth) / 2;
+    path.lineTo(arrowXEnd, size.height - arrowHeight);
+    // Arrow tip
+    final arrowXMid = size.width / 2;
+    path.lineTo(arrowXMid, size.height);
+    // Arrow left base
+    final arrowXStart = (size.width - arrowWidth) / 2;
+    path.lineTo(arrowXStart, size.height - arrowHeight);
+    // Bottom line left
+    path.lineTo(cornerRadius, size.height - arrowHeight);
+    // Bottom-left corner
+    path.quadraticBezierTo(0, size.height - arrowHeight, 0, size.height - arrowHeight - cornerRadius);
+    // Left side
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
