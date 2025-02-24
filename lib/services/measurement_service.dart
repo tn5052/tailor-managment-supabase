@@ -156,4 +156,23 @@ class MeasurementService {
         .eq('bill_number', billNumber);
     return (response as List).map((map) => Measurement.fromMap(map)).toList();
   }
+
+  Future<List<Measurement>> getMeasurementsByCustomerId(String customerId) async {
+    final response = await _client
+        .from('measurements')
+        .select()
+        .eq('customer_id', customerId)
+        .order('date', ascending: false);
+    return (response as List).map((map) => Measurement.fromMap(map)).toList();
+  }
+
+  Future<bool> customerHasMeasurements(String customerId) async {
+    final response = await _client
+        .from('measurements')
+        .select('id')
+        .eq('customer_id', customerId)
+        .limit(1)
+        .maybeSingle();
+    return response != null;
+  }
 }

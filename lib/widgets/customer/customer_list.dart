@@ -3,7 +3,11 @@ import 'package:intl/intl.dart'; // Add this import
 import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
 import '../../services/supabase_service.dart';
+import '../../services/measurement_service.dart';
+import '../../services/invoice_service.dart';  // Add this import
 import '../../models/layout_type.dart';
+import 'measurement_history_dialog.dart';
+import 'invoice_history_dialog.dart';  // Add this import
 
 class CustomerList extends StatelessWidget {
   final String searchQuery;
@@ -131,48 +135,94 @@ class CustomerList extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 16,
-                        color: colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          customer.address,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              customer.gender == Gender.male ? Icons.male : Icons.female,
+                              Icons.location_on_outlined,
                               size: 16,
-                              color: colorScheme.onTertiaryContainer,
+                              color: colorScheme.secondary,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              customer.gender.name.toUpperCase(),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onTertiaryContainer,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                customer.address,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ],
                         ),
+                      ),
+                      // Action Buttons Row
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Invoices Button
+                          FutureBuilder<bool>(
+                            future: _hasInvoices(customer.id),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData && snapshot.data == true) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilledButton.icon(
+                                    onPressed: () => _showInvoices(context, customer),
+                                    icon: const Icon(Icons.receipt_outlined, size: 16),
+                                    label: const Text(
+                                      'Invoices',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: colorScheme.tertiaryContainer,
+                                      foregroundColor: colorScheme.onTertiaryContainer,
+                                      minimumSize: const Size(0, 32),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 0,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                      textStyle: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          // Measurements Button
+                          FutureBuilder<bool>(
+                            future: _hasMeasurements(customer.id),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData && snapshot.data == true) {
+                                return FilledButton.icon(
+                                  onPressed: () => _showMeasurementHistory(context, customer),
+                                  icon: const Icon(Icons.straighten, size: 16),
+                                  label: const Text(
+                                    'Measurements',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: colorScheme.primary,
+                                    foregroundColor: colorScheme.onPrimary,
+                                    minimumSize: const Size(0, 32),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 0,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    textStyle: theme.textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -241,6 +291,34 @@ class CustomerList extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showMeasurementHistory(BuildContext context, Customer customer) {
+    showDialog(
+      context: context,
+      builder: (context) => MeasurementHistoryDialog(
+        customer: customer,
+      ),
+    );
+  }
+
+  // Add this method to check if customer has measurements
+  Future<bool> _hasMeasurements(String customerId) async {
+    final measurementService = MeasurementService();
+    final measurements = await measurementService.getMeasurementsByCustomerId(customerId);
+    return measurements.isNotEmpty;
+  }
+
+  // Add this method to check for invoices
+  Future<bool> _hasInvoices(String customerId) async {
+    final invoiceService = InvoiceService();
+    final invoices = await invoiceService.getCustomerInvoices(customerId);
+    return invoices.isNotEmpty;
+  }
+
+  // Add this method to show invoices
+  void _showInvoices(BuildContext context, Customer customer) {
+    InvoiceHistoryDialog.show(context, customer);
   }
 
   Widget _buildGridCard(BuildContext context, Customer customer, {int? referralCount, int? rank}) {
@@ -397,7 +475,7 @@ class CustomerList extends StatelessWidget {
 
                 const Spacer(),
 
-                // Footer with date and gender
+                // Footer with date and measurements
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -430,7 +508,36 @@ class CustomerList extends StatelessWidget {
                           ),
                         ],
                       ),
-                      _buildGenderBadge(context, customer.gender),
+                      // Add measurements button conditionally
+                      FutureBuilder<bool>(
+                        future: _hasMeasurements(customer.id),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data == true) {
+                            return FilledButton.icon(
+                              onPressed: () => _showMeasurementHistory(context, customer),
+                              icon: const Icon(Icons.straighten, size: 16),
+                              label: const Text(
+                                'Measurements',
+                                style: TextStyle(fontSize: 12),  // Smaller text
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
+                                minimumSize: const Size(0, 32),  // Reduced height
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,  // Reduced padding
+                                  vertical: 0,
+                                ),
+                                visualDensity: VisualDensity.compact,  // More compact
+                                textStyle: theme.textTheme.labelMedium?.copyWith(  // Smaller text style
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -496,46 +603,6 @@ class CustomerList extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGenderBadge(BuildContext context, Gender gender) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: gender == Gender.male
-            ? colorScheme.primary.withOpacity(0.15)
-            : colorScheme.secondary.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            gender == Gender.male ? Icons.male : Icons.female,
-            size: 16,
-            color: gender == Gender.male
-                ? colorScheme.primary
-                : colorScheme.secondary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            gender.name[0].toUpperCase(),
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: gender == Gender.male
-                  ? colorScheme.primary
-                  : colorScheme.secondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }
