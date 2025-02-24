@@ -157,38 +157,28 @@ class _MeasurementListScreenState extends State<MeasurementListScreen> {
           ],
         ),
       ),
-      floatingActionButton: !isDesktop ? FloatingActionButton(
-        onPressed: _showAddMeasurementDialog,
-        elevation: 4,
-        backgroundColor: theme.colorScheme.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(
-          Icons.add_rounded,
-          color: theme.colorScheme.onPrimary,
-          size: 28,
-        ),
-      ) : FloatingActionButton.extended(
-        onPressed: _showAddMeasurementDialog,
-        elevation: 4,
-        backgroundColor: theme.colorScheme.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        label: Text(
-          'Add Measurement',
-          style: TextStyle(
-            color: theme.colorScheme.onPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        icon: Icon(
-          Icons.add_rounded,
-          color: theme.colorScheme.onPrimary,
-          size: 24,
-        ),
-      ),
+      floatingActionButton: isDesktop 
+        ? FloatingActionButton.extended(
+            onPressed: _showAddMeasurementDialog,
+            elevation: 4,
+            backgroundColor: theme.colorScheme.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            label: Text(
+              'Add Measurement',
+              style: TextStyle(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            icon: Icon(
+              Icons.add_rounded,
+              color: theme.colorScheme.onPrimary,
+              size: 24,
+            ),
+          )
+        : null,
     );
   }
 }

@@ -169,14 +169,13 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
           ),
         ],
       ),
-      floatingActionButton:
-          isDesktop
-              ? null
-              : FloatingActionButton.extended(
-                onPressed: () => InvoiceScreen.show(context),
-                icon: const Icon(Icons.add),
-                label: const Text('New Invoice'),
-              ),
+      floatingActionButton: isDesktop 
+        ? FloatingActionButton.extended(
+            onPressed: () => InvoiceScreen.show(context),
+            icon: const Icon(Icons.add),
+            label: const Text('New Invoice'),
+          )
+        : null,
     );
   }
 

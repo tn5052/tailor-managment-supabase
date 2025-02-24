@@ -62,10 +62,12 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddComplaintDialog,
-        icon: PhosphorIcon(PhosphorIcons.plus()),
-        label: const Text('New Complaint'),
+      floatingActionButton: SafeArea(  // Wrap with SafeArea for mobile
+        child: FloatingActionButton.extended(
+          onPressed: _showAddComplaintDialog,
+          icon: PhosphorIcon(PhosphorIcons.plus()),
+          label: const Text('New Complaint'),
+        ),
       ),
     );
   }

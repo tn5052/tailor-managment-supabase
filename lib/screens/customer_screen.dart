@@ -193,11 +193,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddCustomerDialog(context),
-        label: const Text('Add Customer'),
-        icon: const Icon(Icons.add),
-      ),
+      floatingActionButton: isDesktop 
+        ? FloatingActionButton.extended(
+            onPressed: () => _showAddCustomerDialog(context),
+            label: const Text('Add Customer'),
+            icon: const Icon(Icons.add),
+          )
+        : null,
     );
   }
 
