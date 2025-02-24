@@ -6,6 +6,8 @@ import '../../models/customer.dart';
 import '../../services/supabase_service.dart';
 import 'customer_selector_dialog.dart'; // Import CustomerSelectorDialog
 import 'family_selector_section.dart'; // Import FamilySelectorSection
+import '../measurement/add_measurement_dialog.dart';
+import '../invoice/add_invoice_dailog.dart';
 
 class AddCustomerDialog extends StatefulWidget {
   final Customer? customer;
@@ -204,7 +206,13 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     return null;
   }
 
-  Future<void> _saveCustomer() async {
+  // Add new method to check if form is valid without saving
+  bool _isFormValid() {
+    return _formKey.currentState?.validate() ?? false;
+  }
+
+  // Modify _saveCustomer to return the saved customer
+  Future<Customer?> _saveCustomer({bool showSnackbar = true}) async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
         String billNumber;
@@ -215,28 +223,28 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
             billNumber = _billNumberController.text;
             final isUnique = await _supabaseService.isBillNumberUnique(billNumber);
             if (!isUnique) {
-              if (!mounted) return;
+              if (!mounted) return null;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('This bill number already exists. Please try another.'),
                   backgroundColor: Colors.red,
                 ),
               );
-              return;
+              return null;
             }
           } else {
             billNumber = await _generateBillNumber();
           }
         }
 
-        // Show loading indicator
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Saving customer...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
+        if (showSnackbar && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Saving customer...'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
 
         final customer = Customer(
           id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
@@ -278,27 +286,130 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         // Clear saved draft on success
         await _clearDraft();
 
-        if (!mounted) return;
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.isEditing
-                  ? '${customer.name} has been updated'
-                  : '${customer.name} has been added',
+        if (showSnackbar && mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                widget.isEditing
+                    ? '${customer.name} has been updated'
+                    : '${customer.name} has been added',
+              ),
             ),
-          ),
-        );
+          );
+        }
+
+        return customer;
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
+    return null;
+  }
+
+  // Add new method to show quick actions
+  Future<void> _showQuickActions() async {
+    final theme = Theme.of(context);
+    final customer = await _saveCustomer(showSnackbar: false);
+    
+    if (customer == null || !mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                child: Icon(
+                  Icons.check_circle_outline,
+                  size: 40,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Customer Added Successfully',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'What would you like to do next?',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () async {
+                        Navigator.pop(context); // Close quick actions
+                        Navigator.pop(context); // Close add customer dialog
+                        await AddMeasurementDialog.show(
+                          context,
+                          customer: customer,
+                        );
+                      },
+                      icon: const Icon(Icons.straighten),
+                      label: const Text('Add Measurement'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () async {
+                        Navigator.pop(context); // Close quick actions
+                        Navigator.pop(context); // Close add customer dialog
+                        await InvoiceScreen.show(
+                          context,
+                          customer: customer,
+                        );
+                      },
+                      icon: const Icon(Icons.receipt),
+                      label: const Text('Create Invoice'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close quick actions
+                  Navigator.pop(context); // Close add customer dialog
+                },
+                child: const Text('DONE'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmRemoveReferral(BuildContext context) {
@@ -1043,10 +1154,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          FilledButton(
-            onPressed: _saveCustomer,
-            child: Text(widget.isEditing ? 'SAVE' : 'ADD'),
-          ),
+          _buildSaveButton(theme),
           const SizedBox(width: 16),
         ],
         bottom: widget.isEditing ? PreferredSize(
@@ -1273,6 +1381,21 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     );
   }
 
+  // Modify the build method's save button to handle quick actions
+  Widget _buildSaveButton(ThemeData theme) {
+    return FilledButton.icon(
+      onPressed: () async {
+        if (_isFormValid()) {
+          await _showQuickActions();
+        } else {
+          await _saveCustomer();
+        }
+      },
+      icon: Icon(widget.isEditing ? Icons.save : Icons.add),
+      label: Text(widget.isEditing ? 'SAVE' : 'ADD'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1473,11 +1596,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                   child: const Text('CANCEL'),
                 ),
                 const SizedBox(width: 16),
-                FilledButton.icon(
-                  onPressed: _saveCustomer,
-                  icon: Icon(widget.isEditing ? Icons.save : Icons.add),
-                  label: Text(widget.isEditing ? 'SAVE' : 'ADD'),
-                ),
+                _buildSaveButton(theme),
               ],
             ),
           ),

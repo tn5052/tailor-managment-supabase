@@ -619,62 +619,72 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: BottomAppBar(
               color: theme.colorScheme.surface,
-              height: 60,
+              height: 65, // Increased height to match FAB spacing
               padding: EdgeInsets.zero,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Changed to spaceEvenly
                 children: [
-                  _buildDestination(
-                    icon: PhosphorIcons.squaresFour(),
-                    selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
-                    label: 'Dashboard',
-                    fontSize: fontSize,
-                    iconSize: iconSize,
-                    theme: theme,
-                    isSelected: widget.selectedIndex == 0,
-                    onTap: () => widget.onDestinationSelected(0),
-                  ),
-                  _buildDestination(
-                    icon: PhosphorIcons.users(),
-                    selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
-                    label: 'Customers',
-                    fontSize: fontSize,
-                    iconSize: iconSize,
-                    theme: theme,
-                    isSelected: widget.selectedIndex == 1,
-                    onTap: () => widget.onDestinationSelected(1),
-                  ),
-                  const SizedBox(width: 56), // space for FAB
-                  _buildDestination(
-                    icon: PhosphorIcons.ruler(),
-                    selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
-                    label: 'Measures',
-                    fontSize: fontSize,
-                    iconSize: iconSize,
-                    theme: theme,
-                    isSelected: widget.selectedIndex == 2,
-                    onTap: () => widget.onDestinationSelected(2),
-                  ),
-                  _buildDestination(
-                    icon: PhosphorIcons.receipt(),
-                    selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
-                    label: 'Invoices',
-                    fontSize: fontSize,
-                    iconSize: iconSize,
-                    theme: theme,
-                    isSelected: widget.selectedIndex == 3,
-                    onTap: () => widget.onDestinationSelected(3),
-                  ),
+                  Expanded(child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildDestination(
+                        icon: PhosphorIcons.squaresFour(),
+                        selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+                        label: 'Dashboard',
+                        fontSize: fontSize,
+                        iconSize: iconSize,
+                        theme: theme,
+                        isSelected: widget.selectedIndex == 0,
+                        onTap: () => widget.onDestinationSelected(0),
+                      ),
+                      _buildDestination(
+                        icon: PhosphorIcons.users(),
+                        selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
+                        label: 'Customers',
+                        fontSize: fontSize,
+                        iconSize: iconSize,
+                        theme: theme,
+                        isSelected: widget.selectedIndex == 1,
+                        onTap: () => widget.onDestinationSelected(1),
+                      ),
+                    ],
+                  )),
+                  const SizedBox(width: 70), // Increased space for FAB
+                  Expanded(child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildDestination(
+                        icon: PhosphorIcons.ruler(),
+                        selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
+                        label: 'Measures',
+                        fontSize: fontSize,
+                        iconSize: iconSize,
+                        theme: theme,
+                        isSelected: widget.selectedIndex == 2,
+                        onTap: () => widget.onDestinationSelected(2),
+                      ),
+                      _buildDestination(
+                        icon: PhosphorIcons.receipt(),
+                        selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
+                        label: 'Invoices',
+                        fontSize: fontSize,
+                        iconSize: iconSize,
+                        theme: theme,
+                        isSelected: widget.selectedIndex == 3,
+                        onTap: () => widget.onDestinationSelected(3),
+                      ),
+                    ],
+                  )),
                 ],
               ),
             ),
           ),
         ),
-        // Updated FAB with full clickable circular area
+        // FAB positioning updated
         Positioned(
           left: 0,
           right: 0,
-          bottom: 50,
+          bottom: 32, // Adjusted to align with nav buttons
           child: Center(
             child: Material(
               shape: const CircleBorder(),
@@ -740,30 +750,28 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(
-                  isSelected ? selectedIcon : icon,
-                  size: iconSize,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                isSelected ? selectedIcon : icon,
+                size: iconSize,
+                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize,
                   color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
                 ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

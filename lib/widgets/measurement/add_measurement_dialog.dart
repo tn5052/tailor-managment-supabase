@@ -15,20 +15,23 @@ class AddMeasurementDialog extends StatefulWidget {
   final Measurement? measurement;
   final int? index;
   final bool isEditing;
+  final Customer? customer; // Add this field
 
   const AddMeasurementDialog({
     super.key,
     this.measurement,
     this.index,
     this.isEditing = false,
+    this.customer, // Add this parameter
   });
 
-  // Add static show method
+  // Update the show method to include customer parameter
   static Future<void> show(
     BuildContext context, {
     Measurement? measurement,
     int? index,
     bool isEditing = false,
+    Customer? customer, // Add this parameter
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 1024;
@@ -54,6 +57,7 @@ class AddMeasurementDialog extends StatefulWidget {
                   measurement: measurement,
                   index: index,
                   isEditing: isEditing,
+                  customer: customer, // Pass the customer parameter
                 ),
               ),
             ),
@@ -69,6 +73,7 @@ class AddMeasurementDialog extends StatefulWidget {
               measurement: measurement,
               index: index,
               isEditing: isEditing,
+              customer: customer, // Pass the customer parameter
             ),
       ),
     );
@@ -240,6 +245,11 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   @override
   void initState() {
     super.initState();
+    // Initialize with provided customer if available
+    if (widget.customer != null) {
+      _selectedCustomerId = widget.customer!.id;
+      _billNumber = widget.customer!.billNumber;
+    }
     if (widget.isEditing && widget.measurement != null) {
       _selectedCustomerId = widget.measurement!.customerId;
       _billNumber = widget.measurement!.billNumber;
