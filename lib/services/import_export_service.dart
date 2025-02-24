@@ -2,8 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
-import '../models/customer.dart';
-import '../models/measurement.dart';
+
 import 'supabase_service.dart';
 import 'measurement_service.dart';
 import '../widgets/export_filter_dialog.dart';
@@ -260,7 +259,7 @@ class ImportExportService {
             TextCellValue(customer.billNumber),
             TextCellValue(customer.name),
             TextCellValue(customer.phone),
-            TextCellValue(customer.whatsapp ?? ''),
+            TextCellValue(customer.whatsapp),
             TextCellValue(customer.address),
             TextCellValue(customer.gender.name),
             TextCellValue(customer.createdAt.toIso8601String()),
@@ -403,7 +402,7 @@ class ImportExportService {
               TextCellValue(customer.billNumber),
               TextCellValue(customer.name),
               TextCellValue(customer.phone),
-              TextCellValue(customer.whatsapp ?? ''),
+              TextCellValue(customer.whatsapp),
               TextCellValue(customer.address),
               TextCellValue(customer.gender.name),
               TextCellValue(customer.createdAt.toIso8601String()),
@@ -420,7 +419,7 @@ class ImportExportService {
                 TextCellValue(customer.billNumber),
                 TextCellValue(customer.name),
                 TextCellValue(customer.phone),
-                TextCellValue(customer.whatsapp ?? ''),
+                TextCellValue(customer.whatsapp ),
                 TextCellValue(customer.address),
                 TextCellValue(customer.gender.name),
                 TextCellValue(customer.createdAt.toIso8601String()),
