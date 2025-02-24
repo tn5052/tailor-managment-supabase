@@ -4,6 +4,7 @@ import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +39,18 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: const HomeScreen(),
+          home: StreamBuilder<AuthState>(
+            stream: Supabase.instance.client.auth.onAuthStateChange,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final session = snapshot.data!.session;
+                if (session != null) {
+                  return const HomeScreen();
+                }
+              }
+              return const LoginScreen();
+            },
+          ),
         );
       },
     );

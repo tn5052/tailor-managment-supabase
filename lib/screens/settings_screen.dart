@@ -10,6 +10,7 @@ import '../providers/theme_provider.dart';
 import '../widgets/import_export_progress_dialog.dart';
 import '../services/import_export_service.dart';
 import '../widgets/export_filter_dialog.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 class SettingsScreen extends StatelessWidget {
@@ -99,6 +100,34 @@ class SettingsScreen extends StatelessWidget {
                           color: theme.colorScheme.primary,
                         ),
                         onTap: () => _handleExport(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Add this new card after the Data Management Card
+              const SizedBox(height: 16),
+              
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Account',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        title: const Text('Sign Out'),
+                        subtitle: const Text('Log out from your account'),
+                        leading: Icon(
+                          Icons.logout,
+                          color: theme.colorScheme.error,
+                        ),
+                        onTap: () => _handleSignOut(context),
                       ),
                     ],
                   ),
@@ -235,6 +264,31 @@ class SettingsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error exporting data: $e')),
       );
+    }
+  }
+
+  // Add this new method to the class
+  Future<void> _handleSignOut(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await Supabase.instance.client.auth.signOut();
     }
   }
 }

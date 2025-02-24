@@ -4,6 +4,7 @@ import '../widgets/customer/add_customer_dialog.dart';
 import '../widgets/measurement/add_measurement_dialog.dart'; // added import for measurement dialog
 import '../widgets/invoice/add_invoice_dailog.dart'; // added import for invoice dialog
 import '../widgets/complaint/complaint_dialog.dart'; // added import for complaint dialog
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ResponsiveLayout extends StatelessWidget {
   final Widget mobileBody;
@@ -389,15 +390,13 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: () {
-                      // Handle logout
-                    },
+                    onTap: () => _handleSignOut(context),
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: PhosphorIcon(
                         PhosphorIcons.signOut(),
                         size: 20,
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: theme.colorScheme.error,
                       ),
                     ),
                   ),
@@ -408,6 +407,30 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         ),
       ),
     );
+  }
+
+  Future<void> _handleSignOut(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await Supabase.instance.client.auth.signOut();
+    }
   }
 }
 
