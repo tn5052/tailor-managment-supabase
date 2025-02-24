@@ -58,7 +58,7 @@ class FamilySelectorSection extends StatelessWidget {
     // Define adaptive colors based on theme
     final containerColor = brightness == Brightness.light
         ? theme.colorScheme.primaryContainer.withOpacity(0.1)
-        : theme.colorScheme.surfaceVariant.withOpacity(0.3);
+        : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3);
 
     final borderColor = brightness == Brightness.light
         ? theme.colorScheme.primary.withOpacity(0.1)
@@ -114,8 +114,8 @@ class FamilySelectorSection extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: brightness == Brightness.light
-                    ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
-                    : theme.colorScheme.surfaceVariant,
+                    ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
+                    : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: theme.colorScheme.outline.withOpacity(0.2),
@@ -195,7 +195,7 @@ class FamilySelectorSection extends StatelessWidget {
                   filled: true,
                   fillColor: brightness == Brightness.light
                       ? theme.colorScheme.surface
-                      : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 ),
               ),
               child: DropdownButtonFormField<FamilyRelation>(

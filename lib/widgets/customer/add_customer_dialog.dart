@@ -30,7 +30,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   final _whatsappController = TextEditingController();
   final _addressController = TextEditingController();
   late Gender _selectedGender;
-  bool _useCustomBillNumber = false;
+  final bool _useCustomBillNumber = false;
   Customer? _referredBy;
   int _referralCount = 0;
 
@@ -215,7 +215,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
             break; // Success, exit loop
           } catch (e) {
             retries++;
-            if (retries == 3) throw e; // Throw on final retry
+            if (retries == 3) rethrow; // Throw on final retry
             await Future.delayed(Duration(milliseconds: 500 * retries));
           }
         }
@@ -285,7 +285,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       decoration: BoxDecoration(
         color: brightness == Brightness.light
             ? theme.colorScheme.primaryContainer.withOpacity(0.1)
-            : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.colorScheme.outline.withOpacity(0.1),
@@ -329,8 +329,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: brightness == Brightness.light
-                    ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
-                    : theme.colorScheme.surfaceVariant,
+                    ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
+                    : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: theme.colorScheme.outline.withOpacity(0.2),
@@ -792,7 +792,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         borderSide: BorderSide(color: theme.colorScheme.error),
       ),
       filled: true,
-      fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
@@ -993,7 +993,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         ],
         bottom: widget.isEditing ? PreferredSize(
           preferredSize: const Size.fromHeight(72), // Increased height
-          child: Container(
+          child: SizedBox(
             height: 72, // Fixed height for the header section
             child: Column(
               children: [

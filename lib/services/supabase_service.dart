@@ -221,7 +221,7 @@ class SupabaseService {
       final response = await _client
           .from('customers')
           .select()
-          .or('id.eq.${customerId},family_id.eq.${customerId}')
+          .or('id.eq.$customerId,family_id.eq.$customerId')
           .order('family_relation', ascending: true)
           .order('created_at', ascending: false);
       

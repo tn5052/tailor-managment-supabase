@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/customer.dart';
+import '../models/customer_filter.dart';
 import '../services/supabase_service.dart';
 import '../widgets/customer/add_customer_dialog.dart';
 import '../widgets/customer/customer_list.dart';
 import '../models/layout_type.dart';
+import '../widgets/customer/customer_filter_sheet.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -17,6 +19,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   CustomerLayoutType _layoutType = CustomerLayoutType.list;
+  CustomerFilter _filter = const CustomerFilter();
 
   @override
   void dispose() {
@@ -71,29 +74,94 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                decoration: InputDecoration(
-                  hintText: 'Search by name, phone, or bill number',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(() {
+                        _searchQuery = value;
+                        _filter = _filter.copyWith(searchQuery: value);
+                      }),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, phone, or bill number',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _filter = _filter.copyWith(searchQuery: '');
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceContainerHighest,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => CustomerFilterSheet.show(
+                          context,
+                          _filter,
+                          (newFilter) => setState(() => _filter = newFilter),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.filter_list,
+                                color: _filter.hasActiveFilters
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              if (_filter.hasActiveFilters)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -119,6 +187,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 ),
                 layoutType: isDesktop ? _layoutType : CustomerLayoutType.list, // Always use list on mobile
                 isDesktop: isDesktop,
+                filter: _filter,
               ),
             ),
           ],

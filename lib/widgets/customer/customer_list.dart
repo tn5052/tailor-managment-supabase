@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add this import
 import '../../models/customer.dart';
+import '../../models/customer_filter.dart';
 import '../../services/supabase_service.dart';
 import '../../models/layout_type.dart';
 
@@ -10,6 +11,7 @@ class CustomerList extends StatelessWidget {
   final Function(Customer) onDelete;
   final CustomerLayoutType layoutType;
   final bool isDesktop;
+  final CustomerFilter filter;
 
   const CustomerList({
     super.key,
@@ -18,6 +20,7 @@ class CustomerList extends StatelessWidget {
     required this.onDelete,
     required this.layoutType,
     required this.isDesktop,
+    required this.filter,
   });
 
   Widget _buildCustomerCard(BuildContext context, Customer customer) {
@@ -117,7 +120,7 @@ class CustomerList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 border: Border(
                   top: BorderSide(
                     color: colorScheme.outlineVariant.withOpacity(0.5),
@@ -334,7 +337,7 @@ class CustomerList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 border: Border(
                   top: BorderSide(
                     color: colorScheme.outlineVariant.withOpacity(0.3),
@@ -617,7 +620,7 @@ class CustomerList extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -683,6 +686,291 @@ class CustomerList extends StatelessWidget {
     );
   }
 
+  Widget _buildGroupedList(List<Customer> customers, BuildContext context) {
+    switch (filter.groupBy) {
+      case CustomerGroupBy.none:
+        return _buildRegularList(customers);
+      case CustomerGroupBy.gender:
+        return _buildGenderGroups(customers, context);
+      case CustomerGroupBy.family:
+        return _buildFamilyGroups(customers, context);
+      case CustomerGroupBy.referrals:
+        return _buildReferralGroups(customers, context);
+      case CustomerGroupBy.dateAdded:
+        return _buildDateGroups(customers, context);
+    }
+  }
+
+  Widget _buildGroupHeader(BuildContext context, String title, int count, {Color? color}) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: color ?? theme.colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.group,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              count.toString(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderGroups(List<Customer> customers, BuildContext context) {
+    final maleCustomers = customers.where((c) => c.gender == Gender.male).toList();
+    final femaleCustomers = customers.where((c) => c.gender == Gender.female).toList();
+    final theme = Theme.of(context);
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (maleCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Male',
+            count: maleCustomers.length,
+            color: theme.colorScheme.primary.withOpacity(0.1),
+            children: maleCustomers,
+          ),
+        if (femaleCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Female',
+            count: femaleCustomers.length,
+            color: theme.colorScheme.secondary.withOpacity(0.1),
+            children: femaleCustomers,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildReferralGroups(List<Customer> customers, BuildContext context) {
+    final referredCustomers = customers.where((c) => c.referredBy != null).toList();
+    final referrers = customers.where((c) => customers.any((other) => other.referredBy == c.id)).toList();
+    final others = customers.where((c) => c.referredBy == null && !referrers.any((r) => r.id == c.id)).toList();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (referrers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Referrers',
+            count: referrers.length,
+            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+            children: referrers,
+          ),
+        if (referredCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Referred Customers',
+            count: referredCustomers.length,
+            color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+            children: referredCustomers,
+          ),
+        if (others.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Others',
+            count: others.length,
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            children: others,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFamilyGroups(List<Customer> customers, BuildContext context) {
+    final familyMembers = customers.where((c) => c.familyId != null).toList();
+    final independentCustomers = customers.where((c) => c.familyId == null).toList();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (familyMembers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Family Members',
+            count: familyMembers.length,
+            color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+            children: familyMembers,
+          ),
+        if (independentCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Independent',
+            count: independentCustomers.length,
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            children: independentCustomers,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDateGroups(List<Customer> customers, BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final lastWeek = today.subtract(const Duration(days: 7));
+    final lastMonth = today.subtract(const Duration(days: 30));
+
+    final todayCustomers = customers.where((c) {
+      final date = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
+      return date == today;
+    }).toList();
+
+    final yesterdayCustomers = customers.where((c) {
+      final date = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
+      return date == yesterday;
+    }).toList();
+
+    final lastWeekCustomers = customers.where((c) {
+      final date = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
+      return date.isAfter(lastWeek) && date.isBefore(yesterday);
+    }).toList();
+
+    final lastMonthCustomers = customers.where((c) {
+      final date = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
+      return date.isAfter(lastMonth) && date.isBefore(lastWeek);
+    }).toList();
+
+    final olderCustomers = customers.where((c) {
+      final date = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
+      return date.isBefore(lastMonth);
+    }).toList();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (todayCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Today',
+            count: todayCustomers.length,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            children: todayCustomers,
+          ),
+        if (yesterdayCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Yesterday',
+            count: yesterdayCustomers.length,
+            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+            children: yesterdayCustomers,
+          ),
+        if (lastWeekCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Last Week',
+            count: lastWeekCustomers.length,
+            color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+            children: lastWeekCustomers,
+          ),
+        if (lastMonthCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Last Month',
+            count: lastMonthCustomers.length,
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            children: lastMonthCustomers,
+          ),
+        if (olderCustomers.isNotEmpty)
+          _buildExpandableGroup(
+            context: context,
+            title: 'Older',
+            count: olderCustomers.length,
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            children: olderCustomers,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildExpandableGroup({
+    required BuildContext context,
+    required String title,
+    required int count,
+    required List<Customer> children,
+    Color? color,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        title: _buildGroupHeader(context, title, count, color: color),
+        tilePadding: EdgeInsets.zero,
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: children.length,
+            itemBuilder: (context, index) => layoutType == CustomerLayoutType.grid && isDesktop
+                ? _buildGridCard(context, children[index])
+                : _buildCustomerCard(context, children[index]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegularList(List<Customer> customers) {
+    if (layoutType == CustomerLayoutType.grid && isDesktop) {
+      return GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: customers.length,
+        itemBuilder: (context, index) => _buildGridCard(context, customers[index]),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: customers.length,
+      itemBuilder: (context, index) => _buildCustomerCard(context, customers[index]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Customer>>(
@@ -709,40 +997,60 @@ class CustomerList extends StatelessWidget {
           return _buildNoResultsState(context);
         }
 
-        if (layoutType == CustomerLayoutType.grid && isDesktop) {
-          return GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 1.2, // Slightly adjusted for better fit
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: filteredCustomers.length,
-            itemBuilder: (context, index) {
-              return _buildGridCard(context, filteredCustomers[index]);
-            },
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: filteredCustomers.length,
-          itemBuilder: (context, index) {
-            return _buildCustomerCard(context, filteredCustomers[index]);
-          },
-        );
+        return _buildGroupedList(filteredCustomers, context);
       },
     );
   }
 
   bool _filterCustomer(Customer customer, String query) {
-    if (query.isEmpty) return true;
+    if (!filter.hasActiveFilters && query.isEmpty) return true;
 
-    final queryLower = query.toLowerCase();
-    return customer.name.toLowerCase().contains(queryLower) ||
+    bool matches = true;
+
+    // Search query filter
+    if (query.isNotEmpty) {
+      final queryLower = query.toLowerCase();
+      matches = matches && (
+        customer.name.toLowerCase().contains(queryLower) ||
         customer.phone.toLowerCase().contains(queryLower) ||
-        customer.billNumber.toLowerCase().contains(queryLower);
+        customer.billNumber.toLowerCase().contains(queryLower)
+      );
+    }
+
+    // Gender filter
+    if (filter.selectedGenders.isNotEmpty) {
+      matches = matches && filter.selectedGenders.contains(customer.gender);
+    }
+
+    // Date range filter
+    if (filter.dateRange != null) {
+      matches = matches && (
+        customer.createdAt.isAfter(filter.dateRange!.start.subtract(const Duration(days: 1))) &&
+        customer.createdAt.isBefore(filter.dateRange!.end.add(const Duration(days: 1)))
+      );
+    }
+
+    // WhatsApp filter
+    if (filter.hasWhatsapp) {
+      matches = matches && customer.whatsapp.isNotEmpty;
+    }
+
+    // Address filter
+    if (filter.hasAddress) {
+      matches = matches && customer.address.isNotEmpty;
+    }
+
+    // Family filter
+    if (filter.hasFamilyMembers) {
+      matches = matches && customer.familyId != null;
+    }
+
+    // Referrer filter
+    if (filter.isReferrer) {
+      matches = matches && customer.referredBy != null;
+    }
+
+    return matches;
   }
 
   Widget _buildErrorState(BuildContext context, String error) {
