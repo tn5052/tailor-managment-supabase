@@ -8,6 +8,8 @@ import '../../services/supabase_service.dart';
 import '../../utils/fraction_helper.dart';
 import '../customer/customer_selector_dialog.dart';  // Make sure this path is correct
 import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddMeasurementDialog extends StatefulWidget {
   final Measurement? measurement;
@@ -125,6 +127,86 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   ];
   String? _selectedStyle;
 
+  final String _draftKey = "add_measurement_dialog_draft";
+
+  // Add this helper to save draft state
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftData = {
+      "billNumber": _billNumber,
+      "style": _styleController.text,
+      "lengthArabi": _lengthArabiController.text,
+      "lengthKuwaiti": _lengthKuwaitiController.text,
+      "chest": _chestController.text,
+      "width": _widthController.text,
+      "sleeve": _sleeveController.text,
+      "collar": _collarController.text,
+      "under": _underController.text,
+      "backLength": _backLengthController.text,
+      "neck": _neckController.text,
+      "shoulder": _shoulderController.text,
+      "seam": _seamController.text,
+      "adhesive": _adhesiveController.text,
+      "underKandura": _underKanduraController.text,
+      "tarboosh": _tarbooshController.text,
+      "openSleeve": _openSleeveController.text,
+      "stitching": _stitchingController.text,
+      "pleat": _pleatController.text,
+      "button": _buttonController.text,
+      "cuff": _cuffController.text,
+      "embroidery": _embroideryController.text,
+      "neckStyle": _neckStyleController.text,
+      "notes": _notesController.text,
+      "fabricName": _fabricNameController.text,
+      "selectedDesignType": _selectedDesignType,
+      "selectedTarbooshType": _selectedTarbooshType,
+      "selectedStyle": _selectedStyle,
+    };
+    prefs.setString(_draftKey, jsonEncode(draftData));
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(_draftKey)) {
+      final draftData = jsonDecode(prefs.getString(_draftKey)!);
+      setState(() {
+        _billNumber = draftData["billNumber"] ?? "";
+        _styleController.text = draftData["style"] ?? "";
+        _lengthArabiController.text = draftData["lengthArabi"] ?? "";
+        _lengthKuwaitiController.text = draftData["lengthKuwaiti"] ?? "";
+        _chestController.text = draftData["chest"] ?? "";
+        _widthController.text = draftData["width"] ?? "";
+        _sleeveController.text = draftData["sleeve"] ?? "";
+        _collarController.text = draftData["collar"] ?? "";
+        _underController.text = draftData["under"] ?? "";
+        _backLengthController.text = draftData["backLength"] ?? "";
+        _neckController.text = draftData["neck"] ?? "";
+        _shoulderController.text = draftData["shoulder"] ?? "";
+        _seamController.text = draftData["seam"] ?? "";
+        _adhesiveController.text = draftData["adhesive"] ?? "";
+        _underKanduraController.text = draftData["underKandura"] ?? "";
+        _tarbooshController.text = draftData["tarboosh"] ?? "";
+        _openSleeveController.text = draftData["openSleeve"] ?? "";
+        _stitchingController.text = draftData["stitching"] ?? "";
+        _pleatController.text = draftData["pleat"] ?? "";
+        _buttonController.text = draftData["button"] ?? "";
+        _cuffController.text = draftData["cuff"] ?? "";
+        _embroideryController.text = draftData["embroidery"] ?? "";
+        _neckStyleController.text = draftData["neckStyle"] ?? "";
+        _notesController.text = draftData["notes"] ?? "";
+        _fabricNameController.text = draftData["fabricName"] ?? "";
+        _selectedDesignType = draftData["selectedDesignType"] ?? "Aadi";
+        _selectedTarbooshType = draftData["selectedTarbooshType"] ?? "Fixed";
+        _selectedStyle = draftData["selectedStyle"] ?? _styleOptions[0];
+      });
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove(_draftKey);
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -194,6 +276,38 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _selectedStyle = _styleOptions[0]; // Select first style by default
       _styleController.text = _styleOptions[0]; // Set the controller text as well
     }
+    _loadDraft();
+
+    // Attach listeners to auto-save changes
+    final controllers = [
+      _styleController,
+      _lengthArabiController,
+      _lengthKuwaitiController,
+      _chestController,
+      _widthController,
+      _sleeveController,
+      _collarController,
+      _underController,
+      _backLengthController,
+      _neckController,
+      _shoulderController,
+      _seamController,
+      _adhesiveController,
+      _underKanduraController,
+      _tarbooshController,
+      _openSleeveController,
+      _stitchingController,
+      _pleatController,
+      _buttonController,
+      _cuffController,
+      _embroideryController,
+      _neckStyleController,
+      _notesController,
+      _fabricNameController,
+    ];
+    for (var controller in controllers) {
+      controller.addListener(_saveDraft);
+    }
   }
 
   Future<void> _addMeasurement() async {
@@ -241,6 +355,8 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         } else {
           await _measurementService.addMeasurement(measurement);
         }
+
+        await _clearDraft();
 
         if (!mounted) return;
         Navigator.pop(context);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 import '../widgets/responsive_layout.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,17 +17,36 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  // Security: count failed login attempts & lockout time.
+  int _failedAttempts = 0;
+  DateTime? _lockoutUntil;
+
+  // Email RegEx validation pattern
+  final RegExp _emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
   Future<void> _signIn() async {
+    if (_lockoutUntil != null && DateTime.now().isBefore(_lockoutUntil!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Too many failed attempts. Please try again later.')),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
       await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text,
+        email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      _failedAttempts = 0; // Reset on success
     } on AuthException catch (e) {
+      _failedAttempts++;
+      if (_failedAttempts >= 3) {
+        _lockoutUntil = DateTime.now().add(const Duration(seconds: 30));
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message)),
@@ -83,8 +103,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
-                if (value == null || value.isEmpty) {
+                if (value == null || value.trim().isEmpty) {
                   return 'Please enter your email';
+                }
+                if (!_emailRegex.hasMatch(value.trim())) {
+                  return 'Please enter a valid email address';
                 }
                 return null;
               },
@@ -108,6 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your password';
+                }
+                if (value.length < 8) {
+                  return 'Password must be at least 8 characters long';
                 }
                 return null;
               },
@@ -135,9 +161,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (isMobile) {
-      return Scaffold(body: SafeArea(
-        child: Center(child: SingleChildScrollView(child: form)),
-      ));
+      return Scaffold(
+        body: SafeArea(
+          child: Center(child: SingleChildScrollView(child: form)),
+        ),
+      );
     }
 
     return Scaffold(

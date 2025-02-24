@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/customer.dart';
 import '../../services/supabase_service.dart';
 import 'customer_selector_dialog.dart'; // Import CustomerSelectorDialog
@@ -41,6 +43,43 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   List<Customer> _referredCustomers = [];
   List<Customer> _familyMembers = [];
 
+  final String _draftKey = "add_customer_dialog_draft";
+
+  // Save draft data
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftData = {
+      "billNumber": _billNumberController.text,
+      "name": _nameController.text,
+      "phone": _phoneController.text,
+      "whatsapp": _whatsappController.text,
+      "address": _addressController.text,
+      "selectedGender": _selectedGender.toString(), // as string
+    };
+    prefs.setString(_draftKey, jsonEncode(draftData));
+  }
+
+  // Load draft data
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(_draftKey)) {
+      final draftData = jsonDecode(prefs.getString(_draftKey)!);
+      setState(() {
+        _billNumberController.text = draftData["billNumber"] ?? "";
+        _nameController.text = draftData["name"] ?? "";
+        _phoneController.text = draftData["phone"] ?? "";
+        _whatsappController.text = draftData["whatsapp"] ?? "";
+        _addressController.text = draftData["address"] ?? "";
+        // Optionally update _selectedGender from the string if needed
+      });
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove(_draftKey);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +104,22 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       _loadFamilyMembers(widget.customer!.id);
     } else {
       _selectedGender = Gender.male;
+    }
+    // Load draft state (only for new customers)
+    if (!widget.isEditing) {
+      _loadDraft();
+      
+      // Attach auto-save listeners to controllers
+      final controllers = [
+        _billNumberController,
+        _nameController,
+        _phoneController,
+        _whatsappController,
+        _addressController,
+      ];
+      for (var controller in controllers) {
+        controller.addListener(_saveDraft);
+      }
     }
   }
 
@@ -219,6 +274,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
             await Future.delayed(Duration(milliseconds: 500 * retries));
           }
         }
+
+        // Clear saved draft on success
+        await _clearDraft();
 
         if (!mounted) return;
         Navigator.pop(context);

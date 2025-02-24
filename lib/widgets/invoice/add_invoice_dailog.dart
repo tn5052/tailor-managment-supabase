@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/invoice.dart';
 import '../../models/customer.dart';
 import '../../models/measurement.dart';
@@ -88,6 +90,46 @@ class _InvoiceScreenState extends State<InvoiceScreen>
 
   List<Product> _products = [];
 
+  final String _draftKey = "add_invoice_dialog_draft";
+
+  // Save draft state
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftData = {
+      "date": _dateController.text,
+      "deliveryDate": _deliveryDateController.text,
+      "amount": _amountController.text,
+      "advance": _advanceController.text,
+      "details": _detailsController.text,
+      "customerName": _customerNameController.text,
+      "customerPhone": _customerPhoneController.text,
+    };
+    prefs.setString(_draftKey, jsonEncode(draftData));
+  }
+
+  // Load draft state
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(_draftKey)) {
+      final draftData = jsonDecode(prefs.getString(_draftKey)!);
+      setState(() {
+        _dateController.text = draftData["date"] ?? "";
+        _deliveryDateController.text = draftData["deliveryDate"] ?? "";
+        _amountController.text = draftData["amount"] ?? "";
+        _advanceController.text = draftData["advance"] ?? "";
+        _detailsController.text = draftData["details"] ?? "";
+        _customerNameController.text = draftData["customerName"] ?? "";
+        _customerPhoneController.text = draftData["customerPhone"] ?? "";
+      });
+    }
+  }
+
+  // Clear draft state
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove(_draftKey);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +181,20 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         // Load measurement if exists
         _loadExistingMeasurement();
       }
+    }
+    _loadDraft();
+    // Attach listeners to auto-save changes
+    final controllers = [
+      _dateController,
+      _deliveryDateController,
+      _amountController,
+      _advanceController,
+      _detailsController,
+      _customerNameController,
+      _customerPhoneController,
+    ];
+    for (var controller in controllers) {
+      controller.addListener(_saveDraft);
     }
   }
 
@@ -348,6 +404,9 @@ class _InvoiceScreenState extends State<InvoiceScreen>
         final invoice = widget.invoiceToEdit?.id != null
             ? _updateExistingInvoice()
             : await _createNewInvoice();
+
+        // Clear draft after successful save
+        await _clearDraft();
 
         if (!mounted) return;
         Navigator.pop(context);
