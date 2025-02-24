@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/customer_filter.dart';
-import '../../models/customer.dart';
 import 'package:intl/intl.dart';
 
 class CustomerFilterSheet extends StatefulWidget {
@@ -155,8 +154,7 @@ class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
               children: [
                 _buildDateSection(theme),
                 const SizedBox(height: 24),
-                _buildGenderSection(theme),
-                const SizedBox(height: 24),
+
                 _buildSortingSection(theme),
                 const SizedBox(height: 24),
                 _buildGroupingSection(theme),
@@ -224,37 +222,6 @@ class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
     );
   }
 
-  Widget _buildGenderSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Gender',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        SegmentedButton<Gender>(
-          segments: Gender.values.map((gender) {
-            return ButtonSegment<Gender>(
-              value: gender,
-              label: Text(gender.name.toUpperCase()),
-              icon: Icon(gender == Gender.male ? Icons.male : Icons.female),
-            );
-          }).toList(),
-          selected: _filter.selectedGenders,
-          onSelectionChanged: (Set<Gender> selected) {
-            setState(() {
-              _filter = _filter.copyWith(selectedGenders: selected);
-            });
-          },
-          multiSelectionEnabled: true,
-          emptySelectionAllowed: true,
-        ),
-      ],
-    );
-  }
 
   Widget _buildSortingSection(ThemeData theme) {
     return Column(
@@ -331,6 +298,17 @@ class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
           ),
         ),
         const SizedBox(height: 16),
+         _buildFilterSwitch(
+          title: 'Top Referrers',
+          subtitle: 'Show customers who brought in the most referrals',
+          value: _filter.showTopReferrers,
+          onChanged: (value) {
+            setState(() {
+              _filter = _filter.copyWith(showTopReferrers: value);
+            });
+          },
+          icon: Icons.star_outline,
+        ),
         _buildFilterSwitch(
           title: 'Has Family Members',
           subtitle: 'Show customers who are part of a family group',
@@ -353,28 +331,7 @@ class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
           },
           icon: Icons.people,
         ),
-        _buildFilterSwitch(
-          title: 'Has WhatsApp',
-          subtitle: 'Show customers with WhatsApp number',
-          value: _filter.hasWhatsapp,
-          onChanged: (value) {
-            setState(() {
-              _filter = _filter.copyWith(hasWhatsapp: value);
-            });
-          },
-            icon: Icons.message, // You can also use other Material icons as alternatives
-        ),
-        _buildFilterSwitch(
-          title: 'Has Address',
-          subtitle: 'Show customers with address information',
-          value: _filter.hasAddress,
-          onChanged: (value) {
-            setState(() {
-              _filter = _filter.copyWith(hasAddress: value);
-            });
-          },
-          icon: Icons.location_on,
-        ),
+
       ],
     );
   }

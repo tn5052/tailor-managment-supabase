@@ -23,7 +23,7 @@ class CustomerList extends StatelessWidget {
     required this.filter,
   });
 
-  Widget _buildCustomerCard(BuildContext context, Customer customer) {
+  Widget _buildCustomerCard(BuildContext context, Customer customer, {int? referralCount, int? rank}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -39,149 +39,211 @@ class CustomerList extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () => onEdit(customer, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Bill number at the top
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildBillNumber(context, customer.billNumber),
-                      _buildDateTimeDisplay(context, customer.createdAt),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Customer info
-                  Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildAvatar(context, customer),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              customer.name,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
+                      // Bill number at the top
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildBillNumber(context, customer.billNumber),
+                          _buildDateTimeDisplay(context, customer.createdAt),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Customer info
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildAvatar(context, customer),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.phone_outlined,
-                                  size: 16,
-                                  color: colorScheme.primary,
-                                ),
-                                const SizedBox(width: 4),
                                 Text(
-                                  customer.phone,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
+                                  customer.name,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.phone_outlined,
+                                      size: 16,
+                                      color: colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      customer.phone,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
+                            ),
+                          ),
+                          _buildPopupMenu(context, customer),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Relationships section
+                if (customer.referredBy != null || customer.familyId != null)
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (customer.referredBy != null)
+                          _buildReferralChip(context, customer),
+                        if (customer.familyId != null)
+                          _buildFamilyChip(context, customer),
+                      ],
+                    ),
+                  ),
+
+                // Footer section
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    border: Border(
+                      top: BorderSide(
+                        color: colorScheme.outlineVariant.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          customer.address,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              customer.gender == Gender.male ? Icons.male : Icons.female,
+                              size: 16,
+                              color: colorScheme.onTertiaryContainer,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              customer.gender.name.toUpperCase(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onTertiaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      _buildPopupMenu(context, customer),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-
-            // Relationships section
-            if (customer.referredBy != null || customer.familyId != null)
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (customer.referredBy != null)
-                      _buildReferralChip(context, customer),
-                    if (customer.familyId != null)
-                      _buildFamilyChip(context, customer),
-                  ],
-                ),
-              ),
-
-            // Footer section
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                border: Border(
-                  top: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.5),
+            if (rank != null && rank <= 3)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colorScheme.primary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Text(
+                    '#$rank',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.location_on_outlined,
-                    size: 16,
-                    color: colorScheme.secondary,
+            if (referralCount != null && referralCount > 0)
+              Positioned(
+                right: 8,
+                top: rank != null && rank <= 3 ? 48 : 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      customer.address,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.secondary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.people_outline,
+                        size: 14,
+                        color: colorScheme.secondary,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.tertiaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          customer.gender == Gender.male ? Icons.male : Icons.female,
-                          size: 16,
-                          color: colorScheme.onTertiaryContainer,
+                      const SizedBox(width: 4),
+                      Text(
+                        '$referralCount ${referralCount == 1 ? 'referral' : 'referrals'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.secondary,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          customer.gender.name.toUpperCase(),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onTertiaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGridCard(BuildContext context, Customer customer) {
+  Widget _buildGridCard(BuildContext context, Customer customer, {int? referralCount, int? rank}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isLight = theme.brightness == Brightness.light;
@@ -198,178 +260,240 @@ class CustomerList extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () => onEdit(customer, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Bill number header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: isLight
-                    ? colorScheme.primary.withOpacity(0.1)
-                    : colorScheme.primaryContainer.withOpacity(0.4),
-                border: Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.5),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Bill number header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_outlined,
-                    size: 18,
-                    color: colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '#${customer.billNumber}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
+                  decoration: BoxDecoration(
+                    color: isLight
+                        ? colorScheme.primary.withOpacity(0.1)
+                        : colorScheme.primaryContainer.withOpacity(0.4),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: colorScheme.outlineVariant.withOpacity(0.5),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Customer info section
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        customer.name[0].toUpperCase(),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.receipt_outlined,
+                        size: 18,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '#${customer.billNumber}',
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Name and Phone
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customer.name,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.phone_outlined,
-                              size: 14,
-                              color: colorScheme.secondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              customer.phone,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.secondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildPopupMenu(context, customer),
-                ],
-              ),
-            ),
-
-            // Relationship chips
-            if (customer.referredBy != null || customer.familyId != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (customer.referredBy != null)
-                      _buildRelationshipInfo(
-                        context,
-                        customer.referredBy!,
-                        Icons.person_add_outlined,
-                        colorScheme.secondary,
-                        'Referred by',
-                      ),
-                    if (customer.familyId != null)
-                      _buildRelationshipInfo(
-                        context,
-                        customer.familyId!,
-                        Icons.family_restroom,
-                        colorScheme.tertiary,
-                        '${customer.familyRelationDisplay} of',
-                      ),
-                  ],
-                ),
-              ),
-
-            const Spacer(),
-
-            // Footer with date and gender
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                border: Border(
-                  top: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.3),
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat('MMM d, y').format(customer.createdAt),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('h:mm a').format(customer.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
                         ),
                       ),
                     ],
                   ),
-                  _buildGenderBadge(context, customer.gender),
-                ],
-              ),
+                ),
+
+                // Customer info section
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            customer.name[0].toUpperCase(),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Name and Phone
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              customer.name,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 14,
+                                  color: colorScheme.secondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  customer.phone,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.secondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildPopupMenu(context, customer),
+                    ],
+                  ),
+                ),
+
+                // Relationship chips
+                if (customer.referredBy != null || customer.familyId != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (customer.referredBy != null)
+                          _buildRelationshipInfo(
+                            context,
+                            customer.referredBy!,
+                            Icons.person_add_outlined,
+                            colorScheme.secondary,
+                            'Referred by',
+                          ),
+                        if (customer.familyId != null)
+                          _buildRelationshipInfo(
+                            context,
+                            customer.familyId!,
+                            Icons.family_restroom,
+                            colorScheme.tertiary,
+                            '${customer.familyRelationDisplay} of',
+                          ),
+                      ],
+                    ),
+                  ),
+
+                const Spacer(),
+
+                // Footer with date and gender
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    border: Border(
+                      top: BorderSide(
+                        color: colorScheme.outlineVariant.withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            DateFormat('MMM d, y').format(customer.createdAt),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('h:mm a').format(customer.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      _buildGenderBadge(context, customer.gender),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            if (rank != null && rank <= 3)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colorScheme.primary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Text(
+                    '#$rank',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            if (referralCount != null && referralCount > 0)
+              Positioned(
+                right: 8,
+                top: rank != null && rank <= 3 ? 48 : 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.secondary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.people_outline,
+                        size: 14,
+                        color: colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$referralCount ${referralCount == 1 ? 'referral' : 'referrals'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -881,6 +1005,14 @@ class CustomerList extends StatelessWidget {
   }) {
     final theme = Theme.of(context);
     
+    // Calculate referral counts if needed
+    final referralCounts = filter.showTopReferrers ? Map.fromEntries(
+      children.map((customer) => MapEntry(
+        customer.id,
+        children.where((c) => c.referredBy == customer.id).length,
+      )),
+    ) : null;
+    
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -963,7 +1095,12 @@ class CustomerList extends StatelessWidget {
                         ),
                         itemCount: children.length,
                         itemBuilder: (context, index) => 
-                            _buildGridCard(context, children[index]),
+                            _buildGridCard(
+                              context, 
+                              children[index],
+                              referralCount: referralCounts?[children[index].id] ?? 0, // Always pass the count
+                              rank: filter.showTopReferrers ? index + 1 : null,
+                            ),
                       )
                     : ListView.separated(
                         shrinkWrap: true,
@@ -971,7 +1108,12 @@ class CustomerList extends StatelessWidget {
                         itemCount: children.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) =>
-                            _buildCustomerCard(context, children[index]),
+                            _buildCustomerCard(
+                              context, 
+                              children[index],
+                              referralCount: referralCounts?[children[index].id] ?? 0, // Always pass the count
+                              rank: filter.showTopReferrers ? index + 1 : null,
+                            ),
                       ),
               ),
             ),
@@ -1013,6 +1155,14 @@ class CustomerList extends StatelessWidget {
   }
 
   Widget _buildRegularList(List<Customer> customers) {
+    // Calculate referral counts for all customers
+    final referralCounts = Map.fromEntries(
+      customers.map((customer) => MapEntry(
+        customer.id,
+        customers.where((c) => c.referredBy == customer.id).length,
+      )),
+    );
+
     if (layoutType == CustomerLayoutType.grid && isDesktop) {
       return GridView.builder(
         padding: const EdgeInsets.all(12),
@@ -1023,14 +1173,24 @@ class CustomerList extends StatelessWidget {
           mainAxisSpacing: 12,
         ),
         itemCount: customers.length,
-        itemBuilder: (context, index) => _buildGridCard(context, customers[index]),
+        itemBuilder: (context, index) => _buildGridCard(
+          context, 
+          customers[index],
+          referralCount: referralCounts[customers[index].id] ?? 0, // Always pass the count
+          rank: filter.showTopReferrers ? index + 1 : null,
+        ),
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: customers.length,
-      itemBuilder: (context, index) => _buildCustomerCard(context, customers[index]),
+      itemBuilder: (context, index) => _buildCustomerCard(
+        context, 
+        customers[index],
+        referralCount: referralCounts[customers[index].id] ?? 0, // Always pass the count
+        rank: filter.showTopReferrers ? index + 1 : null,
+      ),
     );
   }
 
@@ -1048,9 +1208,26 @@ class CustomerList extends StatelessWidget {
         }
 
         final customers = snapshot.data ?? [];
-        final filteredCustomers = customers
-            .where((customer) => _filterCustomer(customer, searchQuery))
+        var filteredCustomers = customers
+            .where((customer) => _filterCustomer(customer, searchQuery, customers))
             .toList();
+
+        // Calculate referral counts for all customers
+        final referralCounts = Map.fromEntries(
+          customers.map((customer) => MapEntry(
+            customer.id,
+            customers.where((c) => c.referredBy == customer.id).length,
+          )),
+        );
+
+        // Sort by referral count if needed
+        if (filter.showTopReferrers) {
+          filteredCustomers.sort((a, b) {
+            final aCount = referralCounts[a.id] ?? 0;
+            final bCount = referralCounts[b.id] ?? 0;
+            return bCount.compareTo(aCount);
+          });
+        }
 
         if (customers.isEmpty) {
           return _buildEmptyState(context);
@@ -1065,7 +1242,7 @@ class CustomerList extends StatelessWidget {
     );
   }
 
-  bool _filterCustomer(Customer customer, String query) {
+  bool _filterCustomer(Customer customer, String query, List<Customer> allCustomers) {
     if (!filter.hasActiveFilters && query.isEmpty) return true;
 
     bool matches = true;
@@ -1113,8 +1290,16 @@ class CustomerList extends StatelessWidget {
       matches = matches && customer.referredBy != null;
     }
 
+    // Top referrers filter
+    if (filter.showTopReferrers) {
+      // Get the count of referrals for this customer
+      final referralCount = allCustomers.where((c) => c.referredBy == customer.id).length;
+      matches = matches && referralCount > 0;
+    }
+
     return matches;
   }
+
 
   Widget _buildErrorState(BuildContext context, String error) {
     return Center(

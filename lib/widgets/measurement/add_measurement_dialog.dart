@@ -418,17 +418,12 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
                   foregroundColor: theme.colorScheme.onPrimary,
                 ),
               ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _handleClose, // Updated here
-                icon: const Icon(Icons.close),
-                label: const Text('Close'),
-                style: TextButton.styleFrom(
-                  foregroundColor: theme.colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 16), // Increased spacing
             ],
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _handleClose,
+            ),
           ),
           body: _buildContent(theme, isDesktop),
         );

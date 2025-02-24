@@ -31,6 +31,7 @@ class CustomerFilter {
   final bool hasAddress;
   final bool isReferrer;
   final bool hasFamilyMembers;
+  final bool showTopReferrers;
 
   const CustomerFilter({
     this.searchQuery = '',
@@ -45,6 +46,7 @@ class CustomerFilter {
     this.hasAddress = false,
     this.isReferrer = false,
     this.hasFamilyMembers = false,
+    this.showTopReferrers = false,
   });
 
   bool get hasActiveFilters =>
@@ -59,7 +61,8 @@ class CustomerFilter {
       hasWhatsapp ||
       hasAddress ||
       isReferrer ||
-      hasFamilyMembers;
+      hasFamilyMembers ||
+      showTopReferrers;
 
   CustomerFilter copyWith({
     String? searchQuery,
@@ -74,6 +77,7 @@ class CustomerFilter {
     bool? hasAddress,
     bool? isReferrer,
     bool? hasFamilyMembers,
+    bool? showTopReferrers,
     bool clearDateRange = false,
   }) {
     return CustomerFilter(
@@ -89,6 +93,7 @@ class CustomerFilter {
       hasAddress: hasAddress ?? this.hasAddress,
       isReferrer: isReferrer ?? this.isReferrer,
       hasFamilyMembers: hasFamilyMembers ?? this.hasFamilyMembers,
+      showTopReferrers: showTopReferrers ?? this.showTopReferrers,
     );
   }
 }
