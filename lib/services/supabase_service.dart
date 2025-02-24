@@ -287,4 +287,30 @@ class SupabaseService {
       return [];
     }
   }
+
+  Future<Customer?> getCustomerByBillNumberAndDetail(String billNumber, String phone, String name) async {
+    try {
+      final response = await _client
+          .from('customers')
+          .select()
+          .eq('bill_number', billNumber)
+          .eq('phone', phone)
+          .eq('name', name)
+          .maybeSingle();
+      return response != null ? Customer.fromMap(response) : null;
+    } catch (e) {
+      debugPrint('Error in getCustomerByBillNumberAndDetail: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateCustomerByBillNumber(String billNumber, Map<String, dynamic> data) async {
+    await _client.from('customers').update(data).eq('bill_number', billNumber);
+  }
+
+  Future<void> addCustomerWithoutId(Map<String, dynamic> data) async {
+    // Ensure that 'id' is not provided so Supabase generates it
+    final dataToInsert = Map<String, dynamic>.from(data)..remove('id');
+    await _client.from('customers').insert(dataToInsert);
+  }
 }

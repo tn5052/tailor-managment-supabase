@@ -42,6 +42,30 @@ class MeasurementService {
     return Measurement.fromMap(response);
   }
 
+  Future<Measurement?> getMeasurementByBillNumber(String billNumber) async {
+    try {
+      final response = await _client
+          .from('measurements')
+          .select()
+          .eq('bill_number', billNumber)
+          .maybeSingle();
+      return response != null ? Measurement.fromMap(response) : null;
+    } catch (e) {
+      debugPrint('Error in getMeasurementByBillNumber: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateMeasurementByBillNumber(String billNumber, Map<String, dynamic> measurementData) async {
+    await _client.from('measurements').update(measurementData).eq('bill_number', billNumber);
+  }
+
+  Future<void> addMeasurementWithoutId(Map<String, dynamic> measurementData) async {
+    // Remove id so Supabase auto-generates it.
+    final dataToInsert = Map<String, dynamic>.from(measurementData)..remove('id');
+    await _client.from('measurements').insert(dataToInsert);
+  }
+
   // Get measurements stream with improved error handling
   Stream<List<Measurement>> getMeasurementsStream() {
     _measurementsController?.close();
@@ -118,5 +142,18 @@ class MeasurementService {
       print('Error sharing PDF: $e');
       rethrow;
     }
+  }
+
+  Future<List<Measurement>> getAllMeasurements() async {
+    final response = await _client.from('measurements').select();
+    return (response as List).map((map) => Measurement.fromMap(map)).toList();
+  }
+
+  Future<List<Measurement>> getMeasurementsByBillNumber(String billNumber) async {
+    final response = await _client
+        .from('measurements')
+        .select()
+        .eq('bill_number', billNumber);
+    return (response as List).map((map) => Measurement.fromMap(map)).toList();
   }
 }

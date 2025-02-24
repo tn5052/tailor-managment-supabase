@@ -1,2 +1,7 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "ephemeral/Flutter-Generated.xcconfig"
+#include "Warnings.xcconfig"
+
+ENABLE_BITCODE=NO
+CODE_SIGNING_REQUIRED=NO
+CODE_SIGNING_ALLOWED=NO
