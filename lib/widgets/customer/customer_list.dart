@@ -701,54 +701,6 @@ class CustomerList extends StatelessWidget {
     }
   }
 
-  Widget _buildGroupHeader(BuildContext context, String title, int count, {Color? color}) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: color ?? theme.colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.group,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              count.toString(),
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildGenderGroups(List<Customer> customers, BuildContext context) {
     final maleCustomers = customers.where((c) => c.gender == Gender.male).toList();
@@ -927,26 +879,137 @@ class CustomerList extends StatelessWidget {
     required List<Customer> children,
     Color? color,
   }) {
-    return Card(
+    final theme = Theme.of(context);
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ExpansionTile(
-        title: _buildGroupHeader(context, title, count, color: color),
-        tilePadding: EdgeInsets.zero,
-        children: [
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: children.length,
-            itemBuilder: (context, index) => layoutType == CustomerLayoutType.grid && isDesktop
-                ? _buildGridCard(context, children[index])
-                : _buildCustomerCard(context, children[index]),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false, // Changed to false to start collapsed
+          maintainState: true,
+          tilePadding: EdgeInsets.zero,
+          title: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color ?? theme.colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getGroupIcon(title),
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '$count ${count == 1 ? 'customer' : 'customers'}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          trailing: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          children: [
+            const Divider(height: 1),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                child: layoutType == CustomerLayoutType.grid && isDesktop
+                    ? GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                        ),
+                        itemCount: children.length,
+                        itemBuilder: (context, index) => 
+                            _buildGridCard(context, children[index]),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: children.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) =>
+                            _buildCustomerCard(context, children[index]),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  IconData _getGroupIcon(String title) {
+    switch (title.toLowerCase()) {
+      case 'male':
+        return Icons.male;
+      case 'female':
+        return Icons.female;
+      case 'today':
+        return Icons.today;
+      case 'yesterday':
+        return Icons.history;
+      case 'last week':
+        return Icons.calendar_today;
+      case 'last month':
+        return Icons.calendar_month;
+      case 'older':
+        return Icons.calendar_view_month;
+      case 'referrers':
+        return Icons.people;
+      case 'referred customers':
+        return Icons.person_add;
+      case 'family members':
+        return Icons.family_restroom;
+      case 'independent':
+        return Icons.person_outline;
+      case 'others':
+        return Icons.group_outlined;
+      default:
+        return Icons.group;
+    }
   }
 
   Widget _buildRegularList(List<Customer> customers) {
