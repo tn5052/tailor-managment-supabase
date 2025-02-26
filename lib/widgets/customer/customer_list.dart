@@ -988,7 +988,7 @@ class CustomerList extends StatelessWidget {
             context: context,
             title: 'Others',
             count: others.length,
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             children: others,
           ),
       ],
@@ -1015,7 +1015,7 @@ class CustomerList extends StatelessWidget {
             context: context,
             title: 'Independent',
             count: independentCustomers.length,
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             children: independentCustomers,
           ),
       ],
@@ -1086,7 +1086,7 @@ class CustomerList extends StatelessWidget {
             context: context,
             title: 'Last Month',
             count: lastMonthCustomers.length,
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             children: lastMonthCustomers,
           ),
         if (olderCustomers.isNotEmpty)
@@ -1094,7 +1094,7 @@ class CustomerList extends StatelessWidget {
             context: context,
             title: 'Older',
             count: olderCustomers.length,
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             children: olderCustomers,
           ),
       ],
@@ -1145,7 +1145,7 @@ class CustomerList extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color ?? theme.colorScheme.surfaceVariant,
+                    color: color ?? theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(

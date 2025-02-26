@@ -782,7 +782,7 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
 // Enhance _FabPopover with staggered item animations
 class _FabPopover extends StatelessWidget {
   final void Function(String option) onOptionSelected;
-  const _FabPopover({Key? key, required this.onOptionSelected}) : super(key: key);
+  const _FabPopover({required this.onOptionSelected});
 
   @override
   Widget build(BuildContext context) {

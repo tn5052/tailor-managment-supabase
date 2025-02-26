@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 enum ExportFilterType { all, customer, measurement }
 
 class ExportFilterDialog extends StatefulWidget {
-  const ExportFilterDialog({Key? key}) : super(key: key);
+  const ExportFilterDialog({super.key});
 
   @override
   _ExportFilterDialogState createState() => _ExportFilterDialogState();

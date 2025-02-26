@@ -34,7 +34,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   final _whatsappController = TextEditingController();
   final _addressController = TextEditingController();
   late Gender _selectedGender;
-  final bool _useCustomBillNumber = false;
+  bool _useCustomBillNumber = false;
   Customer? _referredBy;
   int _referralCount = 0;
 
@@ -122,6 +122,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       for (var controller in controllers) {
         controller.addListener(_saveDraft);
       }
+    }
+    if (!widget.isEditing) {
+      // Initialize with a default value when adding a new customer
+      _supabaseService.generateUniqueBillNumber().then((billNumber) {
+        setState(() {
+          _billNumberController.text = billNumber;
+        });
+      });
     }
   }
 
@@ -1226,7 +1234,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!widget.isEditing && _useCustomBillNumber)
+            if (!widget.isEditing)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -1238,16 +1246,49 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       Icons.receipt_outlined,
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _billNumberController,
-                      keyboardType: TextInputType.number,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'Custom Bill Number',
-                        icon: Icons.receipt_outlined,
-                        helperText: 'Must be unique',
-                      ),
-                      validator: _validateBillNumber,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _billNumberController,
+                            keyboardType: TextInputType.number,
+                            decoration: _buildInputDecoration(
+                              theme,
+                              label: 'Bill Number',
+                              icon: Icons.receipt_outlined,
+                              helperText: _useCustomBillNumber ? 'Must be unique' : 'Auto-generated',
+                            ),
+                            enabled: _useCustomBillNumber,
+                            validator: _validateBillNumber,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Switch(
+                          value: _useCustomBillNumber,
+                          onChanged: (value) {
+                            setState(() {
+                              _useCustomBillNumber = value;
+                              if (!value) {
+                                // Reset to auto-generated number when switching off
+                                _supabaseService.generateUniqueBillNumber().then((billNumber) {
+                                  setState(() {
+                                    _billNumberController.text = billNumber;
+                                  });
+                                });
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Use custom bill number',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1429,7 +1470,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!widget.isEditing && _useCustomBillNumber) ...[
+                  if (!widget.isEditing) ...[
                     _buildSectionHeader(
                       theme,
                       'Bill Number',
@@ -1440,11 +1481,38 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       keyboardType: TextInputType.number,
                       decoration: _buildInputDecoration(
                         theme,
-                        label: 'Custom Bill Number',
+                        label: 'Bill Number',
                         icon: Icons.receipt_outlined,
-                        helperText: 'Must be unique',
+                        helperText: _useCustomBillNumber ? 'Must be unique' : 'Auto-generated',
                       ),
+                      enabled: _useCustomBillNumber,
                       validator: _validateBillNumber,
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Switch(
+                          value: _useCustomBillNumber,
+                          onChanged: (value) {
+                            setState(() {
+                              _useCustomBillNumber = value;
+                              if (!value) {
+                                // Reset to auto-generated number when switching off
+                                _supabaseService.generateUniqueBillNumber().then((billNumber) {
+                                  setState(() {
+                                    _billNumberController.text = billNumber;
+                                  });
+                                });
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Use custom bill number',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                   ],

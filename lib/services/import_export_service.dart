@@ -75,8 +75,9 @@ class ImportExportService {
       final headers =
           rows.first.map((e) => e!.value.toString().trim()).toList();
       final recordTypeIndex = headers.indexOf('record_type');
-      if (recordTypeIndex < 0)
+      if (recordTypeIndex < 0) {
         throw Exception('Missing "record_type" column in Excel header');
+      }
 
       // Helper function that returns null if the field is empty or equals "null" (case-insensitive).
       String? cleanField(dynamic value) {
