@@ -8,7 +8,7 @@ import '../../models/customer.dart';
 import '../../models/measurement.dart';
 import '../../services/measurement_service.dart';
 import '../../services/invoice_service.dart';
-import '../../services/supabase_service.dart';
+import '../../services/customer_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final Customer? customer;

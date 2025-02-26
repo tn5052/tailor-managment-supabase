@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../models/customer_filter.dart';
-import '../services/supabase_service.dart';
+import '../services/customer_service.dart';
 import '../widgets/customer/add_customer_dialog.dart';
 import '../widgets/customer/customer_list.dart';
 import '../models/layout_type.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add this import
 import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
-import '../../services/supabase_service.dart';
+import '../../services/customer_service.dart';
 import '../../services/measurement_service.dart';
 import '../../services/invoice_service.dart';  // Add this import
 import '../../models/layout_type.dart';

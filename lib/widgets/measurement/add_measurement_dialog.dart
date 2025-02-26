@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/measurement.dart';
 import '../../models/customer.dart';
 import '../../services/measurement_service.dart';
-import '../../services/supabase_service.dart';
+import '../../services/customer_service.dart';
 import '../../utils/fraction_helper.dart';
 import '../customer/customer_selector_dialog.dart';  // Make sure this path is correct
 import 'package:flutter/services.dart';

@@ -53,6 +53,7 @@ dependencies:
   flutter_web_auth_2: ^4.0.0
   excel: ^4.0.6
   file_picker: ^9.0.0
+  foundation: ^0.0.5
 
 
 
@@ -121,21 +122,8 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 # Add platform configurations here, outside the flutter section
-platforms:
-  android:
-    enable: true
-  ios:
-    enable: true
-  web:
-    enable: true
-  windows:
-    enable: true
-  macos:
-    enable: true
-  linux:
-    enable: true
 
-
+  
 flutter_icons:
     android: true
     ios: true

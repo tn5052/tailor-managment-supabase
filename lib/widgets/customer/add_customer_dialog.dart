@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/customer.dart';
-import '../../services/supabase_service.dart';
+import '../../services/customer_service.dart';
 import 'customer_selector_dialog.dart'; // Import CustomerSelectorDialog
 import 'family_selector_section.dart'; // Import FamilySelectorSection
 import '../measurement/add_measurement_dialog.dart';

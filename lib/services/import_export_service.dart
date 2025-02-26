@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 
-import 'supabase_service.dart';
+import 'customer_service.dart';
 import 'measurement_service.dart';
 import '../widgets/export_filter_dialog.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/customer.dart';
-import '../../services/supabase_service.dart'; // Add this import
+import '../../services/customer_service.dart'; // Add this import
 import '../customer/customer_selector_dialog.dart'; // Add this import
 
 class FamilySelectorSection extends StatelessWidget {

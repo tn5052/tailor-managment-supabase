@@ -6,7 +6,7 @@ import '../../models/complaint.dart';
 import '../../models/customer.dart';
 import '../../models/invoice.dart';
 import '../../services/complaint_service.dart';
-import '../../services/customer_service.dart';
+import '../../services/customer_service_for_dashboard.dart';
 import '../../services/invoice_service.dart';
 import '../customer/customer_selector_dialog.dart';
 import '../invoice/invoice_selector_dialog.dart';

@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart'; // Import collection package
 import '../../models/measurement.dart';
 import '../../services/measurement_service.dart';
-import '../../services/supabase_service.dart';
+import '../../services/customer_service.dart';
 import 'measurement_badge.dart';
 import 'detail_dialog.dart';
 import 'add_measurement_dialog.dart';
