@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/customer.dart';
+import '../utils/tenant_manager.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseService {
@@ -7,6 +8,14 @@ class SupabaseService {
 
   // Add a new customer
   Future<void> addCustomer(Customer customer) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
+    // First check if bill number is unique for this tenant
+    final isUnique = await isBillNumberUnique(customer.billNumber);
+    if (!isUnique) {
+      throw Exception('Bill number already exists for this tenant. Please use a different bill number.');
+    }
+    
     await _client.from('customers').insert({
       'id': customer.id,
       'bill_number': customer.billNumber,
@@ -19,11 +28,24 @@ class SupabaseService {
       'referred_by': customer.referredBy, // Save the referredBy value
       'family_id': customer.familyId,
       'family_relation': customer.familyRelation?.name,
+      'tenant_id': tenantId,
     });
   }
 
   // Update an existing customer
   Future<void> updateCustomer(Customer customer) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
+    // Check if the bill number is being changed
+    final existingCustomer = await getCustomerById(customer.id);
+    if (existingCustomer != null && existingCustomer.billNumber != customer.billNumber) {
+      // If bill number changed, check if new bill number is unique
+      final isUnique = await isBillNumberUnique(customer.billNumber);
+      if (!isUnique) {
+        throw Exception('Bill number already exists for this tenant. Please use a different bill number.');
+      }
+    }
+    
     await _client
         .from('customers')
         .update({
@@ -37,20 +59,28 @@ class SupabaseService {
           'family_id': customer.familyId,
           'family_relation': customer.familyRelation?.name,
         })
-        .eq('id', customer.id);
+        .eq('id', customer.id)
+        .eq('tenant_id', tenantId);
   }
 
   // Delete a customer
   Future<void> deleteCustomer(String customerId) async {
-    await _client.from('customers').delete().eq('id', customerId);
+    final String tenantId = TenantManager.getCurrentTenantId();
+    await _client
+        .from('customers')
+        .delete()
+        .eq('id', customerId)
+        .eq('tenant_id', tenantId);
   }
 
   // Get all customers stream: using realtime when possible, falling back to polling if needed.
   Stream<List<Customer>> getCustomersStream() {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final realtimeStream = _client
           .from('customers')
           .stream(primaryKey: ['id'])
+          .eq('tenant_id', tenantId)
           .order('created_at', ascending: false)
           .map((maps) => maps.map((map) => Customer.fromMap(map)).toList());
       // Listen for errors and switch to polling if required.
@@ -66,6 +96,7 @@ class SupabaseService {
             final data = await _client
                 .from('customers')
                 .select()
+                .eq('tenant_id', tenantId)
                 .order('created_at', ascending: false);
             yield (data as List).map((map) => Customer.fromMap(map)).toList();
           } catch (err) {
@@ -80,10 +111,12 @@ class SupabaseService {
 
   // Get last bill number
   Future<int> getLastBillNumber() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select('bill_number')
+          .eq('tenant_id', tenantId)
           .order('bill_number', ascending: false)
           .limit(50); // Get more numbers to analyze
 
@@ -132,12 +165,14 @@ class SupabaseService {
 
   // Add this new method to check for duplicate bill numbers
   Future<bool> isBillNumberUnique(String billNumber) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response =
           await _client
               .from('customers')
               .select('bill_number')
               .eq('bill_number', billNumber)
+              .eq('tenant_id', tenantId)
               .limit(1)
               .maybeSingle();
 
@@ -150,12 +185,14 @@ class SupabaseService {
 
   // Get customer name by ID
   Future<String> getCustomerName(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response =
           await _client
               .from('customers')
               .select('name')
               .eq('id', customerId)
+              .eq('tenant_id', tenantId)
               .single();
       return response['name'] as String;
     } catch (e) {
@@ -166,17 +203,23 @@ class SupabaseService {
 
   // Get all customers
   Future<List<Customer>> getAllCustomers() async {
-    final response = await _client.from('customers').select();
+    final String tenantId = TenantManager.getCurrentTenantId();
+    final response = await _client
+        .from('customers')
+        .select()
+        .eq('tenant_id', tenantId);
     return (response as List).map((map) => Customer.fromMap(map)).toList();
   }
 
   // Add this new method
   Future<Customer?> getCustomerById(String id) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
           .eq('id', id)
+          .eq('tenant_id', tenantId)
           .single();
       return Customer.fromMap(response);
     } catch (e) {
@@ -187,11 +230,13 @@ class SupabaseService {
 
   // Fix the getReferralCount method
   Future<int> getReferralCount(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
-          .eq('referred_by', customerId);
+          .eq('referred_by', customerId)
+          .eq('tenant_id', tenantId);
       
       // Count the number of records in the response
       return (response as List).length;
@@ -202,11 +247,13 @@ class SupabaseService {
   }
 
   Future<List<Customer>> getReferredCustomers(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
           .eq('referred_by', customerId)
+          .eq('tenant_id', tenantId)
           .order('created_at', ascending: false);
       
       return (response as List).map((map) => Customer.fromMap(map)).toList();
@@ -217,10 +264,12 @@ class SupabaseService {
   }
 
   Future<List<Customer>> getFamilyMembers(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
+          .eq('tenant_id', tenantId)
           .or('id.eq.$customerId,family_id.eq.$customerId')
           .order('family_relation', ascending: true)
           .order('created_at', ascending: false);
@@ -264,10 +313,12 @@ class SupabaseService {
 
   // Add this method to get all related family groups
   Future<List<List<Customer>>> getCustomerFamilyGroups() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
+          .eq('tenant_id', tenantId)
           .not('family_id', 'is', null)
           .order('family_id', ascending: true)
           .order('family_relation', ascending: true);
@@ -289,6 +340,7 @@ class SupabaseService {
   }
 
   Future<Customer?> getCustomerByBillNumberAndDetail(String billNumber, String phone, String name) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
@@ -296,6 +348,7 @@ class SupabaseService {
           .eq('bill_number', billNumber)
           .eq('phone', phone)
           .eq('name', name)
+          .eq('tenant_id', tenantId)
           .maybeSingle();
       return response != null ? Customer.fromMap(response) : null;
     } catch (e) {
@@ -305,22 +358,41 @@ class SupabaseService {
   }
 
   Future<void> updateCustomerByBillNumber(String billNumber, Map<String, dynamic> data) async {
-    await _client.from('customers').update(data).eq('bill_number', billNumber);
+    final String tenantId = TenantManager.getCurrentTenantId();
+    await _client
+        .from('customers')
+        .update(data)
+        .eq('bill_number', billNumber)
+        .eq('tenant_id', tenantId);
   }
 
   Future<void> addCustomerWithoutId(Map<String, dynamic> data) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
+    // Check if bill number is unique
+    final billNumber = data['bill_number'];
+    if (billNumber != null) {
+      final isUnique = await isBillNumberUnique(billNumber);
+      if (!isUnique) {
+        throw Exception('Bill number already exists for this tenant. Please use a different bill number.');
+      }
+    }
+    
     // Ensure that 'id' is not provided so Supabase generates it
     final dataToInsert = Map<String, dynamic>.from(data)..remove('id');
+    dataToInsert['tenant_id'] = tenantId;
     await _client.from('customers').insert(dataToInsert);
   }
 
   // Add this new method
   Future<Customer?> getCustomerByBillNumber(String billNumber) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _client
           .from('customers')
           .select()
           .eq('bill_number', billNumber)
+          .eq('tenant_id', tenantId)
           .maybeSingle();
       return response != null ? Customer.fromMap(response) : null;
     } catch (e) {

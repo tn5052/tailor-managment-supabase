@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/complaint.dart';
+import '../utils/tenant_manager.dart';
 import '../services/invoice_service.dart';
 
 class ComplaintService {
@@ -9,6 +10,8 @@ class ComplaintService {
 
   // Create a new complaint
   Future<Complaint> createComplaint(Complaint complaint) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     // Validate required fields
     if (complaint.customerId.isEmpty) {
       throw Exception('Customer ID is required');
@@ -23,6 +26,7 @@ class ComplaintService {
     // Ensure updates and attachments are initialized as empty arrays if null
     complaintMap['updates'] = complaintMap['updates'] ?? [];
     complaintMap['attachments'] = complaintMap['attachments'] ?? [];
+    complaintMap['tenant_id'] = tenantId;
 
     final response = await _supabase
         .from('complaints')
@@ -38,9 +42,12 @@ class ComplaintService {
     int limit = 50,
     int offset = 0,
   }) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
+        .eq('tenant_id', tenantId)
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
 
@@ -49,10 +56,13 @@ class ComplaintService {
 
   // Get complaints by customer
   Future<List<Complaint>> getCustomerComplaints(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
         .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId)
         .order('created_at', ascending: false);
 
     return response.map((data) => Complaint.fromMap(data)).toList();
@@ -60,10 +70,13 @@ class ComplaintService {
 
   // Get complaints by status
   Future<List<Complaint>> getComplaintsByStatus(ComplaintStatus status) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
         .eq('status', status.toString())
+        .eq('tenant_id', tenantId)
         .order('created_at', ascending: false);
 
     return response.map((data) => Complaint.fromMap(data)).toList();
@@ -74,10 +87,13 @@ class ComplaintService {
     String complaintId,
     ComplaintStatus status,
   ) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     await _supabase
         .from('complaints')
         .update({'status': status.toString()})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
   }
 
   // Add update to complaint
@@ -85,10 +101,13 @@ class ComplaintService {
     String complaintId,
     ComplaintUpdate update,
   ) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final complaintData = await _supabase
         .from('complaints')
         .select('updates')
         .eq('id', complaintId)
+        .eq('tenant_id', tenantId)
         .single();
 
     List<dynamic> updates = [...complaintData['updates'], update.toMap()];
@@ -96,15 +115,29 @@ class ComplaintService {
     await _supabase
         .from('complaints')
         .update({'updates': updates})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
+    
+    // Also add to complaint_updates table for better querying
+    await _supabase.from('complaint_updates').insert({
+      'id': update.id,
+      'complaint_id': complaintId,
+      'comment': update.comment,
+      'timestamp': update.timestamp.toIso8601String(),
+      'updated_by': update.updatedBy,
+      'tenant_id': tenantId,
+    });
   }
 
   // Remove update from complaint
   Future<void> removeComplaintUpdate(String complaintId, String updateId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final complaintData = await _supabase
         .from('complaints')
         .select('updates')
         .eq('id', complaintId)
+        .eq('tenant_id', tenantId)
         .single();
 
     List<dynamic> updates = List<dynamic>.from(complaintData['updates'])
@@ -113,14 +146,25 @@ class ComplaintService {
     await _supabase
         .from('complaints')
         .update({'updates': updates})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
+    
+    // Also remove from complaint_updates
+    await _supabase
+        .from('complaint_updates')
+        .delete()
+        .eq('id', updateId)
+        .eq('tenant_id', tenantId);
   }
 
   // Search complaints
   Future<List<Complaint>> searchComplaints(String query) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
+        .eq('tenant_id', tenantId)
         .or('title.ilike.%$query%,description.ilike.%$query%')
         .order('created_at', ascending: false);
 
@@ -129,9 +173,12 @@ class ComplaintService {
 
   // Get complaint statistics
   Future<Map<String, int>> getComplaintStatistics() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
-        .select('status');
+        .select('status')
+        .eq('tenant_id', tenantId);
 
     final Map<String, int> stats = {};
     for (ComplaintStatus status in ComplaintStatus.values) {
@@ -145,10 +192,13 @@ class ComplaintService {
 
   // Add attachment to complaint
   Future<void> addAttachment(String complaintId, String attachmentUrl) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final complaintData = await _supabase
         .from('complaints')
         .select('attachments')
         .eq('id', complaintId)
+        .eq('tenant_id', tenantId)
         .single();
 
     List<String> attachments = [...List<String>.from(complaintData['attachments']), attachmentUrl];
@@ -156,15 +206,19 @@ class ComplaintService {
     await _supabase
         .from('complaints')
         .update({'attachments': attachments})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
   }
 
   // Delete attachment from complaint
   Future<void> removeAttachment(String complaintId, String attachmentUrl) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final complaintData = await _supabase
         .from('complaints')
         .select('attachments')
         .eq('id', complaintId)
+        .eq('tenant_id', tenantId)
         .single();
 
     List<String> attachments = List<String>.from(complaintData['attachments'])
@@ -173,15 +227,19 @@ class ComplaintService {
     await _supabase
         .from('complaints')
         .update({'attachments': attachments})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
   }
 
   // Get complaint by ID
   Future<Complaint> getComplaintById(String id) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .single();
 
     return Complaint.fromMap(response);
@@ -189,11 +247,14 @@ class ComplaintService {
 
   // Get urgent complaints
   Future<List<Complaint>> getUrgentComplaints() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
         .eq('priority', ComplaintPriority.urgent.toString())
         .eq('status', ComplaintStatus.pending.toString())
+        .eq('tenant_id', tenantId)
         .order('created_at', ascending: false);
 
     return response.map((data) => Complaint.fromMap(data)).toList();
@@ -201,16 +262,21 @@ class ComplaintService {
 
   // Get complaints assigned to specific user
   Future<List<Complaint>> getAssignedComplaints(String userId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select()
         .eq('assigned_to', userId)
+        .eq('tenant_id', tenantId)
         .order('created_at', ascending: false);
 
     return response.map((data) => Complaint.fromMap(data)).toList();
   }
 
   Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     final response = await _supabase
         .from('complaints')
         .select('''
@@ -223,6 +289,7 @@ class ComplaintService {
           )
         ''')
         .eq('id', complaintId)
+        .eq('tenant_id', tenantId)
         .single();
     
     return {
@@ -235,20 +302,26 @@ class ComplaintService {
     String complaintId,
     ComplaintPriority priority,
   ) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     await _supabase
         .from('complaints')
         .update({'priority': priority.toString()})
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
   }
 
   Future<void> reassignComplaint(String complaintId, String assignedTo) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     await _supabase
         .from('complaints')
         .update({
           'assigned_to': assignedTo,
           'updated_at': DateTime.now().toIso8601String(),
         })
-        .eq('id', complaintId);
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
   }
 
   Future<void> requestRefund(
@@ -257,12 +330,16 @@ class ComplaintService {
     String reason,
     String invoiceId,
   ) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     await _supabase.from('complaints').update({
       'refund_status': RefundStatus.pending.toString(),
       'refund_amount': amount,
       'refund_requested_at': DateTime.now().toIso8601String(),
       'refund_reason': reason,
-    }).eq('id', complaintId);
+    })
+    .eq('id', complaintId)
+    .eq('tenant_id', tenantId);
   }
 
   Future<void> processRefund(
@@ -270,6 +347,8 @@ class ComplaintService {
     RefundStatus status,
     String invoiceId,
   ) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     // Get invoice service instance
     final invoiceService = InvoiceService();
     
@@ -293,12 +372,16 @@ class ComplaintService {
         await _supabase.from('complaints').update({
           'refund_status': RefundStatus.completed.toString(),
           'refund_completed_at': DateTime.now().toIso8601String(),
-        }).eq('id', complaintId);
+        })
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
       } else {
         // Just update the status if rejected
         await _supabase.from('complaints').update({
           'refund_status': status.toString(),
-        }).eq('id', complaintId);
+        })
+        .eq('id', complaintId)
+        .eq('tenant_id', tenantId);
       }
     } catch (e) {
       throw Exception('Failed to process refund: $e');
@@ -306,9 +389,12 @@ class ComplaintService {
   }
 
   Stream<List<Complaint>> getComplaintsStream() {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
     return _supabase
         .from('complaints')
         .stream(primaryKey: ['id'])
+        .eq('tenant_id', tenantId)
         .order('created_at')
         .map((data) => data.map((json) => Complaint.fromMap(json)).toList());
   }

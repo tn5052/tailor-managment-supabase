@@ -12,8 +12,9 @@ Future<void> main() async {
   await Supabase.initialize(
     url: 'https://bdwrdjrihakzagfjjkuq.supabase.co',
     anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkd3JkanJpaGFremFnZmpqa3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0OTkyODYsImV4cCI6MjA1NjA3NTI4Nn0.176N5KMizWVmCafH-1MY9ZG3NJyiPSHJYnnAwsHCJTA',
-        realtimeClientOptions: const RealtimeClientOptions(
-      eventsPerSecond: 40,
+    realtimeClientOptions: const RealtimeClientOptions(
+      eventsPerSecond: 20, // Reduced from 40 to avoid rate limits
+      timeout: Duration(seconds: 30), // Increase timeout
     ),
   );
 

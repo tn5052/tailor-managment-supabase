@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/tenant_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,7 @@ class InvoiceService {
   final _supabase = Supabase.instance.client;
 
   Future<void> addInvoice(Invoice invoice) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     await _supabase.from('invoices').insert({
       'id': invoice.id,
       'invoice_number': invoice.invoiceNumber,
@@ -45,10 +47,12 @@ class InvoiceService {
               .toList(),
       'is_delivered': invoice.isDelivered,
       'products': invoice.products.map((p) => p.toMap()).toList(),
+      'tenant_id': tenantId,
     });
   }
 
   Future<void> updateInvoice(Invoice invoice) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     await _supabase
         .from('invoices')
         .update({
@@ -72,38 +76,51 @@ class InvoiceService {
           'amount': invoice.amount,
           'vat': invoice.vat,
           'amount_including_vat': invoice.amountIncludingVat,
+          'refund_amount': invoice.refundAmount,
+          'refunded_at': invoice.refundedAt?.toIso8601String(),
+          'refund_reason': invoice.refundReason,
+          'last_modified_at': DateTime.now().toIso8601String(),
+          'last_modified_reason': 'Updated by user',
         })
-        .eq('id', invoice.id);
+        .eq('id', invoice.id)
+        .eq('tenant_id', tenantId);
   }
 
   Future<void> deleteInvoice(String invoiceId) async {
-    await _supabase.from('invoices').delete().eq('id', invoiceId);
+    final String tenantId = TenantManager.getCurrentTenantId();
+    await _supabase
+        .from('invoices')
+        .delete()
+        .eq('id', invoiceId)
+        .eq('tenant_id', tenantId);
   }
 
   Stream<List<Invoice>> getInvoicesStream() {
+    final String tenantId = TenantManager.getCurrentTenantId();
     return _supabase
         .from('invoices')
         .stream(primaryKey: ['id'])
+        .eq('tenant_id', tenantId)
         .order('date', ascending: false)
         .map((maps) => maps.map((map) => Invoice.fromMap(map)).toList());
   }
 
   Future<String> generateInvoiceNumber() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response =
           await _supabase
               .from('invoices')
               .select('invoice_number')
+              .eq('tenant_id', tenantId)
               .order('invoice_number', ascending: false)
               .limit(1)
               .single();
 
-      final data = response;
-
-      final lastNumber = int.parse(data['invoice_number']);
+      final lastNumber = int.parse(response['invoice_number']);
       return (lastNumber + 1).toString();
     } catch (e) {
-      return '1001';
+      return '1001'; // Starting invoice number for new tenants
     }
   }
 
@@ -128,12 +145,14 @@ class InvoiceService {
   }
 
   Future<List<Invoice>> getInvoicesByDateRange(DateTime start, DateTime end) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _supabase
           .from('invoices')
           .select()
           .gte('date', start.toIso8601String())
           .lte('date', end.toIso8601String())
+          .eq('tenant_id', tenantId)
           .order('date');
       
       return (response as List).map((map) => Invoice.fromMap(map)).toList();
@@ -144,10 +163,12 @@ class InvoiceService {
   }
 
   Future<Map<String, dynamic>> getKPIs() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _supabase
           .from('invoices')
           .select('amount_including_vat, payment_status, delivery_status')
+          .eq('tenant_id', tenantId)
           .order('date');
 
       double totalRevenue = 0;
@@ -184,6 +205,7 @@ class InvoiceService {
   }
 
   Future<List<Map<String, dynamic>>> getRevenueData() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final now = DateTime.now();
       final startDate = now.subtract(const Duration(days: 30));
@@ -193,6 +215,7 @@ class InvoiceService {
           .select('date, amount_including_vat')
           .gte('date', startDate.toIso8601String())
           .lte('date', now.toIso8601String())
+          .eq('tenant_id', tenantId)
           .order('date');
 
       final Map<String, double> dailyRevenue = {};
@@ -213,29 +236,32 @@ class InvoiceService {
     }
   }
 
-  // Get invoices by customer ID
   Future<List<Invoice>> getCustomerInvoices(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     final response = await _supabase
         .from('invoices')
         .select()
         .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId)
         .order('date', ascending: false);
 
     return response.map((data) => Invoice.fromMap(data)).toList();
   }
 
-  // Add this method to get a single invoice by ID
   Future<Invoice> getInvoiceById(String invoiceId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     final response = await _supabase
         .from('invoices')
         .select()
         .eq('id', invoiceId)
+        .eq('tenant_id', tenantId)
         .single();
         
     return Invoice.fromMap(response);
   }
 
   Future<void> processRefund(String invoiceId, double amount, String reason) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
     final invoice = await getInvoiceById(invoiceId);
     
     if (invoice.isRefunded) {
@@ -252,5 +278,22 @@ class InvoiceService {
 
     invoice.processRefund(amount, reason);
     await updateInvoice(invoice);
+    
+    // Log the refund in invoice_modifications
+    await _supabase.from('invoice_modifications').insert({
+      'invoice_id': invoiceId,
+      'modified_at': DateTime.now().toIso8601String(),
+      'reason': 'Refund processed',
+      'previous_status': {
+        'payment_status': invoice.paymentStatus.toString(),
+        'refund_amount': 0,
+      },
+      'changes': {
+        'refund_amount': amount,
+        'refund_reason': reason,
+        'refunded_at': DateTime.now().toIso8601String(),
+      },
+      'tenant_id': tenantId,
+    });
   }
 }
