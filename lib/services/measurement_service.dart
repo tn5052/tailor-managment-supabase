@@ -172,7 +172,7 @@ class MeasurementService {
 
   void _scheduleReconnection() {
     _reconnectionTimer?.cancel();
-    debugPrint('Scheduling realtime reconnection attempt ${_reconnectAttempts+1}/${_maxReconnectAttempts}...');
+    debugPrint('Scheduling realtime reconnection attempt ${_reconnectAttempts+1}/$_maxReconnectAttempts...');
     _reconnectionTimer = Timer(_reconnectionDelay, () {
       if (!_isConnected && !_usePolling && !(_measurementsController?.isClosed ?? true)) {
         _reconnectToStream();
