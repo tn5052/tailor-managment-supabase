@@ -1,7 +1,12 @@
 import 'package:uuid/uuid.dart';
 import 'customer.dart';
 
-enum InvoiceStatus { pending, delivered, cancelled }
+enum InvoiceStatus {
+  pending,
+  inProgress, // Changed from "inProcess" to "inProgress"
+  delivered,
+  cancelled
+}
 
 enum PaymentStatus { unpaid, partial, paid, refunded }
 

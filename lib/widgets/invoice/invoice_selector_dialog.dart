@@ -467,6 +467,8 @@ class _InvoiceCardState extends State<_InvoiceCard> {
         return isDark ? Colors.green : AppTheme.successColor;
       case InvoiceStatus.cancelled:
         return isDark ? Colors.red : AppTheme.errorColor;
+      case InvoiceStatus.inProgress:
+        return isDark ? Colors.blue : AppTheme.primaryColor;
     }
   }
 }

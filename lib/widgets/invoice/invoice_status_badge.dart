@@ -89,6 +89,12 @@ class InvoiceStatusBadge extends StatelessWidget {
             icon: Icons.cancel_outlined,
             label: 'Cancelled',
           );
+        case InvoiceStatus.inProgress: // Make sure this matches the enum name
+          return _StatusConfig(
+            color: Colors.blue,
+            icon: Icons.hourglass_top_outlined, 
+            label: 'In Progress',
+          );
       }
     } else if (status is PaymentStatus) {
       switch (status) {

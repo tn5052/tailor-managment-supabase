@@ -114,6 +114,7 @@ class StatusDistribution extends StatelessWidget {
       completed: completed,
     );
   }
+
 }
 
 class _StatusStats {
@@ -125,5 +126,17 @@ class _StatusStats {
     required this.pending,
     required this.inProgress,
     required this.completed,
+  });
+}
+
+class StatusItem {
+  final String label;
+  final int count;
+  final int total;
+
+  StatusItem({
+    required this.label,
+    required this.count,
+    required this.total,
   });
 }

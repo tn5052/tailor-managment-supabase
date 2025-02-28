@@ -739,6 +739,8 @@ class _InvoiceDetailsDialogState extends State<InvoiceDetailsDialog> {
           return Colors.orange;
         case InvoiceStatus.cancelled:
           return Colors.red;
+        case InvoiceStatus.inProgress: // Make sure we're using "inProgress" consistently
+          return Colors.blue;
       }
     }
     return theme.colorScheme.primary;
