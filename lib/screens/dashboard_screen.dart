@@ -12,7 +12,7 @@ import '../widgets/dashboard/performance_metrics.dart';
 import '../widgets/dashboard/dashboard_header.dart';
 import '../services/measurement_service.dart';
 import '../services/complaint_service.dart';  // Add this import
-import 'package:shababalyola/screens/settings_screen.dart';
+import 'package:supabasetest/screens/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
