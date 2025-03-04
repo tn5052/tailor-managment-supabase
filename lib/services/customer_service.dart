@@ -401,3 +401,22 @@ class SupabaseService {
     }
   }
 }
+
+class CustomerService {
+  final SupabaseClient _supabase;
+
+  CustomerService(this._supabase);
+
+  Future<Customer> getCustomerByBillNumber(String billNumber) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
+    final response = await _supabase
+        .from('customers')
+        .select()
+        .eq('bill_number', billNumber)
+        .eq('tenant_id', tenantId)
+        .single();
+
+    return Customer.fromMap(response);
+  }
+}

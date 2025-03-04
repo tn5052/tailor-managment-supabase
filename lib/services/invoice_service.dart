@@ -296,4 +296,19 @@ class InvoiceService {
       'tenant_id': tenantId,
     });
   }
+
+  Future<List<Invoice>> getInvoicesByCustomerId(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    try {
+      final response = await _supabase
+          .from('invoices')
+          .select()
+          .eq('customer_id', customerId)
+          .eq('tenant_id', tenantId);
+
+      return (response as List).map((data) => Invoice.fromMap(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch invoices: $e');
+    }
+  }
 }

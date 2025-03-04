@@ -398,4 +398,16 @@ class ComplaintService {
         .order('created_at')
         .map((data) => data.map((json) => Complaint.fromMap(json)).toList());
   }
+
+  Future<List<Complaint>> getComplaintsByCustomerId(String customerId) async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    
+    final response = await _supabase
+        .from('complaints')
+        .select()
+        .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId);
+
+    return response.map((data) => Complaint.fromMap(data)).toList();
+  }
 }
