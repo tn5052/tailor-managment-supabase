@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:share_plus/share_plus.dart'; // Import share_plus package
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher package
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../../models/customer.dart';
 import '../../models/invoice.dart';
@@ -12,8 +12,8 @@ import '../../utils/number_formatter.dart';
 import '../../widgets/customer/add_customer_dialog.dart';
 import '../../widgets/invoice/invoice_details_dialog.dart';
 import '../../widgets/complaint/complaint_detail_dialog.dart';
-// Add import for report components
-import 'customer_report_components.dart';
+import 'desktop_report_component.dart';
+import 'mobile_report_component.dart';
 
 class CustomerSearchDialog extends StatelessWidget {
   final Customer customer;
@@ -2105,14 +2105,11 @@ Complaints: $complaintsCount
     } else {
       showDialog(
         context: context,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: CustomerFullReportDialog( // Remove underscore
-            customer: customer,
-            measurements: measurements,
-            invoices: invoices,
-            complaints: complaints,
-          ),
+        builder: (context) => CustomerInsightsReport(
+          customer: customer,
+          measurements: measurements,
+          invoices: invoices,
+          complaints: complaints,
         ),
       );
     }
