@@ -20,6 +20,15 @@ class NumberFormatter {
     return _currencyFormatter.format(value);
   }
 
+  static String formatCompactCurrency(double value) {
+    if (value >= 1000000) {
+      return '${_currencyFormatter.currencySymbol}${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${_currencyFormatter.currencySymbol}${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return _currencyFormatter.format(value);
+  }
+
   static String formatCompactNumber(num value) {
     return NumberFormat.compact().format(value);
   }
