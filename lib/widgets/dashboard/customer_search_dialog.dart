@@ -12,6 +12,7 @@ import '../../utils/number_formatter.dart';
 import '../../widgets/customer/add_customer_dialog.dart';
 import '../../widgets/invoice/invoice_details_dialog.dart';
 import '../../widgets/complaint/complaint_detail_dialog.dart';
+import '../../widgets/measurement/detail_dialog.dart';
 import 'desktop_report_component.dart';
 import 'mobile_report_component.dart';
 
@@ -1196,12 +1197,31 @@ Complaints: $complaintsCount
   }
 
   void _showCustomerDetails(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AddCustomerDialog(
-        customer: customer,
-      ),
-    );
+    final isDesktop = _isDesktop(context);
+    final dimensions = _getDialogDimensions(context);
+    
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: dimensions.width,
+            height: dimensions.height,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: AddCustomerDialog(customer: customer),
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AddCustomerDialog(customer: customer),
+      );
+    }
   }
 
   void _showMeasurements(BuildContext context) {
@@ -1526,451 +1546,102 @@ Complaints: $complaintsCount
     }
   }
 
+  // Add helper method to check if we're on desktop
+  bool _isDesktop(BuildContext context) {
+    return MediaQuery.of(context).size.width >= 1024;
+  }
+
   void _showMeasurementDetails(BuildContext context, Measurement measurement) {
-    final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 600;
+    final isDesktop = _isDesktop(context);
+    final dimensions = _getDialogDimensions(context);
     
-    if (isMobile) {
-      // Full screen measurement details for mobile
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: Text('Measurement Details'),
-              backgroundColor: theme.brightness == Brightness.dark 
-                  ? theme.appBarTheme.backgroundColor 
-                  : Colors.purple,
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () {
-                    // TODO: Edit measurement
-                  },
-                ),
-              ],
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: dimensions.width,
+            height: dimensions.height,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
             ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header card
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Colors.purple.shade100,
-                                child: Icon(Icons.straighten, color: Colors.purple),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Style: ${measurement.style}',
-                                      style: theme.textTheme.titleLarge,
-                                    ),
-                                    Text(
-                                      'Added on ${_formatDate(measurement.date)}',
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(context, Icons.design_services, 'Design Type: ${measurement.designType}'),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(context, Icons.texture, 'Fabric: ${measurement.fabricName}'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // Measurements section
-                  Text(
-                    'Measurements',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Measurement grid
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 2.5,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    children: [
-                      _buildMeasurementItem(context, 'Length (Arabi)', '${measurement.lengthArabi}'),
-                      _buildMeasurementItem(context, 'Length (Kuwaiti)', '${measurement.lengthKuwaiti}'),
-                      _buildMeasurementItem(context, 'Chest', '${measurement.chest}'),
-                      _buildMeasurementItem(context, 'Width', '${measurement.width}'),
-                      _buildMeasurementItem(context, 'Sleeve', '${measurement.sleeve}'),
-                      _buildMeasurementItem(context, 'Collar', '${measurement.collar}'),
-                      _buildMeasurementItem(context, 'Neck', '${measurement.neck}'),
-                      _buildMeasurementItem(context, 'Shoulder', '${measurement.shoulder}'),
-                      _buildMeasurementItem(context, 'Under', '${measurement.under}'),
-                      _buildMeasurementItem(context, 'Back Length', '${measurement.backLength}'),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Additional details section
-                  Text(
-                    'Additional Details',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildInfoRow(context, Icons.line_style, 'Seam: ${measurement.seam}'),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(context, Icons.format_color_fill, 'Adhesive: ${measurement.adhesive}'),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(context, Icons.layers, 'Under Kandura: ${measurement.underKandura}'),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(context, Icons.face, 'Tarboosh: ${measurement.tarboosh}'),
-                          if (measurement.notes.isNotEmpty) ...[
-                            const Divider(height: 24),
-                            Text(
-                              'Notes:',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(measurement.notes),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                ],
-              ),
+            child: DetailDialog(
+              measurement: measurement,
+              customerId: customer.id,
             ),
           ),
         ),
       );
     } else {
-      // Desktop view with dialog
-      showDialog(
-        context: context,
-        builder: (context) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: size.width * 0.8,
-            height: size.height * 0.8,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Measurement Details',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Basic info
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left column
-                            Expanded(
-                              child: Card(
-                                margin: const EdgeInsets.only(right: 8, bottom: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'General Information',
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                      ),
-                                      const Divider(height: 24),
-                                      _buildInfoRow(context, Icons.design_services, 'Style: ${measurement.style}'),
-                                      const SizedBox(height: 8),
-                                      _buildInfoRow(context, Icons.category, 'Design Type: ${measurement.designType}'),
-                                      const SizedBox(height: 8),
-                                      _buildInfoRow(context, Icons.texture, 'Fabric: ${measurement.fabricName }'),
-                                      const SizedBox(height: 8),
-                                      _buildInfoRow(context, Icons.date_range, 'Date: ${_formatDate(measurement.date)}'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Right column
-                            Expanded(
-                              child: Card(
-                                margin: const EdgeInsets.only(left: 8, bottom: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Customer',
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                      ),
-                                      const Divider(height: 24),
-                                      _buildInfoRow(context, Icons.person, 'Name: ${customer.name}'),
-                                      const SizedBox(height: 8),
-                                      _buildInfoRow(context, Icons.badge, 'Bill #: ${customer.billNumber}'),
-                                      const SizedBox(height: 8),
-                                      _buildInfoRow(context, Icons.phone, 'Phone: ${customer.phone}'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // Primary measurements
-                        Card(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Primary Measurements',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                                const Divider(height: 24),
-                                GridView.count(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 3.5,
-                                  children: [
-                                    _buildMeasurementItem(context, 'Length (Arabi)', '${measurement.lengthArabi}'),
-                                    _buildMeasurementItem(context, 'Length (Kuwaiti)', '${measurement.lengthKuwaiti}'),
-                                    _buildMeasurementItem(context, 'Chest', '${measurement.chest}'),
-                                    _buildMeasurementItem(context, 'Width', '${measurement.width}'),
-                                    _buildMeasurementItem(context, 'Sleeve', '${measurement.sleeve}'),
-                                    _buildMeasurementItem(context, 'Collar', '${measurement.collar}'),
-                                    _buildMeasurementItem(context, 'Neck', '${measurement.neck}'),
-                                    _buildMeasurementItem(context, 'Shoulder', '${measurement.shoulder}'),
-                                    _buildMeasurementItem(context, 'Under', '${measurement.under}'),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        // Additional details
-                        Card(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Additional Details',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                                const Divider(height: 24),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (measurement.seam.isNotEmpty) 
-                                            _buildInfoRow(context, Icons.line_style, 'Seam: ${measurement.seam}'),
-                                          if (measurement.adhesive.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
-                                            _buildInfoRow(context, Icons.format_color_fill, 'Adhesive: ${measurement.adhesive}'),
-                                          ],
-                                          if (measurement.underKandura.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
-                                            _buildInfoRow(context, Icons.layers, 'Under Kandura: ${measurement.underKandura}'),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 32),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (measurement.tarboosh.isNotEmpty) 
-                                            _buildInfoRow(context, Icons.face, 'Tarboosh: ${measurement.tarboosh}'),
-                                          if (measurement.openSleeve.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
-                                            _buildInfoRow(context, Icons.format_align_justify, 'Open Sleeve: ${measurement.openSleeve}'),
-                                          ],
-                                          if (measurement.stitching.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
-                                            _buildInfoRow(context, Icons.format_line_spacing, 'Stitching: ${measurement.stitching}'),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        // Notes section if available
-                        if (measurement.notes.isNotEmpty)
-                          Card(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Notes',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                  const Divider(height: 24),
-                                  Text(measurement.notes),
-                                ],
-                              ),
-                            ),
-                          ),
-                        
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: const Text('Close'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      // Mobile view
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailDialog(
+            measurement: measurement,
+            customerId: customer.id,
           ),
         ),
       );
     }
   }
 
-  Widget _buildMeasurementItem(BuildContext context, String label, String value) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark
-            ? theme.colorScheme.surface.withAlpha((theme.colorScheme.surface.alpha * 0.4).toInt())
-            : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.purple.withAlpha((Colors.purple.alpha * 0.3).toInt()),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(
-                (theme.colorScheme.onSurface.alpha * 0.7).toInt()
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showInvoiceDetails(BuildContext context, Invoice invoice) {
-    showDialog(
-      context: context,
-      builder: (context) => InvoiceDetailsDialog(invoice: invoice),
-    );
+    final isDesktop = _isDesktop(context);
+    final dimensions = _getDialogDimensions(context);
+    
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: dimensions.width,
+            height: dimensions.height,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: InvoiceDetailsDialog(invoice: invoice),
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => InvoiceDetailsDialog(invoice: invoice),
+      );
+    }
   }
 
   void _showComplaintDetails(BuildContext context, Complaint complaint) {
-    showDialog(
-      context: context,
-      builder: (context) => ComplaintDetailDialog(complaint: complaint),
-    );
+    final isDesktop = _isDesktop(context);
+    final dimensions = _getDialogDimensions(context);
+    
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: dimensions.width,
+            height: dimensions.height,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: ComplaintDetailDialog(complaint: complaint),
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => ComplaintDetailDialog(complaint: complaint),
+      );
+    }
   }
   
   void _showFullActivityHistory(BuildContext context) {
@@ -2114,4 +1785,24 @@ Complaints: $complaintsCount
       );
     }
   }
+
+  // Add helper method for dialog dimensions
+  DialogDimensions _getDialogDimensions(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return DialogDimensions(
+      width: size.width * 0.75,
+      height: size.height * 0.85,
+    );
+  }
+}
+
+// Helper class for dialog dimensions
+class DialogDimensions {
+  final double width;
+  final double height;
+  
+  DialogDimensions({
+    required this.width,
+    required this.height,
+  });
 }

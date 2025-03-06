@@ -6,6 +6,9 @@ import '../../models/invoice.dart';
 import '../../models/measurement.dart';
 import '../../models/complaint.dart';
 import '../../utils/number_formatter.dart';
+import '../measurement/detail_dialog.dart';   // Add this import
+import '../invoice/invoice_details_dialog.dart';  // Add this import
+import '../complaint/complaint_detail_dialog.dart';  // Add this import
 
 class CustomerInsightsReport extends StatelessWidget {
   final Customer customer;
@@ -421,6 +424,7 @@ class CustomerInsightsReport extends StatelessWidget {
                                 description: 'Invoice #${lastOrder.invoiceNumber} • ${NumberFormatter.formatCurrency(lastOrder.amountIncludingVat)}',
                                 icon: Icons.receipt_long,
                                 color: Colors.blue,
+                                onTap: () => _showInvoiceDetail(context, lastOrder),
                               )
                             else
                               _buildEmptyTimelineItem(context, 'No orders placed yet'),
@@ -434,6 +438,7 @@ class CustomerInsightsReport extends StatelessWidget {
                                 description: 'Style: ${lastMeasurement.style} • Design: ${lastMeasurement.designType}',
                                 icon: Icons.straighten,
                                 color: Colors.purple,
+                                onTap: () => _showMeasurementDetail(context, lastMeasurement),
                               )
                             else
                               _buildEmptyTimelineItem(context, 'No measurements taken yet'),
@@ -448,6 +453,7 @@ class CustomerInsightsReport extends StatelessWidget {
                                 icon: Icons.warning_amber,
                                 color: Colors.red,
                                 isLast: true,
+                                onTap: () => _showComplaintDetail(context, complaints.first),
                               ),
                           ],
                         ),
@@ -630,7 +636,13 @@ class CustomerInsightsReport extends StatelessWidget {
                     ],
                   ),
                   const Divider(height: 24),
-                  ...sortedInvoices.map((invoice) => _buildOrderRow(context, invoice)).toList(),
+                  ...sortedInvoices.map((invoice) => 
+                    InkWell(
+                      onTap: () => _showInvoiceDetail(context, invoice),
+                      hoverColor: theme.colorScheme.primary.withOpacity(0.05),
+                      child: _buildOrderRow(context, invoice),
+                    ),
+                  ).toList(),
                 ],
               ),
             ),
@@ -664,47 +676,236 @@ class CustomerInsightsReport extends StatelessWidget {
         ),
       );
     }
-    
-    // Sort measurements by date, newest first
-    final sortedMeasurements = [...measurements]..sort((a, b) => b.date.compareTo(a.date));
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Measurement History',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'All measurements taken for this customer with details',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+          // Header with view all button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Measurement History',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  Text(
+                    'All measurements taken for this customer',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
+                ],
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () => _showMeasurementsList(context),
+                icon: const Icon(Icons.list),
+                label: const Text('View All'),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           
-          // Measurement cards grid
+          // Grid of measurement cards
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+              crossAxisCount: 3,
               childAspectRatio: 1.5,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
-            itemCount: sortedMeasurements.length,
+            itemCount: measurements.length,
             itemBuilder: (context, index) {
-              final measurement = sortedMeasurements[index];
-              return _buildMeasurementCard(context, measurement);
+              final measurement = measurements[index];
+              return InkWell(
+                onTap: () => _showMeasurementDetail(context, measurement),
+                borderRadius: BorderRadius.circular(12),
+                child: _buildMeasurementCard(context, measurement),
+              );
             },
           ),
         ],
       ),
+    );
+  }
+
+  void _showMeasurementsList(BuildContext context) {
+    final theme = Theme.of(context);
+    final sortedMeasurements = [...measurements]..sort((a, b) => b.date.compareTo(a.date));
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          width: 800,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.purple.withOpacity(0.1),
+                    child: const Icon(Icons.straighten, color: Colors.purple),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'All Measurements',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${measurements.length} measurements found',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: sortedMeasurements.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final measurement = sortedMeasurements[index];
+                    return _buildMeasurementListItem(context, measurement);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeasurementListItem(BuildContext context, Measurement measurement) {
+    final theme = Theme.of(context);
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          _showMeasurementDetail(context, measurement);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.straighten, color: Colors.purple),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      measurement.style,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Design: ${measurement.designType}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    DateFormat('MMM d, yyyy').format(measurement.date),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.visibility,
+                          color: Colors.purple,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'View Details',
+                          style: TextStyle(
+                            color: Colors.purple,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // New method to show measurement detail
+  void _showMeasurementDetail(BuildContext context, Measurement measurement) {
+    DetailDialog.show(
+      context,
+      measurement: measurement,
+      customerId: customer.id,
     );
   }
   
@@ -946,7 +1147,13 @@ class CustomerInsightsReport extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                   
-                  ...sortedComplaints.map((complaint) => _buildComplaintRow(context, complaint)).toList(),
+                  ...sortedComplaints.map((complaint) => 
+                    InkWell(
+                      onTap: () => _showComplaintDetail(context, complaint),
+                      hoverColor: theme.colorScheme.primary.withOpacity(0.05),
+                      child: _buildComplaintRow(context, complaint),
+                    ),
+                  ).toList(),
                 ],
               ),
             ),
@@ -1046,62 +1253,67 @@ class CustomerInsightsReport extends StatelessWidget {
     required IconData icon,
     required Color color,
     bool isLast = false,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 50,
-                color: theme.dividerColor,
-              ),
-          ],
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    DateFormat('MMM d, yyyy').format(date),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ],
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 50,
+                  color: theme.dividerColor,
+                ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('MMM d, yyyy').format(date),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1831,6 +2043,22 @@ class CustomerInsightsReport extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // New method to show invoice detail
+  void _showInvoiceDetail(BuildContext context, Invoice invoice) {
+    showDialog(
+      context: context,
+      builder: (context) => InvoiceDetailsDialog(invoice: invoice),
+    );
+  }
+
+  // New helper method to show complaint detail
+  void _showComplaintDetail(BuildContext context, Complaint complaint) {
+    showDialog(
+      context: context,
+      builder: (context) => ComplaintDetailDialog(complaint: complaint),
     );
   }
 }
