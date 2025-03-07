@@ -10,6 +10,7 @@ import '../../services/measurement_service.dart';
 import '../../services/invoice_service.dart';
 import '../../services/complaint_service.dart';
 import 'customer_search_dialog.dart';
+import 'desktop_customer_search_dialog.dart'; // Add this import
 
 class DashboardHeader extends StatefulWidget {
   final List<Invoice> invoices;
@@ -102,8 +103,18 @@ class _DashboardHeaderState extends State<DashboardHeader> {
   ) {
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 600;
+    final isDesktop = size.width >= 1024;
 
-    if (isMobile) {
+    if (isDesktop) {
+      // Use the new desktop dialog for desktop screens
+      DesktopCustomerSearchDialog.show(
+        context,
+        customer: customer,
+        measurements: measurements,
+        invoices: invoices,
+        complaints: complaints,
+      );
+    } else if (isMobile) {
       // Full screen dialog for mobile
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -118,7 +129,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
         ),
       );
     } else {
-      // Regular dialog for desktop
+      // Regular dialog for tablets
       showDialog(
         context: context,
         builder: (context) => CustomerSearchDialog(

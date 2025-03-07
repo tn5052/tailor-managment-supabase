@@ -419,4 +419,38 @@ class CustomerService {
 
     return Customer.fromMap(response);
   }
+
+  Future<List<Customer>> getReferrals(String customerId) async {
+    try {
+      final response = await _supabase
+          .from('customers')
+          .select()
+          .eq('referred_by', customerId)
+          .order('created_at', ascending: false);
+      
+      return (response as List)
+          .map((item) => Customer.fromMap(item))
+          .toList();
+    } catch (e) {
+      print('Error fetching referrals: $e');
+      return [];
+    }
+  }
+
+  Future<List<Customer>> getFamilyMembers(String familyId) async {
+    try {
+      final response = await _supabase
+          .from('customers')
+          .select()
+          .eq('family_id', familyId)
+          .order('created_at', ascending: false);
+      
+      return (response as List)
+          .map((item) => Customer.fromMap(item))
+          .toList();
+    } catch (e) {
+      print('Error fetching family members: $e');
+      return [];
+    }
+  }
 }

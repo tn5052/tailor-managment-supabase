@@ -15,9 +15,10 @@ class Customer {
   final String address;
   final Gender gender;
   final DateTime createdAt;
-  final String? referredBy; // New field for customer reference
-  final String? familyId; // Add this
-  final FamilyRelation? familyRelation; // Add this
+  final String? referredBy; // UUID of referring customer
+  final int referralCount; // Number of customers referred
+  final String? familyId; // UUID of family head customer
+  final FamilyRelation? familyRelation; // Relationship to family head
 
   Customer({
     required this.id,
@@ -29,6 +30,7 @@ class Customer {
     required this.gender,
     DateTime? createdAt,
     this.referredBy, // Initialize the new field
+    this.referralCount = 0,
     this.familyId,
     this.familyRelation,
   }) : createdAt = createdAt ?? DateTime.now();
@@ -44,6 +46,7 @@ class Customer {
       gender: map['gender'] == 'female' ? Gender.female : Gender.male,
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       referredBy: map['referred_by'], // Retrieve referred_by from map
+      referralCount: map['referral_count'] ?? 0,
       familyId: map['family_id'],
       familyRelation: map['family_relation'] != null 
           ? FamilyRelation.values.firstWhere(
@@ -65,6 +68,7 @@ class Customer {
       'gender': gender.name,
       'created_at': createdAt.toIso8601String(),
       'referred_by': referredBy,
+      'referral_count': referralCount,
       'family_id': familyId,
       'family_relation': familyRelation?.name,
     };
