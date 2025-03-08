@@ -58,7 +58,7 @@ class CustomerSearchDialog extends StatelessWidget {
               theme.colorScheme.surface,
               theme.brightness == Brightness.dark 
                 ? theme.colorScheme.surface.withAlpha((theme.colorScheme.surface.alpha * 0.95).toInt())
-                : Color.lerp(theme.colorScheme.surface, theme.colorScheme.background, 0.1)!,
+                : Color.lerp(theme.colorScheme.surface, theme.colorScheme.surface, 0.1)!,
             ],
           ),
         ),
@@ -292,10 +292,6 @@ class CustomerSearchDialog extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
               ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white),
-                  onPressed: () => _editCustomer(context),
-                ),
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: Colors.white),
                   onPressed: () => _showMoreOptions(context),
@@ -569,13 +565,6 @@ class CustomerSearchDialog extends StatelessWidget {
             children: [
               _buildMobileNavButton(
                 context,
-                Icons.person,
-                'Profile',
-                theme.colorScheme.primary,
-                onTap: () => _showCustomerDetails(context),
-              ),
-              _buildMobileNavButton(
-                context,
                 Icons.straighten,
                 'Measurements',
                 Colors.purple,
@@ -594,6 +583,13 @@ class CustomerSearchDialog extends StatelessWidget {
                 'Complaints',
                 Colors.red.shade700,
                 onTap: () => _showComplaints(context),
+              ),
+              _buildMobileNavButton(
+                context,
+                Icons.analytics,
+                'Report',
+                Colors.green.shade600,
+                onTap: () => _showFullCustomerReport(context),
               ),
             ],
           ),
@@ -1267,7 +1263,7 @@ Complaints: $complaintsCount
                       child: Icon(Icons.straighten, color: Colors.purple),
                     ),
                     title: Text(
-                      '${measurement.style}',
+                      measurement.style,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Column(
@@ -1552,17 +1548,29 @@ Complaints: $complaintsCount
   }
 
   void _showMeasurementDetails(BuildContext context, Measurement measurement) {
-    final isDesktop = _isDesktop(context);
-    final dimensions = _getDialogDimensions(context);
-    
-    if (isDesktop) {
+    final size = MediaQuery.of(context).size;
+    final isMobile = size.width < 600;
+
+    if (isMobile) {
+      // Mobile view
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailDialog(
+            measurement: measurement,
+            customerId: customer.id,
+          ),
+        ),
+      );
+    } else {
+      // Desktop view
       showDialog(
         context: context,
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: dimensions.width,
-            height: dimensions.height,
+            width: size.width * 0.75,
+            height: size.height * 0.85,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(28),
@@ -1571,17 +1579,6 @@ Complaints: $complaintsCount
               measurement: measurement,
               customerId: customer.id,
             ),
-          ),
-        ),
-      );
-    } else {
-      // Mobile view
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetailDialog(
-            measurement: measurement,
-            customerId: customer.id,
           ),
         ),
       );

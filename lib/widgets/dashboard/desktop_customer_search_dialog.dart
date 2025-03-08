@@ -8,7 +8,6 @@ import '../../models/invoice.dart';
 import '../../models/measurement.dart';
 import '../../models/complaint.dart';
 import '../../utils/number_formatter.dart';
-import '../../widgets/customer/add_customer_dialog.dart';
 import '../../widgets/invoice/invoice_details_dialog.dart';
 import '../../widgets/complaint/complaint_detail_dialog.dart';
 import '../../widgets/measurement/detail_dialog.dart';
@@ -368,91 +367,10 @@ class _DesktopCustomerSearchDialogState
     );
   }
 
-  Widget _buildReferralList(BuildContext context) {
-    // Placeholder for referral list
-    return Column(
-      children: [
-        // Example referral item
-        _buildReferralItem(context, 'John Doe', 'Brother'),
-        _buildReferralItem(context, 'Jane Smith', 'Friend'),
-      ],
-    );
-  }
 
-  Widget _buildReferralItem(
-    BuildContext context,
-    String name,
-    String relation,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.white24,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : '',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$name ($relation)',
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildFamilyList(BuildContext context) {
-    // Placeholder for family list
-    return Column(
-      children: [
-        // Example family member item
-        _buildFamilyItem(context, 'Alice Johnson', 'Mother'),
-        _buildFamilyItem(context, 'Bob Johnson', 'Father'),
-      ],
-    );
-  }
 
-  Widget _buildFamilyItem(BuildContext context, String name, String relation) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.white24,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : '',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$name ($relation)',
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildActionButtons(BuildContext context) {
     return Padding(
@@ -808,10 +726,10 @@ class _DesktopCustomerSearchDialogState
               const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => _showMeasurementDetails(context, measurement),
-                child: const Text('View Details'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 36),
                 ),
+                child: const Text('View Details'),
               ),
             ],
           ),
@@ -1069,10 +987,10 @@ class _DesktopCustomerSearchDialogState
                   ),
                   ElevatedButton(
                     onPressed: () => _showInvoiceDetails(context, invoice),
-                    child: const Text('View Details'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(120, 36),
                     ),
+                    child: const Text('View Details'),
                   ),
                 ],
               ),
@@ -1808,70 +1726,7 @@ class _DesktopCustomerSearchDialogState
     );
   }
 
-  Widget _buildRelatedCustomers(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Related Customers',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: theme.dividerColor),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.people_alt,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Referral Network',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    OutlinedButton(
-                      onPressed: () {},
-                      child: const Text('View All'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // Removed unused _buildRelatedCustomers method
 
   // Utility methods
   String _formatDate(DateTime date) {
@@ -1890,14 +1745,41 @@ class _DesktopCustomerSearchDialogState
   }
 
   void _showMeasurementDetails(BuildContext context, Measurement measurement) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => DetailDialog(
+    final size = MediaQuery.of(context).size;
+    final isMobile = size.width < 600;
+
+    if (isMobile) {
+      // Mobile view
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailDialog(
             measurement: measurement,
             customerId: widget.customer.id,
           ),
-    );
+        ),
+      );
+    } else {
+      // Desktop view
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: size.width * 0.75,
+            height: size.height * 0.85,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: DetailDialog(
+              measurement: measurement,
+              customerId: widget.customer.id,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   void _showComplaintDetails(BuildContext context, Complaint complaint) {
@@ -1907,12 +1789,7 @@ class _DesktopCustomerSearchDialogState
     );
   }
 
-  void _editCustomer(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AddCustomerDialog(customer: widget.customer),
-    );
-  }
+
 
   void _showFullReport(BuildContext context) {
     showDialog(

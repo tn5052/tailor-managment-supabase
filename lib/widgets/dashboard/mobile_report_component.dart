@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../models/customer.dart';
 import '../../models/invoice.dart';
@@ -158,11 +157,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
 }
 
 // Step 2: Add helper classes for visualization
-class _ChartData {
-  final DateTime date;
-  final double value;
-  _ChartData(this.date, this.value);
-}
+
 
 class CustomerFullReportScreen extends StatefulWidget {
   final Customer customer;
@@ -205,8 +200,6 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mediaQuery = MediaQuery.of(context);
-    final topPadding = mediaQuery.padding.top;
 
     return Scaffold(
       body: NestedScrollView(
@@ -462,7 +455,6 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
   }
 
   Widget _buildOverviewTab() {
-    final theme = Theme.of(context);
     final padding = MediaQuery.of(context).size.width * 0.04;
 
     return ListView(
@@ -1226,72 +1218,7 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
     );
   }
 
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildStatusRow(String label, String value, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
 
   Widget _buildOrderCard(Invoice invoice) {
     final theme = Theme.of(context);
@@ -1414,103 +1341,7 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
     );
   }
 
-  Widget _buildMeasurementCard(Measurement measurement) {
-    final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.straighten,
-                    color: Colors.purple,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        measurement.style,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('MMM d, yyyy').format(measurement.date),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            Text(
-              'Key Measurements',
-              style: theme.textTheme.labelLarge?.copyWith(color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              children: [
-                _buildMeasurementBadge('Length', '${measurement.lengthArabi}'),
-                _buildMeasurementBadge('Chest', '${measurement.chest}'),
-                _buildMeasurementBadge('Width', '${measurement.width}'),
-                _buildMeasurementBadge('Sleeve', '${measurement.sleeve}'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoRow('Design Type', measurement.designType),
-                ),
-                Expanded(
-                  child: _buildInfoRow('Fabric', measurement.fabricName),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMeasurementBadge(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.purple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        '$label: $value',
-        style: const TextStyle(
-          color: Colors.purple,
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-        ),
-      ),
-    );
-  }
 
   Widget _buildComplaintCard(Complaint complaint) {
     final theme = Theme.of(context);
@@ -1649,35 +1480,6 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
     );
   }
 
-  String _getLastActivity() {
-    List<DateTime> allDates = [];
-
-    // Add invoice dates
-    for (final invoice in widget.invoices) {
-      allDates.add(invoice.date);
-    }
-
-    // Add measurement dates
-    for (final measurement in widget.measurements) {
-      allDates.add(measurement.date);
-    }
-
-    // Add complaint dates
-    for (final complaint in widget.complaints) {
-      allDates.add(complaint.createdAt);
-    }
-
-    if (allDates.isEmpty) {
-      return 'No activity';
-    }
-
-    // Find the most recent date
-    allDates.sort((a, b) => b.compareTo(a));
-    final mostRecentDate = allDates.first;
-
-    // Format the date
-    return DateFormat('MMM d, yyyy').format(mostRecentDate);
-  }
 
   void _showInvoiceDetails(BuildContext context, Invoice invoice) {
     showDialog(
@@ -1767,7 +1569,7 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
   }
 
   Widget _buildMeasurementsList(BuildContext context) {
-    final theme = Theme.of(context);
+    Theme.of(context);
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
     // Sort measurements by date (newest first)
@@ -1799,7 +1601,6 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
     final formattedDate = DateFormat('MMM d, yyyy').format(measurement.date);
 
     // Calculate which measurements to highlight
-    final hasHighValue = measurement.chest > 50 || measurement.width > 30;
 
     return InkWell(
       onTap: () {
@@ -2062,7 +1863,7 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
                   child: _buildOrderCard(invoice),
                 ),
               )
-              .toList(),
+              ,
 
         const SizedBox(height: 24),
       ],
@@ -2127,104 +1928,5 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
     );
   }
 
-  Widget _buildPaymentHistoryCard(Invoice invoice) {
-    final theme = Theme.of(context);
-    Color statusColor;
 
-    switch (invoice.paymentStatus) {
-      case 'paid':
-        statusColor = Colors.green;
-        break;
-      case 'pending':
-        statusColor = Colors.orange;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Invoice #${invoice.invoiceNumber}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    invoice.paymentStatus.toString(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildPaymentDetail('Total', invoice.amountIncludingVat),
-                const SizedBox(width: 24),
-                _buildPaymentDetail('Advance', invoice.advance),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildPaymentDetail('Balance', invoice.balance),
-                const SizedBox(width: 24),
-                Text(
-                  DateFormat('MMM d, yyyy').format(invoice.date),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentDetail(String label, double amount) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
-          ),
-        ),
-        Text(
-          NumberFormatter.formatCurrency(amount),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
 }
