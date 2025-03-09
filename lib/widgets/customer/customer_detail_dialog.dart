@@ -317,129 +317,138 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
   }
 
   Widget _buildDesktopLayout(BuildContext context) {
-    final theme = Theme.of(context);
-    final brightness = theme.brightness;
-    
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Section
-          _buildHeaderSection(theme, true),
-          
-          // Main Content Area
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left panel (Info and Stats)
-                SizedBox(
-                  width: 300,
-                  child: _buildInfoPanel(theme),
-                ),
-                
-                // Vertical divider
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-                ),
-                
-                // Right panel (Tabs and content)
-                Expanded(
-                  child: Column(
-                    children: [
-                      // Tab Bar
-                      Container(
-                        decoration: BoxDecoration(
-                          color: brightness == Brightness.light
-                              ? theme.colorScheme.surfaceContainerLowest
-                              : theme.colorScheme.surfaceContainerLow,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-                            ),
-                          ),
-                        ),
-                        child: TabBar(
-                          controller: _tabController,
-                          tabs: [
-                            _buildTab(Icons.straighten_rounded, 'Measurements'),
-                            _buildTab(Icons.receipt_long_rounded, 'Invoices'),
-                            _buildTab(Icons.family_restroom_rounded, 'Family'),
-                            _buildTab(Icons.people_alt_rounded, 'Referrals'),
-                            _buildTab(Icons.report_problem_rounded, 'Complaints'),
-                          ],
-                          isScrollable: false,
-                          labelColor: theme.colorScheme.primary,
-                          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          labelStyle: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          dividerColor: Colors.transparent,
-                        ),
-                      ),
-                      
-                      // Tab Content
-                      Expanded(
-                        child: _isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _buildMeasurementsTab(theme),
-                                  _buildInvoicesTab(theme),
-                                  _buildFamilyTab(theme),
-                                  _buildReferralsTab(theme),
-                                  _buildComplaintsTab(theme),
-                                ],
-                              ),
-                      ),
-                    ],
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final brightness = theme.brightness;
+  
+  return Card(
+    elevation: 0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Simplified Top header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), // Reduced vertical padding
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20, // Reduced radius
+                backgroundColor: colorScheme.primary.withOpacity(0.1),
+                child: Text(
+                  widget.customer.name[0].toUpperCase(),
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Reduced font size
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          // Footer
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: theme.colorScheme.outlineVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.customer.name,
+                  style: theme.textTheme.titleLarge?.copyWith( // Use titleLarge for better consistency
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('CLOSE'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: _editCustomer,
-                  icon: const Icon(Icons.edit),
-                  label: const Text('EDIT'),
-                ),
-              ],
+              const SizedBox(width: 16),
+              // Compact action buttons
+              Wrap(
+                spacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  IconButton(
+                    onPressed: _addMeasurement,
+                    icon: const Icon(Icons.straighten),
+                    tooltip: 'Add Measurement',
+                  ),
+                  IconButton(
+                    onPressed: _addInvoice,
+                    icon: const Icon(Icons.receipt),
+                    tooltip: 'Create Invoice',
+                  ),
+                  IconButton(
+                    onPressed: _addComplaint,
+                    icon: const Icon(Icons.report_problem_outlined),
+                    tooltip: 'Add Complaint',
+                    color: colorScheme.error,
+                  ),
+                  IconButton(
+                    onPressed: _editCustomer,
+                    icon: const Icon(Icons.edit),
+                    tooltip: 'Edit Customer',
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        // Tab bar at the top
+        Container(
+          decoration: BoxDecoration(
+            color: brightness == Brightness.light
+                ? colorScheme.surfaceContainerLowest
+                : colorScheme.surfaceContainerLow,
+            border: Border(
+              bottom: BorderSide(color: colorScheme.outlineVariant),
             ),
           ),
-        ],
-      ),
-    );
-  }
+          child: TabBar(
+            controller: _tabController,
+            tabs: [
+              _buildTab(Icons.dashboard_outlined, 'Overview'),
+              _buildTab(Icons.straighten_rounded, 'Measurements'),
+              _buildTab(Icons.receipt_long_rounded, 'Invoices'),
+              _buildTab(Icons.family_restroom_rounded, 'Family'),
+              _buildTab(Icons.people_alt_rounded, 'Referrals'),
+              _buildTab(Icons.report_problem_rounded, 'Complaints'),
+            ],
+            isScrollable: true,
+            labelColor: colorScheme.primary,
+            unselectedLabelColor: colorScheme.onSurfaceVariant,
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelStyle: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            dividerColor: Colors.transparent,
+          ),
+        ),
+        
+        // Tab content
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOverviewTab(theme),
+                    _buildMeasurementsTab(theme),
+                    _buildInvoicesTab(theme),
+                    _buildFamilyTab(theme),
+                    _buildReferralsTab(theme),
+                    _buildComplaintsTab(theme),
+                  ],
+                ),
+        ),
+      ],
+    ),
+  );
+}
 
 Widget _buildMobileLayout(BuildContext context) {
   final theme = Theme.of(context);
@@ -656,6 +665,50 @@ Widget _buildOverviewTab(ThemeData theme) {
   return ListView(
     padding: const EdgeInsets.only(bottom: 24),
     children: [
+      // Quick action buttons row for desktop
+      if (MediaQuery.of(context).size.width >= 1024) 
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionCard(
+                  theme,
+                  icon: Icons.phone_outlined,
+                  label: 'Call Customer',
+                  description: widget.customer.phone,
+                  onTap: _callCustomer,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (widget.customer.whatsapp.isNotEmpty)
+                Expanded(
+                  child: _buildQuickActionCard(
+                    theme,
+                    icon: Icons.chat_outlined,
+                    label: 'WhatsApp',
+                    description: widget.customer.whatsapp,
+                    onTap: _sendWhatsApp,
+                    color: const Color(0xFF25D366), // WhatsApp green
+                  ),
+                )
+              else
+                Expanded(
+                  child: _buildQuickActionCard(
+                    theme,
+                    icon: Icons.chat_outlined,
+                    label: 'WhatsApp',
+                    description: 'Not available',
+                    color: colorScheme.surfaceVariant,
+                    textColor: colorScheme.onSurfaceVariant,
+                    onTap: null,
+                  ),
+                ),
+            ],
+          ),
+        ),
+
       // Customer Info Card
       Card(
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -671,85 +724,22 @@ Widget _buildOverviewTab(ThemeData theme) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title and avatar row
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: colorScheme.primary.withOpacity(0.1),
-                    child: Text(
-                      widget.customer.name[0].toUpperCase(),
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                      ),
-                    ),
+                  Icon(
+                    Icons.person_outline,
+                    color: colorScheme.primary,
+                    size: 20,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '#${widget.customer.billNumber}',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: widget.customer.gender == Gender.male 
-                                  ? Colors.blue.withOpacity(0.1)
-                                  : Colors.pink.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    widget.customer.gender == Gender.male ? Icons.male : Icons.female,
-                                    size: 12,
-                                    color: widget.customer.gender == Gender.male ? Colors.blue : Colors.pink,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    widget.customer.gender == Gender.male ? 'Male' : 'Female',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: widget.customer.gender == Gender.male ? Colors.blue : Colors.pink,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.customer.name,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                  const SizedBox(width: 8),
+                  Text(
+                    'Personal Information',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              
               const Divider(height: 24),
               
               // Contact information
@@ -779,6 +769,13 @@ Widget _buildOverviewTab(ThemeData theme) {
                 icon: Icons.calendar_today_outlined,
                 label: 'Customer Since',
                 value: DateFormat.yMMMMd().format(widget.customer.createdAt),
+              ),
+              _buildInfoRow(
+                theme,
+                icon: Icons.receipt_outlined,
+                label: 'Bill Number',
+                value: '#' + widget.customer.billNumber,
+                onTap: _copyBillNumber,
               ),
             ],
           ),
@@ -864,6 +861,16 @@ Widget _buildOverviewTab(ThemeData theme) {
                             color: colorScheme.tertiary,
                           ),
                         ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildActivityCount(
+                            theme,
+                            count: _complaints.length,
+                            label: 'Complaints',
+                            icon: Icons.report_problem_outlined,
+                            color: _complaints.isEmpty ? colorScheme.onSurfaceVariant : colorScheme.error,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -947,6 +954,66 @@ Widget _buildOverviewTab(ThemeData theme) {
         ..._buildRecentActivity(theme),
       ],
     ],
+  );
+}
+
+Widget _buildQuickActionCard(
+  ThemeData theme, {
+  required IconData icon,
+  required String label,
+  required String description,
+  Color? color,
+  Color? textColor,
+  VoidCallback? onTap,
+}) {
+  final colorScheme = theme.colorScheme;
+  final effectiveColor = color ?? colorScheme.primary;
+  final effectiveTextColor = textColor ?? effectiveColor;
+
+  return Card(
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: effectiveColor.withOpacity(0.2),
+      ),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: effectiveTextColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: effectiveTextColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: effectiveTextColor.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -1360,7 +1427,29 @@ Widget _buildInfoRow(ThemeData theme, {
 
 
 
-Widget _buildActionLink(ThemeData theme, {
+  Widget _buildTagChip(
+    ThemeData theme,
+    String label,
+    Color backgroundColor,
+    Color textColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionLink(ThemeData theme, {
   required String title,
   required IconData icon,
   required VoidCallback onTap,
