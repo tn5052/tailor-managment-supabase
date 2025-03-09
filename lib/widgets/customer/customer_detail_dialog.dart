@@ -398,7 +398,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
           ),
         ),
         
-        // Tab bar at the top
+        // Modernized Tab bar
         Container(
           decoration: BoxDecoration(
             color: brightness == Brightness.light
@@ -410,22 +410,32 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
           ),
           child: TabBar(
             controller: _tabController,
-            tabs: [
-              _buildTab(Icons.dashboard_outlined, 'Overview'),
-              _buildTab(Icons.straighten_rounded, 'Measurements'),
-              _buildTab(Icons.receipt_long_rounded, 'Invoices'),
-              _buildTab(Icons.family_restroom_rounded, 'Family'),
-              _buildTab(Icons.people_alt_rounded, 'Referrals'),
-              _buildTab(Icons.report_problem_rounded, 'Complaints'),
-            ],
             isScrollable: true,
+            indicatorColor: colorScheme.primary,
+            indicatorWeight: 3,
             labelColor: colorScheme.primary,
             unselectedLabelColor: colorScheme.onSurfaceVariant,
-            indicatorSize: TabBarIndicatorSize.tab,
             labelStyle: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
-            dividerColor: Colors.transparent,
+            unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.normal,
+            ),
+            indicator: CustomTabIndicator(
+              indicatorColor: colorScheme.primary,
+              indicatorHeight: 3,
+              indicatorRadius: 1.5,
+            ),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 24), // Add padding to labels
+            overlayColor: MaterialStateProperty.all(colorScheme.primary.withOpacity(0.1)), // Add ripple effect
+            tabs: [
+              _buildCustomTab(Icons.dashboard_outlined, 'Overview'),
+              _buildCustomTab(Icons.straighten_rounded, 'Measurements'),
+              _buildCustomTab(Icons.receipt_long_rounded, 'Invoices'),
+              _buildCustomTab(Icons.family_restroom_rounded, 'Family'),
+              _buildCustomTab(Icons.people_alt_rounded, 'Referrals'),
+              _buildCustomTab(Icons.report_problem_rounded, 'Complaints'),
+            ],
           ),
         ),
         
@@ -1427,27 +1437,6 @@ Widget _buildInfoRow(ThemeData theme, {
 
 
 
-  Widget _buildTagChip(
-    ThemeData theme,
-    String label,
-    Color backgroundColor,
-    Color textColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
 
   Widget _buildActionLink(ThemeData theme, {
   required String title,
@@ -1489,675 +1478,32 @@ Widget _buildInfoRow(ThemeData theme, {
 
 
 
-  Widget _buildHeaderSection(ThemeData theme, bool isDesktop) {
-    return Container(
-      padding: EdgeInsets.all(isDesktop ? 24 : 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(isDesktop ? 28 : 0),
-          topRight: Radius.circular(isDesktop ? 28 : 0),
+
+
+
+
+
+
+  Widget _buildCustomTab(IconData icon, String label) {
+  return Tab(
+    height: 48,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 20,
         ),
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.customer.name,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              if (isDesktop) ...[
-                FilledButton.tonalIcon(
-                  onPressed: _addMeasurement,
-                  icon: const Icon(Icons.straighten),
-                  label: const Text('Add Measurement'),
-                ),
-                const SizedBox(width: 16),
-                FilledButton.tonalIcon(
-                  onPressed: _addInvoice,
-                  icon: const Icon(Icons.receipt),
-                  label: const Text('Create Invoice'),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              _buildInfoChip(
-                theme,
-                label: 'Bill #${widget.customer.billNumber}',
-                icon: Icons.receipt_outlined,
-                onTap: _copyBillNumber,
-              ),
-              _buildInfoChip(
-                theme,
-                label: widget.customer.phone,
-                icon: Icons.phone_outlined,
-                onTap: _copyPhone,
-              ),
-              _buildInfoChip(
-                theme,
-                label: widget.customer.gender == Gender.male ? 'Male' : 'Female',
-                icon: widget.customer.gender == Gender.male 
-                    ? Icons.male_outlined 
-                    : Icons.female_outlined,
-              ),
-              if (isDesktop && !_isLoading) ...[
-                _buildInfoChip(
-                  theme,
-                  label: '${_measurements.length} Measurements',
-                  icon: Icons.straighten_outlined,
-                ),
-                _buildInfoChip(
-                  theme,
-                  label: '${_invoices.length} Invoices',
-                  icon: Icons.receipt_long_outlined,
-                ),
-                if (_totalSpent > 0)
-                  _buildInfoChip(
-                    theme,
-                    label: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
-                    icon: Icons.payments_outlined,
-                    color: theme.colorScheme.tertiary,
-                  ),
-                if (_pendingPayments > 0)
-                  _buildInfoChip(
-                    theme,
-                    label: 'Due: ${NumberFormatter.formatCurrency(_pendingPayments.toDouble())}',
-                    icon: Icons.pending_outlined,
-                    color: theme.colorScheme.error,
-                  ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+        const SizedBox(width: 8),
+        Text(label),
+      ],
+    ),
+  );
+}
 
-  Widget _buildInfoPanel(ThemeData theme) {
-    final brightness = theme.brightness;
-    
-    return Container(
-      color: brightness == Brightness.light
-          ? theme.colorScheme.surfaceContainerLowest
-          : theme.colorScheme.surfaceContainerLow,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          // Contact Information
-          _buildInfoSection(
-            theme,
-            title: 'Contact Information',
-            icon: Icons.contact_phone_outlined,
-            children: [
-              _buildContactItem(
-                theme,
-                icon: Icons.location_on_outlined,
-                label: 'Address',
-                value: widget.customer.address,
-              ),
-              if (widget.customer.whatsapp.isNotEmpty)
-                _buildContactItem(
-                  theme,
-                  icon: Icons.whatshot_outlined,
-                  label: 'WhatsApp',
-                  value: widget.customer.whatsapp,
-                  onTap: _sendWhatsApp,
-                ),
-            ],
-          ),
-          
-          // Financial Summary
-          if (!_isLoading)
-            _buildInfoSection(
-              theme,
-              title: 'Financial Summary',
-              icon: Icons.account_balance_wallet_outlined,
-              children: [
-                _buildInfoStat(
-                  theme,
-                  label: 'Total Spent',
-                  value: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
-                  icon: Icons.payments_outlined,
-                  color: theme.colorScheme.tertiary,
-                ),
-                _buildInfoStat(
-                  theme,
-                  label: 'Due Payments',
-                  value: NumberFormatter.formatCurrency(_pendingPayments.toDouble()),
-                  icon: Icons.pending_actions_outlined,
-                  color: _pendingPayments > 0 ? theme.colorScheme.error : null,
-                ),
-                _buildInfoStat(
-                  theme,
-                  label: 'Total Invoices',
-                  value: '${_invoices.length}',
-                  icon: Icons.receipt_long_outlined,
-                ),
-                _buildInfoStat(
-                  theme,
-                  label: 'Measurements',
-                  value: '${_measurements.length}',
-                  icon: Icons.straighten_outlined,
-                ),
-              ],
-            ),
-            
-          // Referral Information
-          if (!_isLoading && (_referredBy != null || _referrals.isNotEmpty))
-            _buildInfoSection(
-              theme,
-              title: 'Referral Information',
-              icon: Icons.people_alt_outlined,
-              children: [
-                if (_referredBy != null)
-                  _buildReferralItem(
-                    theme,
-                    title: 'Referred by',
-                    customer: _referredBy!,
-                  ),
-                if (_referrals.isNotEmpty)
-                  _buildInfoStat(
-                    theme,
-                    label: 'Referred Customers',
-                    value: '${_referrals.length}',
-                    icon: Icons.person_add_alt_outlined,
-                  ),
-              ],
-            ),
-            
-          // Family Information
-          if (!_isLoading && (_familyHead != null || _familyMembers.isNotEmpty))
-            _buildInfoSection(
-              theme,
-              title: 'Family Information',
-              icon: Icons.family_restroom_outlined,
-              children: [
-                if (_familyHead != null)
-                  _buildFamilyItem(
-                    theme,
-                    title: 'Family Head',
-                    customer: _familyHead!,
-                    relation: widget.customer.familyRelationDisplay,
-                  ),
-                if (_familyMembers.isNotEmpty)
-                  _buildInfoStat(
-                    theme,
-                    label: 'Family Members',
-                    value: '${_familyMembers.length}',
-                    icon: Icons.family_restroom_outlined,
-                  ),
-              ],
-            ),
-          
-          // Quick Actions
-          _buildQuickActionsSection(theme),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildInfoChip(ThemeData theme, {
-    required String label,
-    required IconData icon,
-    Color? color,
-    VoidCallback? onTap,
-  }) {
-    final chipColor = color ?? theme.colorScheme.primary;
-    
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: chipColor.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: chipColor.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: chipColor,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: chipColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildInfoSection(ThemeData theme, {
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...children,
-        ],
-      ),
-    );
-  }
 
-  Widget _buildQuickActionsSection(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 2.5,
-            children: [
-              _buildActionButton(
-                theme,
-                label: 'Call',
-                icon: Icons.phone,
-                color: theme.colorScheme.primary,
-                onTap: _callCustomer,
-              ),
-              _buildActionButton(
-                theme,
-                label: 'WhatsApp',
-                icon: Icons.chat,
-                color: const Color(0xFF25D366), // WhatsApp green
-                onTap: _sendWhatsApp,
-              ),
-              _buildActionButton(
-                theme,
-                label: 'New Measurement',
-                icon: Icons.straighten,
-                color: theme.colorScheme.tertiary,
-                onTap: _addMeasurement,
-              ),
-              _buildActionButton(
-                theme,
-                label: 'Create Invoice',
-                icon: Icons.receipt,
-                color: theme.colorScheme.secondary,
-                onTap: _addInvoice,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(ThemeData theme, {
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withOpacity(0.3),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: color,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTab(IconData icon, String label) {
-    return Tab(
-      icon: Icon(icon, size: 20),
-      text: label,
-      iconMargin: const EdgeInsets.only(bottom: 4),
-      height: 56,
-    );
-  }
-
-  Widget _buildContactItem(ThemeData theme, {
-    required IconData icon,
-    required String label,
-    required String value,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: theme.colorScheme.primary.withOpacity(0.8),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ],
-              ),
-            ),
-            if (onTap != null)
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoStat(ThemeData theme, {
-    required String label,
-    required String value,
-    required IconData icon,
-    Color? color,
-  }) {
-    final displayColor = color ?? theme.colorScheme.onSurfaceVariant;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: displayColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: displayColor,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: displayColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReferralItem(ThemeData theme, {
-    required String title,
-    required Customer customer,
-  }) {
-    return InkWell(
-      onTap: () => CustomerDetailDialog.show(context, customer),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.secondaryContainer.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.colorScheme.secondaryContainer,
-          ),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              child: Text(
-                customer.name[0].toUpperCase(),
-                style: TextStyle(
-                  color: theme.colorScheme.onSecondaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    customer.name,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '#${customer.billNumber} · ${customer.phone}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFamilyItem(ThemeData theme, {
-    required String title,
-    required Customer customer,
-    required String relation,
-  }) {
-    return InkWell(
-      onTap: () => CustomerDetailDialog.show(context, customer),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.tertiaryContainer.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.colorScheme.tertiaryContainer,
-          ),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.tertiaryContainer,
-              child: Text(
-                customer.name[0].toUpperCase(),
-                style: TextStyle(
-                  color: theme.colorScheme.onTertiaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiary.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          relation,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.tertiary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    customer.name,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '#${customer.billNumber} · ${customer.phone}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildMeasurementsTab(ThemeData theme) {
     if (_measurements.isEmpty) {
@@ -3131,5 +2477,59 @@ Future<void> _addComplaint() async {
     }
 
     return _buildMobileLayout(context);
+  }
+}
+
+// Add this custom tab indicator class
+class CustomTabIndicator extends Decoration {
+  final double indicatorHeight;
+  final Color indicatorColor;
+  final double indicatorRadius;
+
+  const CustomTabIndicator({
+    this.indicatorHeight = 4,
+    this.indicatorColor = Colors.blue,
+    this.indicatorRadius = 4,
+  });
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _CustomPainter(
+      indicatorHeight: indicatorHeight,
+      indicatorColor: indicatorColor,
+      indicatorRadius: indicatorRadius,
+    );
+  }
+}
+
+class _CustomPainter extends BoxPainter {
+  final double indicatorHeight;
+  final Color indicatorColor;
+  final double indicatorRadius;
+
+  _CustomPainter({
+    required this.indicatorHeight,
+    required this.indicatorColor,
+    required this.indicatorRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final rect = offset & configuration.size!;
+    final paint = Paint()
+      ..color = indicatorColor
+      ..style = PaintingStyle.fill;
+
+    final indicatorRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        rect.left + 16,
+        rect.bottom - indicatorHeight,
+        rect.width - 32,
+        indicatorHeight,
+      ),
+      Radius.circular(indicatorRadius),
+    );
+
+    canvas.drawRRect(indicatorRect, paint);
   }
 }
