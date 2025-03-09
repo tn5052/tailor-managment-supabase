@@ -19,13 +19,23 @@ class ComplaintDialog extends StatefulWidget {
     super.key, 
     this.complaint,
     this.customerId,
+    this.customerName,
   });
 
-  // Added static show method
-  static Future<void> show(BuildContext context) {
+  final String? customerName;
+
+  // Update the show method
+  static Future<void> show(
+    BuildContext context, {
+    String? customerId,
+    String? customerName,
+  }) {
     return showDialog(
       context: context,
-      builder: (context) => const ComplaintDialog(),
+      builder: (context) => ComplaintDialog(
+        customerId: customerId,
+        customerName: customerName,
+      ),
     );
   }
 

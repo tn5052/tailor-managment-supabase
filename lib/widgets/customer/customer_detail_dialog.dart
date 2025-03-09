@@ -17,7 +17,7 @@ import '../measurement/add_measurement_dialog.dart';
 import '../invoice/invoice_details_dialog.dart';
 import '../invoice/add_invoice_dailog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../complaint/complaint_dialog.dart';
 class CustomerDetailDialog extends StatefulWidget {
   final Customer customer;
 
@@ -461,184 +461,56 @@ Widget _buildMobileLayout(BuildContext context) {
       actions: [
         IconButton(
           onPressed: _editCustomer,
-          icon: const Icon(Icons.edit_outlined, size: 20),
+          icon: const Icon(Icons.edit_outlined),
           tooltip: 'Edit',
         ),
         IconButton(
           onPressed: () => _showActions(context),
-          icon: const Icon(Icons.more_vert_outlined, size: 20),
+          icon: const Icon(Icons.more_vert_outlined),
           tooltip: 'More',
         ),
       ],
+      bottom: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        labelColor: colorScheme.primary,
+        unselectedLabelColor: colorScheme.onSurfaceVariant,
+        indicatorColor: colorScheme.primary,
+        dividerColor: Colors.transparent,
+        tabAlignment: TabAlignment.start,
+        labelStyle: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        tabs: const [
+          Tab(text: 'Overview'),
+          Tab(text: 'Measurements'),
+          Tab(text: 'Invoices'),
+          Tab(text: 'Family'),
+          Tab(text: 'Referrals'),
+          Tab(text: 'Complaints'),
+        ],
+      ),
     ),
-    body: NestedScrollView(
-      headerSliverBuilder: (context, _) => [
-        SliverToBoxAdapter(
-          child: Column(
+    body: _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : TabBarView(
+            controller: _tabController,
             children: [
-              // Tab bar - horizontally scrollable
-              Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: colorScheme.outlineVariant.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  labelColor: colorScheme.primary,
-                  unselectedLabelColor: colorScheme.onSurfaceVariant,
-                  indicatorColor: colorScheme.primary,
-                  dividerColor: Colors.transparent,
-                  tabAlignment: TabAlignment.start,
-                  labelStyle: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  tabs: const [
-                    Tab(text: 'Overview'),
-                    Tab(text: 'Measurements'),
-                    Tab(text: 'Invoices'),
-                    Tab(text: 'Family'),
-                    Tab(text: 'Referrals'),
-                    Tab(text: 'Complaints'),
-                  ],
-                ),
-              ),
+              _buildOverviewTab(theme),
+              _buildMeasurementsTab(theme),
+              _buildInvoicesTab(theme),
+              _buildFamilyTab(theme),
+              _buildReferralsTab(theme),
+              _buildComplaintsTab(theme),
             ],
           ),
-        ),
-      ],
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(theme),
-                _buildMeasurementsTab(theme),
-                _buildInvoicesTab(theme),
-                _buildFamilyTab(theme),
-                _buildReferralsTab(theme),
-                _buildComplaintsTab(theme),
-              ],
-            ),
-    ),
     floatingActionButton: FloatingActionButton(
-      onPressed: () => _showQuickActions(context),
-      elevation: 2,
-      backgroundColor: colorScheme.primaryContainer,
-      foregroundColor: colorScheme.onPrimaryContainer,
+      onPressed: () => _showActionSheet(context),
       child: const Icon(Icons.add),
     ),
   );
 }
 
-void _showQuickActions(BuildContext context) {
-  final theme = Theme.of(context);
-  final colorScheme = theme.colorScheme;
-  
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (context) => Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Drag handle
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-          
-          // Title
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Text(
-              'Actions',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-          
-          // Divider
-          Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
-          
-          // Actions list
-          SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildSheetAction(
-                  context: context,
-                  icon: Icons.straighten,
-                  iconColor: colorScheme.primary,
-                  label: 'Add Measurement',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _addMeasurement();
-                  },
-                ),
-                _buildSheetAction(
-                  context: context,
-                  icon: Icons.receipt_outlined,
-                  iconColor: colorScheme.secondary,
-                  label: 'Create Invoice',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _addInvoice();
-                  },
-                ),
-                _buildSheetAction(
-                  context: context,
-                  icon: Icons.call_outlined,
-                  iconColor: colorScheme.tertiary,
-                  label: 'Call Customer',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _callCustomer();
-                  },
-                ),
-                if (widget.customer.whatsapp.isNotEmpty)
-                  _buildSheetAction(
-                    context: context,
-                    icon: Icons.chat_outlined,
-                    iconColor: const Color(0xFF25D366), // WhatsApp green
-                    label: 'WhatsApp',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _sendWhatsApp();
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
 
 void _showActions(BuildContext context) {
   final theme = Theme.of(context);
@@ -1486,131 +1358,7 @@ Widget _buildInfoRow(ThemeData theme, {
   );
 }
 
-Widget _buildMetricCard(ThemeData theme, {
-  required IconData icon,
-  required String label,
-  required String value,
-  required Color color,
-}) {
-  return Container(
-    width: 140,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: color.withOpacity(0.2),
-      ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: color.withOpacity(0.8),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
-Widget _buildRelationshipCard(ThemeData theme, {
-  required String title,
-  required IconData icon,
-  required Color iconColor,
-  required Customer customer,
-  String? subtitle,
-}) {
-  return Card(
-    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(
-        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
-      ),
-    ),
-    child: InkWell(
-      onTap: () => CustomerDetailDialog.show(context, customer),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    customer.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (subtitle != null)
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: iconColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        subtitle,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: iconColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
 
 Widget _buildActionLink(ThemeData theme, {
   required String title,
@@ -1650,192 +1398,7 @@ Widget _buildActionLink(ThemeData theme, {
   );
 }
 
-Widget _buildRecentMeasurement(ThemeData theme, Measurement measurement) {
-  return Card(
-    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(
-        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
-      ),
-    ),
-    child: InkWell(
-      onTap: () => _viewMeasurement(measurement),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.straighten,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Latest Measurement',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  DateFormat.yMMMd().format(measurement.date),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Style: ${measurement.style}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Design: ${measurement.designType}',
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (measurement.fabricName.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                'Fabric: ${measurement.fabricName}',
-                style: theme.textTheme.bodyMedium,
-              ),
-            ],
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _buildMeasurementDetails(theme, measurement),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
 
-Widget _buildRecentInvoice(ThemeData theme, Invoice invoice) {
-  Color statusColor;
-  if (invoice.paymentStatus == 'paid') {
-    statusColor = Colors.green;
-  } else if (invoice.paymentStatus == 'partial') {
-    statusColor = Colors.orange;
-  } else {
-    statusColor = theme.colorScheme.error;
-  }
-
-  return Card(
-    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(
-        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
-      ),
-    ),
-    child: InkWell(
-      onTap: () => _viewInvoice(invoice),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.receipt,
-                  color: theme.colorScheme.secondary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Latest Invoice',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  DateFormat.yMMMd().format(invoice.date),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  'INV-${invoice.invoiceNumber}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: statusColor.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Text(
-                    invoice.paymentStatus.toString().split('.').last.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              NumberFormatter.formatCurrency(invoice.amountIncludingVat),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Delivery: ${DateFormat.yMMMd().format(invoice.deliveryDate)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (invoice.balance > 0)
-                  Text(
-                    'Due: ${NumberFormatter.formatCurrency(invoice.balance)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ) 
-  );
-}
 
   Widget _buildHeaderSection(ThemeData theme, bool isDesktop) {
     return Container(
@@ -3317,6 +2880,157 @@ Widget _buildRecentInvoice(ThemeData theme, Invoice invoice) {
       ),
     );
   }
+
+void _showActionSheet(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          
+          // Title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: Text(
+              'Add New',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          
+          const Divider(),
+          
+          // Actions
+          _buildActionItem(
+            context,
+            icon: Icons.straighten,
+            iconColor: colorScheme.primary,
+            label: 'New Measurement',
+            description: 'Add customer measurements',
+            onTap: () {
+              Navigator.pop(context);
+              _addMeasurement();
+            },
+          ),
+          _buildActionItem(
+            context,
+            icon: Icons.receipt_long,
+            iconColor: colorScheme.secondary,
+            label: 'Create Invoice',
+            description: 'Generate new invoice',
+            onTap: () {
+              Navigator.pop(context);
+              _addInvoice();
+            },
+          ),
+          _buildActionItem(
+            context,
+            icon: Icons.report_problem_outlined,
+            iconColor: colorScheme.error,
+            label: 'Register Complaint',
+            description: 'Record customer complaint',
+            onTap: () {
+              Navigator.pop(context);
+              _addComplaint(); // Update this line
+            },
+          ),
+          
+          // Bottom padding for safe area
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildActionItem(
+  BuildContext context, {
+  required IconData icon,
+  required Color iconColor,
+  required String label,
+  required String description,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _addComplaint() async {
+  await ComplaintDialog.show(
+    context,
+    customerId: widget.customer.id,
+    customerName: widget.customer.name,
+  );
+  
+  // Reload complaints after adding
+  final complaints = await _complaintService.getComplaintsByCustomerId(widget.customer.id);
+  setState(() => _complaints = complaints);
+}
 
   @override
   Widget build(BuildContext context) {
