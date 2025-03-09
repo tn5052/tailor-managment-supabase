@@ -782,53 +782,231 @@ Widget _buildOverviewTab(ThemeData theme) {
   final colorScheme = theme.colorScheme;
   
   return ListView(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.only(bottom: 24),
     children: [
-      // Metrics row
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+      // Customer Info Card
+      Card(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withOpacity(0.2),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title and avatar row
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: colorScheme.primary.withOpacity(0.1),
+                    child: Text(
+                      widget.customer.name[0].toUpperCase(),
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '#${widget.customer.billNumber}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: widget.customer.gender == Gender.male 
+                                  ? Colors.blue.withOpacity(0.1)
+                                  : Colors.pink.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    widget.customer.gender == Gender.male ? Icons.male : Icons.female,
+                                    size: 12,
+                                    color: widget.customer.gender == Gender.male ? Colors.blue : Colors.pink,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    widget.customer.gender == Gender.male ? 'Male' : 'Female',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: widget.customer.gender == Gender.male ? Colors.blue : Colors.pink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.customer.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const Divider(height: 24),
+              
+              // Contact information
+              _buildInfoRow(
+                theme,
+                icon: Icons.phone_outlined,
+                label: 'Phone',
+                value: widget.customer.phone,
+                onTap: _callCustomer,
+              ),
+              if (widget.customer.whatsapp.isNotEmpty)
+                _buildInfoRow(
+                  theme,
+                  icon: Icons.chat_outlined,
+                  label: 'WhatsApp',
+                  value: widget.customer.whatsapp,
+                  onTap: _sendWhatsApp,
+                ),
+              _buildInfoRow(
+                theme,
+                icon: Icons.location_on_outlined,
+                label: 'Address',
+                value: widget.customer.address,
+              ),
+              _buildInfoRow(
+                theme,
+                icon: Icons.calendar_today_outlined,
+                label: 'Customer Since',
+                value: DateFormat.yMMMMd().format(widget.customer.createdAt),
+              ),
+            ],
+          ),
+        ),
+      ),
+      
+      // Financial Summary Card
+      Card(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildMetricCard(
-              theme,
-              icon: Icons.payments_outlined,
-              label: 'Total Spent',
-              value: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
-              color: colorScheme.tertiary,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Financial Overview',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
-            _buildMetricCard(
-              theme,
-              icon: Icons.pending_actions_outlined,
-              label: 'Due Payments',
-              value: NumberFormatter.formatCurrency(_pendingPayments.toDouble()),
-              color: _pendingPayments > 0 ? colorScheme.error : colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 12),
-            _buildMetricCard(
-              theme,
-              icon: Icons.receipt_long_outlined,
-              label: 'Invoices',
-              value: '${_invoices.length}',
-              color: colorScheme.secondary,
-            ),
-            const SizedBox(width: 12),
-            _buildMetricCard(
-              theme,
-              icon: Icons.straighten_outlined,
-              label: 'Measurements',
-              value: '${_measurements.length}',
-              color: colorScheme.primary,
+            
+            const Divider(height: 1),
+            
+            // Financial stats
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildFinancialStat(
+                    theme,
+                    title: 'Total Spent',
+                    value: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
+                    growth: _totalSpent > 0 ? '+100%' : '0%',
+                    isPositive: true,
+                  ),
+                  if (_pendingPayments > 0)
+                    _buildFinancialStat(
+                      theme,
+                      title: 'Due Payments',
+                      value: NumberFormatter.formatCurrency(_pendingPayments.toDouble()),
+                      badgeText: 'PENDING',
+                      isPositive: false,
+                    ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildActivityCount(
+                            theme,
+                            count: _invoices.length,
+                            label: 'Invoices',
+                            icon: Icons.receipt_long_outlined,
+                            color: colorScheme.secondary,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildActivityCount(
+                            theme,
+                            count: _measurements.length,
+                            label: 'Measurements',
+                            icon: Icons.straighten_outlined,
+                            color: colorScheme.tertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-      
-      // Relationships section
+
+      // Relationships Section (if any)
       if (_referredBy != null || _referrals.isNotEmpty || 
           _familyHead != null || _familyMembers.isNotEmpty) ...[
         Padding(
-          padding: const EdgeInsets.only(left: 0, right: 0, top: 24, bottom: 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
             'Relationships',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -839,7 +1017,7 @@ Widget _buildOverviewTab(ThemeData theme) {
         ),
         
         if (_referredBy != null)
-          _buildRelationshipCard(
+          _buildRelationCard(
             theme,
             title: 'Referred By',
             icon: Icons.person_add_outlined,
@@ -849,7 +1027,7 @@ Widget _buildOverviewTab(ThemeData theme) {
           
         if (_referrals.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: _buildActionLink(
               theme,
               title: '${_referrals.length} ${_referrals.length == 1 ? 'Customer' : 'Customers'} Referred',
@@ -859,7 +1037,7 @@ Widget _buildOverviewTab(ThemeData theme) {
           ),
           
         if (_familyHead != null)
-          _buildRelationshipCard(
+          _buildRelationCard(
             theme,
             title: 'Family Head',
             icon: Icons.family_restroom,
@@ -870,7 +1048,7 @@ Widget _buildOverviewTab(ThemeData theme) {
           
         if (_familyMembers.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: _buildActionLink(
               theme,
               title: '${_familyMembers.length} Family ${_familyMembers.length == 1 ? 'Member' : 'Members'}',
@@ -880,10 +1058,10 @@ Widget _buildOverviewTab(ThemeData theme) {
           ),
       ],
       
-      // Recent activity section - show most recent measurement and invoice
+      // Recent Activity section
       if (_measurements.isNotEmpty || _invoices.isNotEmpty) ...[
         Padding(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Text(
             'Recent Activity',
             style: theme.textTheme.titleMedium?.copyWith(
@@ -893,18 +1071,369 @@ Widget _buildOverviewTab(ThemeData theme) {
           ),
         ),
         
-        if (_measurements.isNotEmpty)
-          _buildRecentMeasurement(theme, _measurements.first),
-        
-        if (_invoices.isNotEmpty)
-          _buildRecentInvoice(theme, _invoices.first),
+        // Recent measurements and invoices in a minimalist list
+        ..._buildRecentActivity(theme),
       ],
-      
-      // Bottom spacing
-      const SizedBox(height: 24),
     ],
   );
 }
+
+// New helper method to build financial stats
+Widget _buildFinancialStat(
+  ThemeData theme, {
+  required String title,
+  required String value,
+  String? growth,
+  String? badgeText,
+  required bool isPositive,
+}) {
+  final colorScheme = theme.colorScheme;
+  final color = isPositive ? Colors.green : colorScheme.error;
+  
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (growth != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              growth,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        if (badgeText != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              badgeText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+// New helper method to build activity counts
+Widget _buildActivityCount(
+  ThemeData theme, {
+  required int count,
+  required String label,
+  required IconData icon,
+  required Color color,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              count.toString(),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+// New helper method to build more minimal relation cards
+Widget _buildRelationCard(
+  ThemeData theme, {
+  required String title,
+  required IconData icon,
+  required Color iconColor,
+  required Customer customer,
+  String? subtitle,
+}) {
+  return Card(
+    margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+      ),
+    ),
+    child: InkWell(
+      onTap: () => CustomerDetailDialog.show(context, customer),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    customer.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (subtitle != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  subtitle,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: iconColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// New helper method to build recent activity items
+List<Widget> _buildRecentActivity(ThemeData theme) {
+  final activityItems = <Widget>[];
+  final colorScheme = theme.colorScheme;
+  
+  // Sort items by date (measurements and invoices combined)
+  final allItems = <dynamic>[];
+  allItems.addAll(_measurements);
+  allItems.addAll(_invoices);
+  
+  allItems.sort((a, b) {
+    final DateTime dateA = a is Measurement ? a.date : (a as Invoice).date;
+    final DateTime dateB = b is Measurement ? b.date : (b as Invoice).date;
+    return dateB.compareTo(dateA); // Sort newest to oldest
+  });
+  
+  // Take only the 5 most recent items
+  final recentItems = allItems.take(5).toList();
+  
+  // Build list items
+  for (final item in recentItems) {
+    if (item is Measurement) {
+      activityItems.add(
+        ListTile(
+          onTap: () => _viewMeasurement(item),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          leading: CircleAvatar(
+            radius: 18,
+            backgroundColor: colorScheme.tertiary.withOpacity(0.1),
+            child: Icon(Icons.straighten, color: colorScheme.tertiary, size: 18),
+          ),
+          title: Text(
+            'Measurement: ${item.style}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            'Design: ${item.designType}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall,
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                DateFormat.yMMMd().format(item.date),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (item is Invoice) {
+      // Choose color based on payment status
+      Color statusColor;
+      if (item.paymentStatus == 'paid') {
+        statusColor = Colors.green;
+      } else if (item.paymentStatus == 'partial') {
+        statusColor = Colors.orange;
+      } else {
+        statusColor = colorScheme.error;
+      }
+      
+      activityItems.add(
+        ListTile(
+          onTap: () => _viewInvoice(item),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          leading: CircleAvatar(
+            radius: 18,
+            backgroundColor: colorScheme.secondary.withOpacity(0.1),
+            child: Icon(Icons.receipt, color: colorScheme.secondary, size: 18),
+          ),
+          title: Row(
+            children: [
+              Text(
+                'Invoice #${item.invoiceNumber}',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  item.paymentStatus.toString().split('.').last.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Text(
+            NumberFormatter.formatCurrency(item.amountIncludingVat),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                DateFormat.yMMMd().format(item.date),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Add divider between items except after the last item
+    if (item != recentItems.last) {
+      activityItems.add(const Divider(height: 1, indent: 16, endIndent: 16));
+    }
+  }
+  
+  if (allItems.length > 5) {
+    // Add "View All" button
+    activityItems.add(
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: OutlinedButton.icon(
+          onPressed: () {
+            // Navigate to first tab with measurements, since it's the most likely to be used
+            _tabController.animateTo(1);
+          },
+          icon: const Icon(Icons.history),
+          label: const Text('View All Activity'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 44),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  return activityItems;
+}
+
+// ...existing code...
 
 Widget _buildInfoRow(ThemeData theme, {
   required IconData icon,
@@ -1304,7 +1833,7 @@ Widget _buildRecentInvoice(ThemeData theme, Invoice invoice) {
           ],
         ),
       ),
-    ),
+    ) 
   );
 }
 
