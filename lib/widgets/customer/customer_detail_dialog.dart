@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../models/customer.dart';
 import '../../models/invoice.dart';
 import '../../models/measurement.dart';
@@ -86,7 +85,8 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    // Create TabController with 6 tabs (including the new Overview tab)
+    _tabController = TabController(length: 6, vsync: this);
     _loadData();
   }
 
@@ -446,246 +446,865 @@ Widget _buildMobileLayout(BuildContext context) {
   final colorScheme = theme.colorScheme;
   
   return Scaffold(
-    backgroundColor: colorScheme.surface,
-    appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(56),
-      child: AppBar(
-        backgroundColor: colorScheme.surface,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: false,
-        title: Text(
-          widget.customer.name,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+    backgroundColor: colorScheme.background,
+    appBar: AppBar(
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      backgroundColor: colorScheme.surface,
+      centerTitle: false,
+      title: Text(
+        widget.customer.name,
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      actions: [
+        IconButton(
+          onPressed: _editCustomer,
+          icon: const Icon(Icons.edit_outlined, size: 20),
+          tooltip: 'Edit',
+        ),
+        IconButton(
+          onPressed: () => _showActions(context),
+          icon: const Icon(Icons.more_vert_outlined, size: 20),
+          tooltip: 'More',
+        ),
+      ],
+    ),
+    body: NestedScrollView(
+      headerSliverBuilder: (context, _) => [
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              // Tab bar - horizontally scrollable
+              Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorScheme.outlineVariant.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  labelColor: colorScheme.primary,
+                  unselectedLabelColor: colorScheme.onSurfaceVariant,
+                  indicatorColor: colorScheme.primary,
+                  dividerColor: Colors.transparent,
+                  tabAlignment: TabAlignment.start,
+                  labelStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  tabs: const [
+                    Tab(text: 'Overview'),
+                    Tab(text: 'Measurements'),
+                    Tab(text: 'Invoices'),
+                    Tab(text: 'Family'),
+                    Tab(text: 'Referrals'),
+                    Tab(text: 'Complaints'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _editCustomer,
-            icon: const Icon(Icons.edit_outlined),
+      ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(theme),
+                _buildMeasurementsTab(theme),
+                _buildInvoicesTab(theme),
+                _buildFamilyTab(theme),
+                _buildReferralsTab(theme),
+                _buildComplaintsTab(theme),
+              ],
+            ),
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () => _showQuickActions(context),
+      elevation: 2,
+      backgroundColor: colorScheme.primaryContainer,
+      foregroundColor: colorScheme.onPrimaryContainer,
+      child: const Icon(Icons.add),
+    ),
+  );
+}
+
+void _showQuickActions(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          
+          // Title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: Text(
+              'Actions',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+          
+          // Divider
+          Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          
+          // Actions list
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.straighten,
+                  iconColor: colorScheme.primary,
+                  label: 'Add Measurement',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addMeasurement();
+                  },
+                ),
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.receipt_outlined,
+                  iconColor: colorScheme.secondary,
+                  label: 'Create Invoice',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addInvoice();
+                  },
+                ),
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.call_outlined,
+                  iconColor: colorScheme.tertiary,
+                  label: 'Call Customer',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _callCustomer();
+                  },
+                ),
+                if (widget.customer.whatsapp.isNotEmpty)
+                  _buildSheetAction(
+                    context: context,
+                    icon: Icons.chat_outlined,
+                    iconColor: const Color(0xFF25D366), // WhatsApp green
+                    label: 'WhatsApp',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _sendWhatsApp();
+                    },
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         ],
       ),
     ),
-    body: Column(
-      children: [
-        // Customer Summary Card
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withOpacity(0.2),
+  );
+}
+
+void _showActions(BuildContext context) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
           ),
-          child: Column(
-            children: [
-              // Key Info Row
-              Row(
-                children: [
-                  // Bill Number
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '#${widget.customer.billNumber}',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Phone
-                  Icon(
-                    Icons.phone_outlined,
-                    size: 16,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.customer.phone,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+          
+          // Title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: Text(
+              'Options',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
               ),
-              if (!_isLoading) ...[
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                // Stats Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMobileStatItem(
-                        theme,
-                        icon: Icons.receipt_outlined,
-                        label: 'Invoices',
-                        value: _invoices.length.toString(),
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 24,
-                      color: colorScheme.outlineVariant.withOpacity(0.2),
-                    ),
-                    Expanded(
-                      child: _buildMobileStatItem(
-                        theme,
-                        icon: Icons.straighten,
-                        label: 'Measurements',
-                        value: _measurements.length.toString(),
-                      ),
-                    ),
-                    if (_totalSpent > 0) ...[
-                      Container(
-                        width: 1,
-                        height: 24,
-                        color: colorScheme.outlineVariant.withOpacity(0.2),
-                      ),
-                      Expanded(
-                        child: _buildMobileStatItem(
-                          theme,
-                          icon: Icons.payments_outlined,
-                          label: 'Total Spent',
-                          value: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
-                          valueColor: colorScheme.tertiary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
+          
+          // Divider
+          Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          
+          // Options list
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.content_copy_outlined,
+                  iconColor: colorScheme.primary,
+                  label: 'Copy Phone Number',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _copyPhone();
+                  },
+                ),
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.receipt_outlined,
+                  iconColor: colorScheme.primary,
+                  label: 'Copy Bill Number',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _copyBillNumber();
+                  },
+                ),
+                
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                ),
+                
+                _buildSheetAction(
+                  context: context,
+                  icon: Icons.edit_outlined,
+                  iconColor: colorScheme.primary,
+                  label: 'Edit Customer',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _editCustomer();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
-        // Tab Bar
-        TabBar(
-          controller: _tabController,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: colorScheme.onSurfaceVariant,
-          indicatorColor: colorScheme.primary,
-          indicatorWeight: 2,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          tabs: const [
-            Tab(text: 'Measurements'),
-            Tab(text: 'Invoices'),
-            Tab(text: 'Family'),
-            Tab(text: 'Referrals'),
-            Tab(text: 'Complaints'),
+Widget _buildSheetAction({
+  required BuildContext context, 
+  required IconData icon,
+  required Color iconColor,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildOverviewTab(ThemeData theme) {
+  final colorScheme = theme.colorScheme;
+  
+  return ListView(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    children: [
+      // Metrics row
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildMetricCard(
+              theme,
+              icon: Icons.payments_outlined,
+              label: 'Total Spent',
+              value: NumberFormatter.formatCurrency(_totalSpent.toDouble()),
+              color: colorScheme.tertiary,
+            ),
+            const SizedBox(width: 12),
+            _buildMetricCard(
+              theme,
+              icon: Icons.pending_actions_outlined,
+              label: 'Due Payments',
+              value: NumberFormatter.formatCurrency(_pendingPayments.toDouble()),
+              color: _pendingPayments > 0 ? colorScheme.error : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            _buildMetricCard(
+              theme,
+              icon: Icons.receipt_long_outlined,
+              label: 'Invoices',
+              value: '${_invoices.length}',
+              color: colorScheme.secondary,
+            ),
+            const SizedBox(width: 12),
+            _buildMetricCard(
+              theme,
+              icon: Icons.straighten_outlined,
+              label: 'Measurements',
+              value: '${_measurements.length}',
+              color: colorScheme.primary,
+            ),
           ],
         ),
-
-        // Content
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildMeasurementsTab(theme),
-                    _buildInvoicesTab(theme),
-                    _buildFamilyTab(theme),
-                    _buildReferralsTab(theme),
-                    _buildComplaintsTab(theme),
-                  ],
-                ),
-        ),
-      ],
-    ),
-    floatingActionButton: SpeedDial(
-      icon: Icons.add,
-      activeIcon: Icons.close,
-      backgroundColor: colorScheme.primaryContainer,
-      foregroundColor: colorScheme.onPrimaryContainer,
-      spacing: 8,
-      childPadding: const EdgeInsets.all(5),
-      spaceBetweenChildren: 4,
-      children: [
-        SpeedDialChild(
-          child: const Icon(Icons.straighten),
-          label: 'Add Measurement',
-          onTap: _addMeasurement,
-          backgroundColor: colorScheme.surface,
-          labelBackgroundColor: colorScheme.surface,
-          labelStyle: TextStyle(color: colorScheme.onSurface),
-        ),
-        SpeedDialChild(
-          child: const Icon(Icons.receipt),
-          label: 'Create Invoice',
-          onTap: _addInvoice,
-          backgroundColor: colorScheme.surface,
-          labelBackgroundColor: colorScheme.surface,
-          labelStyle: TextStyle(color: colorScheme.onSurface),
-        ),
-        SpeedDialChild(
-          child: const Icon(Icons.phone),
-          label: 'Call Customer',
-          onTap: _callCustomer,
-          backgroundColor: colorScheme.surface,
-          labelBackgroundColor: colorScheme.surface,
-          labelStyle: TextStyle(color: colorScheme.onSurface),
-        ),
-        if (widget.customer.whatsapp.isNotEmpty)
-          SpeedDialChild(
-            child: const Icon(Icons.chat),
-            label: 'WhatsApp',
-            onTap: _sendWhatsApp,
-            backgroundColor: colorScheme.surface,
-            labelBackgroundColor: colorScheme.surface,
-            labelStyle: TextStyle(color: colorScheme.onSurface),
+      ),
+      
+      // Relationships section
+      if (_referredBy != null || _referrals.isNotEmpty || 
+          _familyHead != null || _familyMembers.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.only(left: 0, right: 0, top: 24, bottom: 8),
+          child: Text(
+            'Relationships',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
           ),
+        ),
+        
+        if (_referredBy != null)
+          _buildRelationshipCard(
+            theme,
+            title: 'Referred By',
+            icon: Icons.person_add_outlined,
+            iconColor: colorScheme.secondary,
+            customer: _referredBy!,
+          ),
+          
+        if (_referrals.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+            child: _buildActionLink(
+              theme,
+              title: '${_referrals.length} ${_referrals.length == 1 ? 'Customer' : 'Customers'} Referred',
+              icon: Icons.people_outlined,
+              onTap: () => _tabController.animateTo(4), // Navigate to Referrals tab
+            ),
+          ),
+          
+        if (_familyHead != null)
+          _buildRelationshipCard(
+            theme,
+            title: 'Family Head',
+            icon: Icons.family_restroom,
+            iconColor: colorScheme.tertiary,
+            customer: _familyHead!,
+            subtitle: widget.customer.familyRelationDisplay,
+          ),
+          
+        if (_familyMembers.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+            child: _buildActionLink(
+              theme,
+              title: '${_familyMembers.length} Family ${_familyMembers.length == 1 ? 'Member' : 'Members'}',
+              icon: Icons.groups_outlined, 
+              onTap: () => _tabController.animateTo(3), // Navigate to Family tab
+            ),
+          ),
+      ],
+      
+      // Recent activity section - show most recent measurement and invoice
+      if (_measurements.isNotEmpty || _invoices.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+          child: Text(
+            'Recent Activity',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ),
+        
+        if (_measurements.isNotEmpty)
+          _buildRecentMeasurement(theme, _measurements.first),
+        
+        if (_invoices.isNotEmpty)
+          _buildRecentInvoice(theme, _invoices.first),
+      ],
+      
+      // Bottom spacing
+      const SizedBox(height: 24),
+    ],
+  );
+}
+
+Widget _buildInfoRow(ThemeData theme, {
+  required IconData icon,
+  required String label,
+  required String value,
+  VoidCallback? onTap,
+}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildMetricCard(ThemeData theme, {
+  required IconData icon,
+  required String label,
+  required String value,
+  required Color color,
+}) {
+  return Container(
+    width: 140,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: color.withOpacity(0.2),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color.withOpacity(0.8),
+          ),
+        ),
       ],
     ),
   );
 }
 
-Widget _buildMobileStatItem(
-  ThemeData theme, {
+Widget _buildRelationshipCard(ThemeData theme, {
+  required String title,
   required IconData icon,
-  required String label,
-  required String value,
-  Color? valueColor,
+  required Color iconColor,
+  required Customer customer,
+  String? subtitle,
 }) {
-  return Column(
-    children: [
-      Icon(
-        icon,
-        size: 20,
-        color: theme.colorScheme.onSurfaceVariant,
+  return Card(
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
       ),
-      const SizedBox(height: 4),
-      Text(
-        value,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: valueColor ?? theme.colorScheme.onSurface,
+    ),
+    child: InkWell(
+      onTap: () => CustomerDetailDialog.show(context, customer),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    customer.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (subtitle != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: iconColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        subtitle,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: iconColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
-      Text(
-        label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+    ),
+  );
+}
+
+Widget _buildActionLink(ThemeData theme, {
+  required String title,
+  required IconData icon,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: theme.colorScheme.primary,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildRecentMeasurement(ThemeData theme, Measurement measurement) {
+  return Card(
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+      ),
+    ),
+    child: InkWell(
+      onTap: () => _viewMeasurement(measurement),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.straighten,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Latest Measurement',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  DateFormat.yMMMd().format(measurement.date),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Style: ${measurement.style}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Design: ${measurement.designType}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (measurement.fabricName.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Fabric: ${measurement.fabricName}',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _buildMeasurementDetails(theme, measurement),
+            ),
+          ],
         ),
       ),
-    ],
+    ),
+  );
+}
+
+Widget _buildRecentInvoice(ThemeData theme, Invoice invoice) {
+  Color statusColor;
+  if (invoice.paymentStatus == 'paid') {
+    statusColor = Colors.green;
+  } else if (invoice.paymentStatus == 'partial') {
+    statusColor = Colors.orange;
+  } else {
+    statusColor = theme.colorScheme.error;
+  }
+
+  return Card(
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+      ),
+    ),
+    child: InkWell(
+      onTap: () => _viewInvoice(invoice),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.receipt,
+                  color: theme.colorScheme.secondary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Latest Invoice',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  DateFormat.yMMMd().format(invoice.date),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  'INV-${invoice.invoiceNumber}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: statusColor.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Text(
+                    invoice.paymentStatus.toString().split('.').last.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              NumberFormatter.formatCurrency(invoice.amountIncludingVat),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Delivery: ${DateFormat.yMMMd().format(invoice.deliveryDate)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (invoice.balance > 0)
+                  Text(
+                    'Due: ${NumberFormatter.formatCurrency(invoice.balance)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
