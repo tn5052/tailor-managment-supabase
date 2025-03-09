@@ -5,7 +5,7 @@ import '../services/invoice_service.dart';
 
 class ComplaintService {
   final SupabaseClient _supabase;
-  
+
   ComplaintService(this._supabase);
 
   // Create a new complaint

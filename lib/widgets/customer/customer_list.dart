@@ -8,6 +8,7 @@ import '../../services/invoice_service.dart';  // Add this import
 import '../../models/layout_type.dart';
 import 'measurement_history_dialog.dart';
 import 'invoice_history_dialog.dart';  // Add this import
+import 'customer_detail_dialog.dart';
 
 class CustomerList extends StatelessWidget {
   final String searchQuery;
@@ -42,11 +43,10 @@ class CustomerList extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: () => onEdit(customer, 0),
+        onTap: () => CustomerDetailDialog.show(context, customer), // Update this line
         child: Stack(
           children: [
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -337,7 +337,7 @@ class CustomerList extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: () => onEdit(customer, 0),
+        onTap: () => CustomerDetailDialog.show(context, customer), // Replace existing onTap
         child: Stack(
           children: [
             Column(
@@ -1493,3 +1493,4 @@ class CustomerList extends StatelessWidget {
     );
   }
 }
+
