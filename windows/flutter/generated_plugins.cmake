@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   desktop_webview_window
   pdfx
+  printing
   share_plus
   url_launcher_windows
   window_to_front

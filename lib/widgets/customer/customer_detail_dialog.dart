@@ -12,6 +12,7 @@ import '../../services/measurement_service.dart';
 import '../../services/complaint_service.dart';
 import '../../utils/number_formatter.dart';
 import 'add_customer_dialog.dart';
+import 'customer_report_dialog.dart';
 import '../measurement/detail_dialog.dart';
 import '../measurement/add_measurement_dialog.dart';
 import '../invoice/invoice_details_dialog.dart';
@@ -360,7 +361,17 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              // Add Full Report button
+              FilledButton.icon(
+                onPressed: () => _showFullReport(context),
+                icon: const Icon(Icons.insights),
+                label: const Text('Full Report'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.tertiary,
+                  foregroundColor: colorScheme.onTertiary,
+                ),
+              ),
+              const SizedBox(width: 12),
               // Compact action buttons
               Wrap(
                 spacing: 8,
@@ -478,6 +489,12 @@ Widget _buildMobileLayout(BuildContext context) {
         ),
       ),
       actions: [
+        // Add report button to mobile layout
+        IconButton(
+          onPressed: () => _showFullReport(context),
+          icon: const Icon(Icons.insights),
+          tooltip: 'Full Report',
+        ),
         IconButton(
           onPressed: _editCustomer,
           icon: const Icon(Icons.edit_outlined),
@@ -2465,6 +2482,41 @@ Future<void> _addComplaint() async {
   // Reload complaints after adding
   final complaints = await _complaintService.getComplaintsByCustomerId(widget.customer.id);
   setState(() => _complaints = complaints);
+}
+
+Future<void> _showFullReport(BuildContext context) async {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isDesktop = screenWidth >= 1024;
+
+  if (isDesktop) {
+    // For desktop, show in the same dialog
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 1000,
+          constraints: BoxConstraints(
+            maxWidth: 1000,
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          child: CustomerReportDialog(customer: widget.customer),
+        ),
+      ),
+    );
+  } else {
+    // For mobile, navigate to full screen
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => CustomerReportDialog(
+          customer: widget.customer,
+          isMobile: true,
+        ),
+      ),
+    );
+  }
 }
 
   @override

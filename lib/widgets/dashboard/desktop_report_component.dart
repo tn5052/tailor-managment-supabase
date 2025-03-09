@@ -630,7 +630,7 @@ class CustomerInsightsReport extends StatelessWidget {
                     ],
                   ),
                   const Divider(height: 24),
-                  ...sortedInvoices.map((invoice) => _buildOrderRow(context, invoice)).toList(),
+                  ...sortedInvoices.map((invoice) => _buildOrderRow(context, invoice)),
                 ],
               ),
             ),
@@ -822,7 +822,7 @@ class CustomerInsightsReport extends StatelessWidget {
                       child: Center(child: Text('No payment history available')),
                     )
                   else
-                    ...invoices.map((invoice) => _buildPaymentHistoryRow(context, invoice)).toList(),
+                    ...invoices.map((invoice) => _buildPaymentHistoryRow(context, invoice)),
                 ],
               ),
             ),
@@ -946,7 +946,7 @@ class CustomerInsightsReport extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                   
-                  ...sortedComplaints.map((complaint) => _buildComplaintRow(context, complaint)).toList(),
+                  ...sortedComplaints.map((complaint) => _buildComplaintRow(context, complaint)),
                 ],
               ),
             ),

@@ -282,4 +282,18 @@ class MeasurementService {
         .maybeSingle();
     return response != null;
   }
+
+  Future<int> getMeasurementCountByCustomerId(String customerId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('measurements')
+          .select('id')
+          .eq('customer_id', customerId);
+      
+      return response.length;
+    } catch (e) {
+      debugPrint('Error getting measurement count: $e');
+      return 0;
+    }
+  }
 }
