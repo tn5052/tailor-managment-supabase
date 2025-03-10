@@ -1,16 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/number_formatter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/invoice.dart';
-import '../../models/customer.dart';
-import '../../models/measurement.dart';
-import '../../models/complaint.dart';
-import '../../services/customer_service.dart';
-import '../../services/measurement_service.dart';
-import '../../services/invoice_service.dart';
-import '../../services/complaint_service.dart';
-import 'customer_search_dialog.dart';
-import 'desktop_customer_search_dialog.dart'; // Add this import
+import 'dashboard_search.dart';
 
 class DashboardHeader extends StatefulWidget {
   final List<Invoice> invoices;
@@ -29,124 +20,26 @@ class DashboardHeader extends StatefulWidget {
 }
 
 class _DashboardHeaderState extends State<DashboardHeader> {
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
-
-  void _handleSearch() async {
-    final billNumber = _searchController.text;
-    if (billNumber.isEmpty) return;
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      final customerService = CustomerService(Supabase.instance.client);
-      final customer = await customerService.getCustomerByBillNumber(billNumber);
-      
-      if (customer.id.isEmpty) {
-        _showError('No customer found with bill number: $billNumber');
-        return;
-      }
-
-      // Fetch related data
-      final measurementService = MeasurementService();
-      final invoiceService = InvoiceService();
-      final complaintService = ComplaintService(Supabase.instance.client);
-
-      final measurements = await measurementService.getMeasurementsByCustomerId(customer.id);
-      final invoices = await invoiceService.getInvoicesByCustomerId(customer.id);
-      final complaints = await complaintService.getComplaintsByCustomerId(customer.id);
-
-      // Show customer dialog with fetched data
-      if (context.mounted) {
-        _showCustomerDialog(
-          context,
-          customer,
-          measurements, // Ensure we have an empty list if null
-          invoices,     // Ensure we have an empty list if null
-          complaints,   // Ensure we have an empty list if null
-        );
-      }
-    } catch (e) {
-      _showError('Error searching for customer: ${e.toString()}');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSearching = false;
-        });
-      }
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Remove keyboard shortcut handler
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    
-    setState(() {
-      _isSearching = false;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+  @override
+  void dispose() {
+    super.dispose();
   }
 
-  void _showCustomerDialog(
-    BuildContext context,
-    Customer customer,
-    List<Measurement> measurements,
-    List<Invoice> invoices,
-    List<Complaint> complaints,
-  ) {
-    final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 600;
-    final isDesktop = size.width >= 1024;
-
-    if (isDesktop) {
-      // Use the new desktop dialog for desktop screens
-      DesktopCustomerSearchDialog.show(
-        context,
-        customer: customer,
-        measurements: measurements,
-        invoices: invoices,
-        complaints: complaints,
-      );
-    } else if (isMobile) {
-      // Full screen dialog for mobile
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => CustomerSearchDialog(
-            customer: customer,
-            measurements: measurements,
-            invoices: invoices,
-            complaints: complaints,
-            isFullScreen: true,
-          ),
-        ),
-      );
-    } else {
-      // Regular dialog for tablets
-      showDialog(
-        context: context,
-        builder: (context) => CustomerSearchDialog(
-          customer: customer,
-          measurements: measurements,
-          invoices: invoices,
-          complaints: complaints,
-        ),
-      );
-    }
+  void _openSearch() {
+    DashboardSearch.show(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 600;
+    final _ = size.width < 600;
     final totalRevenue = widget.invoices.fold(
       0.0,
       (sum, inv) => sum + inv.amountIncludingVat,
@@ -204,50 +97,56 @@ class _DashboardHeaderState extends State<DashboardHeader> {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          
+          // Updated search bar without keyboard shortcut
+          Hero(
+            tag: 'search_bar',
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              style: TextStyle(color: Colors.black87),
-              decoration: InputDecoration(
-                hintText: 'Search by customer bill number',
-                hintStyle: TextStyle(color: Colors.black45),
-                prefixIcon: Icon(Icons.search, color: Colors.black45),
-                suffixIcon: _isSearching
-                    ? Container(
-                        width: 24,
-                        height: 24,
-                        padding: const EdgeInsets.all(6),
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.black45),
-                        ),
-                      )
-                    : IconButton(
-                        icon: Icon(Icons.arrow_forward, color: Colors.black45),
-                        onPressed: _handleSearch,
+                child: Material(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: _openSearch,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
                       ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 20,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            color: Colors.white.withOpacity(0.9),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            'Search by name or bill number...',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              onSubmitted: (_) => _handleSearch(),
             ),
           ),
           if (!widget.isMobile) ...[
@@ -284,12 +183,6 @@ class _DashboardHeaderState extends State<DashboardHeader> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 }
 

@@ -453,4 +453,30 @@ class CustomerService {
       return [];
     }
   }
+
+  Future<List<Customer>> searchCustomers(String searchTerm) async {
+    if (searchTerm.trim().isEmpty) return [];
+
+    final String tenantId = TenantManager.getCurrentTenantId();
+    final query = searchTerm.trim().toLowerCase();
+    
+    try {
+      final response = await _supabase
+          .from('customers')
+          .select()
+          .eq('tenant_id', tenantId)
+          .or('name.ilike.%$query%,bill_number.ilike.%$query%')
+          .order('name')
+          .limit(20);
+      
+      if (response == null) return [];
+      
+      return (response as List)
+          .map((data) => Customer.fromMap(data))
+          .toList();
+    } catch (e) {
+      debugPrint('Error searching customers: $e');
+      return [];
+    }
+  }
 }

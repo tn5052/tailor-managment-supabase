@@ -438,7 +438,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
               indicatorRadius: 1.5,
             ),
             labelPadding: const EdgeInsets.symmetric(horizontal: 24), // Add padding to labels
-            overlayColor: MaterialStateProperty.all(colorScheme.primary.withOpacity(0.1)), // Add ripple effect
+            overlayColor: WidgetStateProperty.all(colorScheme.primary.withOpacity(0.1)), // Add ripple effect
             tabs: [
               _buildCustomTab(Icons.dashboard_outlined, 'Overview'),
               _buildCustomTab(Icons.straighten_rounded, 'Measurements'),
@@ -476,7 +476,7 @@ Widget _buildMobileLayout(BuildContext context) {
   final colorScheme = theme.colorScheme;
   
   return Scaffold(
-    backgroundColor: colorScheme.background,
+    backgroundColor: colorScheme.surface,
     appBar: AppBar(
       elevation: 0,
       scrolledUnderElevation: 1,
@@ -727,7 +727,7 @@ Widget _buildOverviewTab(ThemeData theme) {
                     icon: Icons.chat_outlined,
                     label: 'WhatsApp',
                     description: 'Not available',
-                    color: colorScheme.surfaceVariant,
+                    color: colorScheme.surfaceContainerHighest,
                     textColor: colorScheme.onSurfaceVariant,
                     onTap: null,
                   ),
@@ -801,7 +801,7 @@ Widget _buildOverviewTab(ThemeData theme) {
                 theme,
                 icon: Icons.receipt_outlined,
                 label: 'Bill Number',
-                value: '#' + widget.customer.billNumber,
+                value: '#${widget.customer.billNumber}',
                 onTap: _copyBillNumber,
               ),
             ],

@@ -40,9 +40,11 @@ class _CustomerReportDialogState extends State<CustomerReportDialog> with Single
   double _outstandingBalance = 0;
   Map<String, int> _paymentStatusCounts = {};
   Map<int, double> _monthlySpendings = {};
+  // ignore: unused_field
   Map<int, double> _yearlySpending = {};
   Map<DateTime, double> _dailySpending = {};
   List<Complaint> _complaints = [];
+  // ignore: unused_field
   int _totalMeasurements = 0;
   
   // Chart selected date range
@@ -54,7 +56,6 @@ class _CustomerReportDialogState extends State<CustomerReportDialog> with Single
   final List<String> _timePeriods = ['Month', 'Quarter', 'Year', 'All Time'];
 
   // Touch point for line chart
-  LineChartBarData? _touchedLine;
   FlSpot? _touchedSpot;
 
   @override
@@ -213,7 +214,7 @@ class _CustomerReportDialogState extends State<CustomerReportDialog> with Single
     final theme = Theme.of(context);
     
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Financial Report',
@@ -1157,7 +1158,7 @@ class _CustomerReportDialogState extends State<CustomerReportDialog> with Single
                 backDrawRodData: BackgroundBarChartRodData(
                   show: true,
                   toY: maxY,
-                  color: colorScheme.surfaceVariant.withOpacity(0.2),
+                  color: colorScheme.surfaceContainerHighest.withOpacity(0.2),
                 ),
               ),
             ],
