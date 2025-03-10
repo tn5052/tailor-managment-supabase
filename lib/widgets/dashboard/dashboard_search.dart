@@ -21,18 +21,13 @@ class DashboardSearch extends StatefulWidget {
     final isMobile = screenWidth < 640;
 
     if (isMobile) {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true, 
-        backgroundColor: Colors.transparent,
-        clipBehavior: Clip.antiAlias,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
+      // Full-screen dialog for mobile
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (context) => const DynamicSearchInterface(),
         ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        builder: (context) => const DynamicSearchInterface(),
       );
     } else {
       // Enhanced desktop dialog
@@ -271,150 +266,106 @@ class _DynamicSearchInterfaceState extends State<DynamicSearchInterface>
 
   Widget _buildMobileSearch(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
     
-    return Container(
-      height: size.height * 0.9,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(32), // Increased radius for more modern look
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Search',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                letterSpacing: 0.1,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search by name or bill number...',
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.outline.withOpacity(0.8),
+                  fontWeight: FontWeight.normal,
+                  fontSize: 16,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => _searchController.clear(),
+                      tooltip: 'Clear search',
+                    )
+                  : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outlineVariant,
+                    width: 1.5,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest,
+                isDense: true,
+              ),
+              onSubmitted: (_) => _selectedIndex >= 0 ? _openSelectedResult() : null,
+            ),
+          ),
         ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Pull handle with improved styling
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            
-            // Search header with refined design
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.shadow.withOpacity(0.03),
-                    offset: const Offset(0, 1),
-                    blurRadius: 8,
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Search',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Enhanced search field design
-                  TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    autofocus: true,
-                    textInputAction: TextInputAction.search,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                      letterSpacing: 0.1,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search by name or bill number...',
-                      hintStyle: TextStyle(
-                        color: theme.colorScheme.outline.withOpacity(0.8),
-                        fontWeight: FontWeight.normal,
-                        fontSize: 16,
-                      ),
-                      prefixIcon: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          Icons.search_rounded,
-                          color: theme.colorScheme.outline,
-                          size: 24,
-                        ),
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () => _searchController.clear(),
-                            tooltip: 'Clear search',
-                          )
-                        : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.outlineVariant,
-                          width: 1.5, // Slightly thicker border
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-                          width: 1.5,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.primary,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16,
-                        horizontal: 20,
-                      ),
-                      filled: true,
-                      fillColor: theme.colorScheme.surfaceContainerHighest,
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => _selectedIndex >= 0 ? _openSelectedResult() : null,
-                  ),
-                ],
-              ),
-            ),
-            
-            // Improved search state indicator
-            if (_isLoading)
-              LinearProgressIndicator(
-                backgroundColor: Colors.transparent,
-                color: theme.colorScheme.primary,
-                minHeight: 3,
-              ).animate().fadeIn(duration: 200.ms),
-            
-            // Results area with enhanced styling
-            Expanded(
-              child: _buildResultsArea(theme),
-            ),
-          ],
-        ),
+      body: Column(
+        children: [
+          // Improved search state indicator
+          if (_isLoading)
+            LinearProgressIndicator(
+              backgroundColor: Colors.transparent,
+              color: theme.colorScheme.primary,
+              minHeight: 3,
+            ).animate().fadeIn(duration: 200.ms),
+          
+          // Results area with enhanced styling
+          Expanded(
+            child: _buildResultsArea(theme),
+          ),
+        ],
       ),
     );
   }
