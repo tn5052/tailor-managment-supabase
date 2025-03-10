@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/customer.dart';
 import '../../models/measurement.dart';
 import '../../services/measurement_service.dart';
-import '../measurement/detail_dialog.dart';
+import '../measurement/measurement_detail_dialog.dart';
 import 'package:intl/intl.dart';
 
 class MeasurementHistoryDialog extends StatelessWidget {

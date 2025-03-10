@@ -9,7 +9,7 @@ import '../../models/complaint.dart';
 import '../../utils/number_formatter.dart';
 import '../invoice/invoice_details_dialog.dart';
 import '../complaint/complaint_detail_dialog.dart';
-import '../measurement/detail_dialog.dart'; // Add this import for the measurement detail dialog
+import '../measurement/measurement_detail_dialog.dart'; // Add this import for the measurement detail dialog
 
 // 1. Helper Components
 class GradientCard extends StatelessWidget {

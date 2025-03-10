@@ -5,7 +5,7 @@ import '../../models/measurement.dart';
 import '../../services/measurement_service.dart';
 import '../../services/customer_service.dart';
 import 'measurement_badge.dart';
-import 'detail_dialog.dart';
+import 'measurement_detail_dialog.dart';
 import 'add_measurement_dialog.dart';
 
 class MeasurementListItem extends StatelessWidget {

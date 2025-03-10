@@ -6,7 +6,7 @@ import '../../models/measurement.dart';
 import '../../models/complaint.dart';  // Add this import
 import '../../utils/number_formatter.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '../../widgets/measurement/detail_dialog.dart';
+import '../measurement/measurement_detail_dialog.dart';
 import '../../widgets/invoice/invoice_details_dialog.dart';
 import '../complaint/complaint_detail_dialog.dart';  // Add this import
 import '../../services/customer_service_for_dashboard.dart';  // Add this import

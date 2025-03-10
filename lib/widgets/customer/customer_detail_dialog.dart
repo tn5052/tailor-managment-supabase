@@ -13,7 +13,7 @@ import '../../services/complaint_service.dart';
 import '../../utils/number_formatter.dart';
 import 'add_customer_dialog.dart';
 import 'customer_report_dialog.dart';
-import '../measurement/detail_dialog.dart';
+import '../measurement/measurement_detail_dialog.dart';
 import '../measurement/add_measurement_dialog.dart';
 import '../invoice/invoice_details_dialog.dart';
 import '../invoice/add_invoice_dailog.dart';
