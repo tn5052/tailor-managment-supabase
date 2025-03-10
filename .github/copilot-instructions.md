@@ -204,6 +204,19 @@ CREATE POLICY complaint_updates_tenant_isolation ON public.complaint_updates
   USING (tenant_id = auth.uid());
 
 
+ALl Models
+- lib/models/
+  - complaint.dart
+  - customer_filter.dart
+  - customer.dart
+  - invoice_filter.dart
+  - invoice_group_by.dart
+  - invoice.dart
+  - layout_type.dart
+  - measurement_filter.dart
+  - measurement.dart
+
+
 services files :
  - lib/services/customer_service.dart
  - lib/services/measurement_service.dart
@@ -215,4 +228,14 @@ services files :
  - lib/widgets/measurement/detail_dialog.dart
  - lib/widgets/invoice/invoice_details_dialog.dart
  - lib/widgets/complaint/complaint_detail_dialog.dart
-S
+
+ All Screens
+ - lib/screens/
+  - complaints_screen.dart
+  - customer_screen.dart 
+  - dashboard_screen.dart
+  - home_screen.dart 
+  - invoice_screen.dart
+  - login_screen.dart
+  - measurement_screen.dart
+  - settings_screen.dart

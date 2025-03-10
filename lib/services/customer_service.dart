@@ -469,6 +469,7 @@ class CustomerService {
           .order('name')
           .limit(20);
       
+      // ignore: unnecessary_null_comparison
       if (response == null) return [];
       
       return (response as List)
