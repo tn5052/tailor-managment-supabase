@@ -10,8 +10,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://bdwrdjrihakzagfjjkuq.supabase.co',
-    anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkd3JkanJpaGFremFnZmpqa3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0OTkyODYsImV4cCI6MjA1NjA3NTI4Nn0.176N5KMizWVmCafH-1MY9ZG3NJyiPSHJYnnAwsHCJTA',
+       url: 'https://ioniwnodlpekyxtrzayp.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlvbml3bm9kbHBla3l4dHJ6YXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4MjU1NTgsImV4cCI6MjA2MzQwMTU1OH0.jcq0AFNdGi1rbVi5TlTq4sre8xC_j6kiDWFlj9eTN3g',
     realtimeClientOptions: const RealtimeClientOptions(
       eventsPerSecond: 20, // Reduced from 40 to avoid rate limits
       timeout: Duration(seconds: 30), // Increase timeout
