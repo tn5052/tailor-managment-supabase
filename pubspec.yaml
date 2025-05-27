@@ -65,6 +65,7 @@ dependencies:
   rxdart: ^0.27.7
   url_launcher: ^6.1.12
   printing: ^5.14.2
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:

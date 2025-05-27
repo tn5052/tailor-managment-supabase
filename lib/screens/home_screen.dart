@@ -6,6 +6,7 @@ import 'invoice_screen.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'complaints_screen.dart';
+import 'inventory_screen.dart'; // Add new import
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,7 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
     const CustomerListScreen(),
     const MeasurementListScreen(),
     InvoiceListScreen(),
-    const ComplaintsScreen(),  // Add complaints screen
+    const ComplaintsScreen(),
+    const InventoryScreen(), // Add inventory screen
     const SettingsScreen(),
   ];
 
@@ -36,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMobileLayout() {
     return Scaffold(
-
       body: _screens[_selectedIndex],
       bottomNavigationBar: MobileBottomNav(
         selectedIndex: _selectedIndex,
@@ -62,12 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           // Removing the VerticalDivider
-          Expanded(
-            child: _screens[_selectedIndex],
-          ),
+          Expanded(child: _screens[_selectedIndex]),
         ],
       ),
     );
   }
-
 }

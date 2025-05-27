@@ -46,7 +46,8 @@ class SideMenu extends StatefulWidget {
   State<SideMenu> createState() => _SideMenuState();
 }
 
-class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin {
+class _SideMenuState extends State<SideMenu>
+    with SingleTickerProviderStateMixin {
   bool isExpanded = true;
   bool isHovering = false;
   bool isFooterHovered = false;
@@ -87,45 +88,63 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
               child: AnimatedPadding(
                 duration: const Duration(milliseconds: 350),
                 curve: Curves.easeInOutCubic,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isExpanded ? 8 : 12,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: isExpanded ? 8 : 12),
                 child: ListView(
                   children: [
                     _buildNavItem(
                       index: 0,
                       icon: PhosphorIcon(PhosphorIcons.squaresFour()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.squaresFour(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Dashboard',
                     ),
                     _buildNavItem(
                       index: 1,
                       icon: PhosphorIcon(PhosphorIcons.users()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.users(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.users(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Customers',
                     ),
                     _buildNavItem(
                       index: 2,
                       icon: PhosphorIcon(PhosphorIcons.ruler()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.ruler(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.ruler(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Measurements',
                     ),
                     _buildNavItem(
                       index: 3,
                       icon: PhosphorIcon(PhosphorIcons.receipt()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.receipt(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.receipt(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Invoices',
                     ),
                     _buildNavItem(
                       index: 4,
                       icon: PhosphorIcon(PhosphorIcons.warning()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.warning(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.warning(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Complaints',
                     ),
                     _buildNavItem(
                       index: 5,
+                      icon: PhosphorIcon(PhosphorIcons.package()),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.package(PhosphorIconsStyle.fill),
+                      ),
+                      label: 'Inventory',
+                    ),
+                    _buildNavItem(
+                      index: 6,
                       icon: PhosphorIcon(PhosphorIcons.gear()),
-                      selectedIcon: PhosphorIcon(PhosphorIcons.gear(PhosphorIconsStyle.fill)),
+                      selectedIcon: PhosphorIcon(
+                        PhosphorIcons.gear(PhosphorIconsStyle.fill),
+                      ),
                       label: 'Settings',
                     ),
                   ],
@@ -146,7 +165,8 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         vertical: 12,
       ),
       child: Row(
-        mainAxisAlignment: isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        mainAxisAlignment:
+            isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
         children: [
           if (isExpanded) ...[
             Container(
@@ -180,9 +200,12 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isHovering 
-                      ? theme.colorScheme.surfaceContainerHighest.withAlpha(100)
-                      : Colors.transparent,
+                  color:
+                      isHovering
+                          ? theme.colorScheme.surfaceContainerHighest.withAlpha(
+                            100,
+                          )
+                          : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: AnimatedRotation(
@@ -217,7 +240,10 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOutCubic,
         decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primaryContainer : Colors.transparent,
+          color:
+              isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Material(
@@ -227,9 +253,7 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
             borderRadius: BorderRadius.circular(12),
             child: Container(
               height: 40,
-              padding: EdgeInsets.symmetric(
-                horizontal: isExpanded ? 12 : 0,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: isExpanded ? 12 : 0),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 350),
                 curve: Curves.easeInOutCubic,
@@ -239,9 +263,10 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                   children: [
                     IconTheme(
                       data: IconThemeData(
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
+                        color:
+                            isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurfaceVariant,
                         size: 20,
                       ),
                       child: isSelected ? selectedIcon : icon,
@@ -257,9 +282,10 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                             Text(
                               label,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurfaceVariant,
+                                color:
+                                    isSelected
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurfaceVariant,
                                 fontWeight: isSelected ? FontWeight.w600 : null,
                               ),
                             ),
@@ -285,9 +311,10 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
         curve: Curves.easeInOutCubic,
         padding: EdgeInsets.all(isExpanded ? 16 : 12),
         decoration: BoxDecoration(
-          color: isFooterHovered 
-              ? theme.colorScheme.surfaceContainerHighest.withAlpha(50)
-              : Colors.transparent,
+          color:
+              isFooterHovered
+                  ? theme.colorScheme.surfaceContainerHighest.withAlpha(50)
+                  : Colors.transparent,
           border: Border(
             top: BorderSide(
               color: theme.colorScheme.outlineVariant.withAlpha(50),
@@ -310,13 +337,18 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                     decoration: BoxDecoration(
                       color: theme.colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: isFooterHovered ? [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withAlpha(40),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ] : [],
+                      boxShadow:
+                          isFooterHovered
+                              ? [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withAlpha(
+                                    40,
+                                  ),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                              : [],
                     ),
                     child: PhosphorIcon(
                       PhosphorIcons.user(),
@@ -369,7 +401,6 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
                               color: theme.colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            
                           ),
                         ],
                       ),
@@ -412,20 +443,21 @@ class _SideMenuState extends State<SideMenu> with SingleTickerProviderStateMixin
   Future<void> _handleSignOut(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sign Out'),
+            content: const Text('Are you sure you want to sign out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sign Out'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
@@ -448,7 +480,8 @@ class MobileBottomNav extends StatefulWidget {
   State<MobileBottomNav> createState() => _MobileBottomNavState();
 }
 
-class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProviderStateMixin {
+class _MobileBottomNavState extends State<MobileBottomNav>
+    with SingleTickerProviderStateMixin {
   late AnimationController _menuController;
   OverlayEntry? _overlayEntry;
   OverlayEntry? _fabPopoverEntry;
@@ -533,58 +566,61 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
   void _showFabPopover() {
     final overlay = Overlay.of(context);
     _fabPopoverEntry = OverlayEntry(
-      builder: (context) => TweenAnimationBuilder<double>(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        tween: Tween(begin: 0.0, end: 1.0),
-        builder: (context, value, child) => GestureDetector(
-          onTap: _removeFabPopover,
-          behavior: HitTestBehavior.translucent,
-          child: Stack(
-            children: [
-              // Backdrop with fade animation
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.1 * value),
-                ),
-              ),
-              // Animated popover
-              Positioned(
-                left: MediaQuery.of(context).size.width / 2 - 100,
-                bottom: 120 + (1 - value) * 20, // Slide up effect
-                child: Transform.scale(
-                  scale: 0.2 + value * 0.8, // Scale up from 0.2 to 1.0
-                  alignment: Alignment.bottomCenter,
-                  child: Opacity(
-                    opacity: value,
-                    child: _FabPopover(
-                      onOptionSelected: (option) {
-                        _removeFabPopover();
-                        if (option == "Add Customer") {
-                          showDialog(
-                            context: context,
-                            builder: (context) => const AddCustomerDialog(),
-                          );
-                        } else if (option == "Add Measures") {
-                          AddMeasurementDialog.show(context);
-                        } else if (option == "Add Invoice") {
-                          InvoiceScreen.show(context);
-                        } else if (option == "Add Complaint") {
-                          ComplaintDialog.show(context);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(option)),
-                          );
-                        }
-                      },
-                    ),
+      builder:
+          (context) => TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder:
+                (context, value, child) => GestureDetector(
+                  onTap: _removeFabPopover,
+                  behavior: HitTestBehavior.translucent,
+                  child: Stack(
+                    children: [
+                      // Backdrop with fade animation
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.1 * value),
+                        ),
+                      ),
+                      // Animated popover
+                      Positioned(
+                        left: MediaQuery.of(context).size.width / 2 - 100,
+                        bottom: 120 + (1 - value) * 20, // Slide up effect
+                        child: Transform.scale(
+                          scale: 0.2 + value * 0.8, // Scale up from 0.2 to 1.0
+                          alignment: Alignment.bottomCenter,
+                          child: Opacity(
+                            opacity: value,
+                            child: _FabPopover(
+                              onOptionSelected: (option) {
+                                _removeFabPopover();
+                                if (option == "Add Customer") {
+                                  showDialog(
+                                    context: context,
+                                    builder:
+                                        (context) => const AddCustomerDialog(),
+                                  );
+                                } else if (option == "Add Measures") {
+                                  AddMeasurementDialog.show(context);
+                                } else if (option == "Add Invoice") {
+                                  InvoiceScreen.show(context);
+                                } else if (option == "Add Complaint") {
+                                  ComplaintDialog.show(context);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(option)),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
           ),
-        ),
-      ),
     );
     overlay.insert(_fabPopoverEntry!);
   }
@@ -622,59 +658,72 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
               height: 65, // Increased height to match FAB spacing
               padding: EdgeInsets.zero,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Changed to spaceEvenly
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceEvenly, // Changed to spaceEvenly
                 children: [
-                  Expanded(child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildDestination(
-                        icon: PhosphorIcons.squaresFour(),
-                        selectedIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
-                        label: 'Dashboard',
-                        fontSize: fontSize,
-                        iconSize: iconSize,
-                        theme: theme,
-                        isSelected: widget.selectedIndex == 0,
-                        onTap: () => widget.onDestinationSelected(0),
-                      ),
-                      _buildDestination(
-                        icon: PhosphorIcons.users(),
-                        selectedIcon: PhosphorIcons.users(PhosphorIconsStyle.fill),
-                        label: 'Customers',
-                        fontSize: fontSize,
-                        iconSize: iconSize,
-                        theme: theme,
-                        isSelected: widget.selectedIndex == 1,
-                        onTap: () => widget.onDestinationSelected(1),
-                      ),
-                    ],
-                  )),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildDestination(
+                          icon: PhosphorIcons.squaresFour(),
+                          selectedIcon: PhosphorIcons.squaresFour(
+                            PhosphorIconsStyle.fill,
+                          ),
+                          label: 'Dashboard',
+                          fontSize: fontSize,
+                          iconSize: iconSize,
+                          theme: theme,
+                          isSelected: widget.selectedIndex == 0,
+                          onTap: () => widget.onDestinationSelected(0),
+                        ),
+                        _buildDestination(
+                          icon: PhosphorIcons.users(),
+                          selectedIcon: PhosphorIcons.users(
+                            PhosphorIconsStyle.fill,
+                          ),
+                          label: 'Customers',
+                          fontSize: fontSize,
+                          iconSize: iconSize,
+                          theme: theme,
+                          isSelected: widget.selectedIndex == 1,
+                          onTap: () => widget.onDestinationSelected(1),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 70), // Increased space for FAB
-                  Expanded(child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildDestination(
-                        icon: PhosphorIcons.ruler(),
-                        selectedIcon: PhosphorIcons.ruler(PhosphorIconsStyle.fill),
-                        label: 'Measures',
-                        fontSize: fontSize,
-                        iconSize: iconSize,
-                        theme: theme,
-                        isSelected: widget.selectedIndex == 2,
-                        onTap: () => widget.onDestinationSelected(2),
-                      ),
-                      _buildDestination(
-                        icon: PhosphorIcons.receipt(),
-                        selectedIcon: PhosphorIcons.receipt(PhosphorIconsStyle.fill),
-                        label: 'Invoices',
-                        fontSize: fontSize,
-                        iconSize: iconSize,
-                        theme: theme,
-                        isSelected: widget.selectedIndex == 3,
-                        onTap: () => widget.onDestinationSelected(3),
-                      ),
-                    ],
-                  )),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildDestination(
+                          icon: PhosphorIcons.ruler(),
+                          selectedIcon: PhosphorIcons.ruler(
+                            PhosphorIconsStyle.fill,
+                          ),
+                          label: 'Measures',
+                          fontSize: fontSize,
+                          iconSize: iconSize,
+                          theme: theme,
+                          isSelected: widget.selectedIndex == 2,
+                          onTap: () => widget.onDestinationSelected(2),
+                        ),
+                        _buildDestination(
+                          icon: PhosphorIcons.receipt(),
+                          selectedIcon: PhosphorIcons.receipt(
+                            PhosphorIconsStyle.fill,
+                          ),
+                          label: 'Invoices',
+                          fontSize: fontSize,
+                          iconSize: iconSize,
+                          theme: theme,
+                          isSelected: widget.selectedIndex == 3,
+                          onTap: () => widget.onDestinationSelected(3),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -762,13 +811,19 @@ class _MobileBottomNavState extends State<MobileBottomNav> with SingleTickerProv
               PhosphorIcon(
                 isSelected ? selectedIcon : icon,
                 size: iconSize,
-                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                color:
+                    isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
               ),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: fontSize,
-                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                  color:
+                      isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -824,22 +879,19 @@ class _FabPopover extends StatelessWidget {
       duration: Duration(milliseconds: 200 + (index * 40)),
       curve: Curves.easeOutCubic,
       tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) => Transform.translate(
-        offset: Offset(0, 20 * (1 - value)),
-        child: Opacity(
-          opacity: value,
-          child: TextButton(
-            onPressed: () => onOptionSelected(text),
-            child: Row(
-              children: [
-                Icon(icon),
-                const SizedBox(width: 8),
-                Text(text),
-              ],
+      builder:
+          (context, value, child) => Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Opacity(
+              opacity: value,
+              child: TextButton(
+                onPressed: () => onOptionSelected(text),
+                child: Row(
+                  children: [Icon(icon), const SizedBox(width: 8), Text(text)],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -862,7 +914,12 @@ class _PopoverClipper extends CustomClipper<Path> {
     // Right side
     path.lineTo(size.width, size.height - arrowHeight - cornerRadius);
     // Bottom-right corner
-    path.quadraticBezierTo(size.width, size.height - arrowHeight, size.width - cornerRadius, size.height - arrowHeight);
+    path.quadraticBezierTo(
+      size.width,
+      size.height - arrowHeight,
+      size.width - cornerRadius,
+      size.height - arrowHeight,
+    );
     // Bottom line to right arrow base
     const arrowWidth = 40.0; // increased arrow width
     final arrowXEnd = (size.width + arrowWidth) / 2;
@@ -876,7 +933,12 @@ class _PopoverClipper extends CustomClipper<Path> {
     // Bottom line left
     path.lineTo(cornerRadius, size.height - arrowHeight);
     // Bottom-left corner
-    path.quadraticBezierTo(0, size.height - arrowHeight, 0, size.height - arrowHeight - cornerRadius);
+    path.quadraticBezierTo(
+      0,
+      size.height - arrowHeight,
+      0,
+      size.height - arrowHeight - cornerRadius,
+    );
     // Left side
     path.close();
     return path;
@@ -885,4 +947,3 @@ class _PopoverClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
-
