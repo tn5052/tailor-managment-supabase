@@ -4,55 +4,58 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../common/searchable_addable_dropdown.dart';
-import '../inventory/fabric_color_picker.dart';
+import 'fabric_color_picker.dart';
 
-class AddInventoryDesktopDialog extends StatefulWidget {
-  final String inventoryType; // 'fabric' or 'accessory'
-  final VoidCallback? onItemAdded;
+class EditInventoryDesktopDialog extends StatefulWidget {
+  final Map<String, dynamic> item;
+  final String inventoryType;
+  final VoidCallback? onItemUpdated;
 
-  const AddInventoryDesktopDialog({
+  const EditInventoryDesktopDialog({
     super.key,
+    required this.item,
     required this.inventoryType,
-    this.onItemAdded,
+    this.onItemUpdated,
   });
 
   static Future<void> show(
     BuildContext context, {
+    required Map<String, dynamic> item,
     required String inventoryType,
-    VoidCallback? onItemAdded,
+    VoidCallback? onItemUpdated,
   }) {
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => AddInventoryDesktopDialog(
+          (context) => EditInventoryDesktopDialog(
+            item: item,
             inventoryType: inventoryType,
-            onItemAdded: onItemAdded,
+            onItemUpdated: onItemUpdated,
           ),
     );
   }
 
   @override
-  State<AddInventoryDesktopDialog> createState() =>
-      _AddInventoryDesktopDialogState();
+  State<EditInventoryDesktopDialog> createState() =>
+      _EditInventoryDesktopDialogState();
 }
 
-class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
+class _EditInventoryDesktopDialogState
+    extends State<EditInventoryDesktopDialog> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
   bool _isLoading = false;
 
-  // Essential controllers
+  // Controllers
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
-  // final _brandController = TextEditingController(); // REMOVE
-  // final _typeController = TextEditingController(); // REMOVE
   final _colorController = TextEditingController();
   final _quantityController = TextEditingController();
   final _costController = TextEditingController();
   final _priceController = TextEditingController();
 
-  String _selectedUnitType = 'meter'; // Default to meter
+  String _selectedUnitType = 'meter';
   Color _selectedColor = Colors.grey;
   String _colorName = '';
   String _hexColor = '';
@@ -66,16 +69,68 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedUnitType = widget.inventoryType == 'fabric' ? 'meter' : 'piece';
-    // Fetch initial brands and categories if needed, or let the dropdown handle it
+    _initializeFields();
+  }
+
+  void _initializeFields() {
+    final isFabric = widget.inventoryType == 'fabric';
+
+    // Initialize basic fields
+    _codeController.text =
+        widget.item[isFabric ? 'fabric_code' : 'accessory_code'] ?? '';
+    _nameController.text =
+        widget.item[isFabric ? 'fabric_item_name' : 'accessory_item_name'] ??
+        '';
+    _quantityController.text =
+        (widget.item['quantity_available'] ?? 0).toString();
+    _costController.text = (widget.item['cost_per_unit'] ?? 0).toString();
+    _priceController.text =
+        (widget.item['selling_price_per_unit'] ?? 0).toString();
+    _selectedUnitType =
+        widget.item['unit_type'] ?? (isFabric ? 'meter' : 'piece');
+
+    // Initialize color fields
+    if (isFabric) {
+      _colorName = widget.item['shade_color'] ?? '';
+      _hexColor = widget.item['color_code'] ?? '';
+      _colorController.text = _colorName;
+      if (_hexColor.isNotEmpty) {
+        _selectedColor = _parseColor(_hexColor);
+      }
+    } else {
+      _colorName = widget.item['color'] ?? '';
+      _hexColor = widget.item['color_code'] ?? '';
+      _colorController.text = _colorName;
+      if (_hexColor.isNotEmpty) {
+        _selectedColor = _parseColor(_hexColor);
+      }
+    }
+
+    // Initialize brand
+    if (widget.item['brand_id'] != null && widget.item['brand_name'] != null) {
+      _selectedBrand = SearchableAddableDropdownItem(
+        id: widget.item['brand_id'],
+        name: widget.item['brand_name'],
+      );
+    }
+
+    // Initialize category
+    if (widget.item['category_id'] != null) {
+      final categoryName =
+          widget.item[isFabric ? 'fabric_type' : 'accessory_type'];
+      if (categoryName != null) {
+        _selectedCategory = SearchableAddableDropdownItem(
+          id: widget.item['category_id'],
+          name: categoryName,
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
     _codeController.dispose();
     _nameController.dispose();
-    // _brandController.dispose();
-    // _typeController.dispose();
     _colorController.dispose();
     _quantityController.dispose();
     _costController.dispose();
@@ -83,75 +138,18 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     super.dispose();
   }
 
-  Future<SearchableAddableDropdownItem?> _addBrand(String brandName) async {
+  Color _parseColor(String colorCode) {
+    if (colorCode.isEmpty) return Colors.grey;
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
+      if (colorCode.startsWith('#')) {
+        String hexCode = colorCode.substring(1);
+        if (hexCode.length == 6) {
+          return Color(int.parse('FF$hexCode', radix: 16));
+        }
       }
-
-      final response =
-          await _supabase
-              .from('brands')
-              .insert({
-                'name': brandName,
-                'brand_type': widget.inventoryType, // Set brand type
-                'tenant_id': userId,
-              })
-              .select('id, name')
-              .single();
-
-      return SearchableAddableDropdownItem(
-        id: response['id'],
-        name: response['name'],
-      );
+      return Colors.grey;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error adding brand: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return null;
-    }
-  }
-
-  Future<SearchableAddableDropdownItem?> _addCategory(
-    String categoryName,
-  ) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      final response =
-          await _supabase
-              .from('inventory_categories')
-              .insert({
-                'category_name': categoryName,
-                'category_type': widget.inventoryType,
-                'tenant_id': userId,
-              })
-              .select('id, category_name')
-              .single();
-
-      return SearchableAddableDropdownItem(
-        id: response['id'],
-        name: response['category_name'],
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error adding category: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return null;
+      return Colors.grey;
     }
   }
 
@@ -162,7 +160,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
       var query = _supabase
           .from('brands')
           .select('id, name')
-          .eq('brand_type', widget.inventoryType); // Filter by inventory type
+          .eq('brand_type', widget.inventoryType);
       if (searchText != null && searchText.isNotEmpty) {
         query = query.ilike('name', '%$searchText%');
       }
@@ -175,13 +173,40 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error fetching brands: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error fetching brands: ${e.toString()}')),
         );
       }
       return [];
+    }
+  }
+
+  Future<SearchableAddableDropdownItem?> _addBrand(String brandName) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final response =
+          await _supabase
+              .from('brands')
+              .insert({
+                'name': brandName,
+                'brand_type': widget.inventoryType,
+                'tenant_id': userId,
+              })
+              .select('id, name')
+              .single();
+
+      return SearchableAddableDropdownItem(
+        id: response['id'],
+        name: response['name'],
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error adding brand: ${e.toString()}')),
+        );
+      }
+      return null;
     }
   }
 
@@ -209,125 +234,42 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error fetching categories: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error fetching categories: ${e.toString()}')),
         );
       }
       return [];
     }
   }
 
-  Future<void> _saveItem() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    _formKey.currentState!.save();
-
-    if (_selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please select a ${widget.inventoryType} type/category.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    // Brand is required only for fabric
-    if (widget.inventoryType == 'fabric' && _selectedBrand == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a brand for the fabric.')),
-      );
-      return;
-    }
-
-    // Color is required only for fabric
-    if (widget.inventoryType == 'fabric' && _colorName.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fabric color is required.')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
+  Future<SearchableAddableDropdownItem?> _addCategory(
+    String categoryName,
+  ) async {
     try {
-      final table =
-          widget.inventoryType == 'fabric'
-              ? 'fabric_inventory'
-              : 'accessories_inventory';
       final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
 
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+      final response =
+          await _supabase
+              .from('inventory_categories')
+              .insert({
+                'category_name': categoryName,
+                'category_type': widget.inventoryType,
+                'tenant_id': userId,
+              })
+              .select('id, category_name')
+              .single();
 
-      Map<String, dynamic> data = {
-        'is_active': true,
-        'tenant_id': userId,
-        'category_id': _selectedCategory!.id,
-        // brand_id is nullable, so it's fine if _selectedBrand is null for accessories
-        'brand_id': _selectedBrand?.id,
-      };
-
-      if (widget.inventoryType == 'fabric') {
-        data.addAll({
-          'fabric_code': _codeController.text.trim(),
-          'fabric_item_name': _nameController.text.trim(),
-          'shade_color': _colorName.trim(), // Ensure color name is saved
-          'color_code': _hexColor.trim(), // Ensure hex code is saved
-          'unit_type': _selectedUnitType,
-          'quantity_available': double.tryParse(_quantityController.text) ?? 0,
-          'cost_per_unit': double.tryParse(_costController.text) ?? 0,
-          'selling_price_per_unit': double.tryParse(_priceController.text) ?? 0,
-        });
-      } else {
-        data.addAll({
-          'accessory_code': _codeController.text.trim(),
-          'accessory_item_name': _nameController.text.trim(),
-          // For accessories, color is optional and might not be set
-          // The database schema for accessories_inventory has 'color' and 'color_code' as nullable
-          'color': _colorName.trim().isEmpty ? null : _colorName.trim(),
-          'color_code': _hexColor.trim().isEmpty ? null : _hexColor.trim(),
-          'unit_type': _selectedUnitType,
-          'quantity_available': int.tryParse(_quantityController.text) ?? 0,
-          'cost_per_unit': double.tryParse(_costController.text) ?? 0,
-          'selling_price_per_unit': double.tryParse(_priceController.text) ?? 0,
-        });
-      }
-
-      await _supabase.from(table).insert(data);
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} added successfully!',
-            ),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        widget.onItemAdded?.call();
-      }
+      return SearchableAddableDropdownItem(
+        id: response['id'],
+        name: response['category_name'],
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text('Error adding category: ${e.toString()}')),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      return null;
     }
   }
 
@@ -348,6 +290,104 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     }
   }
 
+  Future<void> _updateItem() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select a ${widget.inventoryType} type/category.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (widget.inventoryType == 'fabric' && _selectedBrand == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a brand for the fabric.')),
+      );
+      return;
+    }
+
+    if (widget.inventoryType == 'fabric' && _colorName.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fabric color is required.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final table =
+          widget.inventoryType == 'fabric'
+              ? 'fabric_inventory'
+              : 'accessories_inventory';
+
+      Map<String, dynamic> data = {
+        'category_id': _selectedCategory!.id,
+        'brand_id': _selectedBrand?.id,
+        'unit_type': _selectedUnitType,
+        'quantity_available':
+            widget.inventoryType == 'fabric'
+                ? double.tryParse(_quantityController.text) ?? 0
+                : int.tryParse(_quantityController.text) ?? 0,
+        'cost_per_unit': double.tryParse(_costController.text) ?? 0,
+        'selling_price_per_unit': double.tryParse(_priceController.text) ?? 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (widget.inventoryType == 'fabric') {
+        data.addAll({
+          'fabric_code': _codeController.text.trim(),
+          'fabric_item_name': _nameController.text.trim(),
+          'shade_color': _colorName.trim(),
+          'color_code': _hexColor.trim(),
+        });
+      } else {
+        data.addAll({
+          'accessory_code': _codeController.text.trim(),
+          'accessory_item_name': _nameController.text.trim(),
+          'color': _colorName.trim().isEmpty ? null : _colorName.trim(),
+          'color_code': _hexColor.trim().isEmpty ? null : _hexColor.trim(),
+        });
+      }
+
+      await _supabase.from(table).update(data).eq('id', widget.item['id']);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} updated successfully!',
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onItemUpdated?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating item: ${e.toString()}'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -362,7 +402,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 650,
-        padding: const EdgeInsets.all(0),
+        padding: EdgeInsets.zero,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -382,7 +422,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Add New $titleName',
+                      'Edit $titleName',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
@@ -390,7 +430,8 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed:
+                        _isLoading ? null : () => Navigator.of(context).pop(),
                     icon: Icon(PhosphorIcons.x()),
                     tooltip: 'Close',
                   ),
@@ -487,8 +528,8 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
 
                       // Color field - only show for fabric
                       if (isFabric) ...[
-                        _buildColorField(isFabric), // Pass isFabric here
-                        const SizedBox(height: 24), // Keep spacing consistent
+                        _buildColorField(isFabric),
+                        const SizedBox(height: 24),
                       ],
 
                       // Stock & Pricing section
@@ -501,85 +542,81 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Use a grid-like layout for better alignment
+                      // Quantity and Unit row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Left column - Quantity and Cost
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSimpleField(
-                                  controller: _quantityController,
-                                  label: 'Quantity',
-                                  hintText: 'Enter quantity',
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d*'),
-                                    ),
-                                  ],
-                                  required: true,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildSimpleField(
-                                  controller: _costController,
-                                  label: 'Cost per Unit',
-                                  hintText: 'Enter cost',
-                                  // Remove prefixText: 'AED ',
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d*'),
-                                    ),
-                                  ],
-                                  required: true,
+                            child: _buildSimpleField(
+                              controller: _quantityController,
+                              label: 'Quantity',
+                              hintText: 'Enter quantity',
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
                                 ),
                               ],
+                              required: true,
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // Right column - Unit and Selling Price
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSimpleDropdown(
-                                  value: _selectedUnitType,
-                                  onChanged:
-                                      (value) => setState(
-                                        () => _selectedUnitType = value!,
-                                      ),
-                                  label: 'Unit',
-                                  items:
-                                      isFabric ? _fabricUnits : _accessoryUnits,
-                                  hintText: 'Select your unit',
-                                ),
-                                const SizedBox(height: 16),
-                                _buildSimpleField(
-                                  controller: _priceController,
-                                  label: 'Selling Price per Unit',
-                                  hintText: 'Enter price',
-                                  // Remove prefixText: 'AED ',
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d*'),
-                                    ),
-                                  ],
-                                  required: true,
+                            child: _buildSimpleDropdown(
+                              value: _selectedUnitType,
+                              onChanged:
+                                  (value) => setState(
+                                    () => _selectedUnitType = value!,
+                                  ),
+                              label: 'Unit',
+                              items: isFabric ? _fabricUnits : _accessoryUnits,
+                              hintText: 'Select your unit',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Cost and Price row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildSimpleField(
+                              controller: _costController,
+                              label: 'Cost per Unit',
+                              hintText: 'Enter cost',
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
                                 ),
                               ],
+                              required: true,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildSimpleField(
+                              controller: _priceController,
+                              label: 'Selling Price per Unit',
+                              hintText: 'Enter price',
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
+                              ],
+                              required: true,
                             ),
                           ),
                         ],
@@ -590,7 +627,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
               ),
             ),
 
-            // Updated footer buttons:
+            // Buttons
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -607,7 +644,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
                   ),
                   const SizedBox(width: 16),
                   FilledButton.icon(
-                    onPressed: _isLoading ? null : _saveItem,
+                    onPressed: _isLoading ? null : _updateItem,
                     icon:
                         _isLoading
                             ? SizedBox(
@@ -619,16 +656,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
                               ),
                             )
                             : Icon(PhosphorIcons.checkCircle()),
-                    label: Text(_isLoading ? 'Saving...' : 'Save'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    label: Text(_isLoading ? 'Updating...' : 'Update'),
                   ),
                 ],
               ),
@@ -664,6 +692,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
           controller: controller,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
+          enabled: !_isLoading,
           decoration: InputDecoration(
             hintText: hintText,
             prefixText: prefixText,
@@ -708,210 +737,44 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
           ),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap:
-              () => _showDropdownDialog(
-                context: context,
-                items: items,
-                selectedValue: value,
-                onChanged: onChanged,
-                title: label,
-              ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: colorScheme.outline.withOpacity(0.5)),
-              borderRadius: BorderRadius.circular(8),
+        DropdownButtonFormField<String>(
+          value: value,
+          onChanged: _isLoading ? null : onChanged,
+          decoration: InputDecoration(
+            hintText: hintText,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value ?? hintText,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color:
-                        value != null
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurfaceVariant.withOpacity(0.6),
-                  ),
-                ),
-                Icon(
-                  PhosphorIcons.caretDown(),
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
+          items:
+              items.map((item) {
+                return DropdownMenuItem<String>(value: item, child: Text(item));
+              }).toList(),
         ),
-        if (required && (value == null || value.trim().isEmpty))
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0, left: 0),
-            child: Text(
-              'This field is required',
-              style: TextStyle(color: colorScheme.error, fontSize: 12),
-            ),
-          ),
       ],
     );
   }
 
-  void _showDropdownDialog({
-    required BuildContext context,
-    required List<String> items,
-    required String? selectedValue,
-    required ValueChanged<String?> onChanged,
-    required String title,
-  }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: Container(
-              width: 320, // Adjusted width
-              constraints: const BoxConstraints(
-                maxHeight: 450,
-              ), // Max height for scrollability
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 8, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Select $title',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            PhosphorIcons.x(),
-                            size: 20,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          tooltip: 'Close',
-                          splashRadius: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(
-                    height: 1,
-                    color: colorScheme.outline.withOpacity(0.2),
-                  ),
-                  Flexible(
-                    // Ensures the ListView takes available space and scrolls
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      separatorBuilder:
-                          (context, index) => Divider(
-                            height: 1,
-                            indent: 16,
-                            endIndent: 16,
-                            color: colorScheme.outline.withOpacity(0.1),
-                          ),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final isSelected = item == selectedValue;
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              onChanged(item);
-                              Navigator.of(context).pop();
-                            },
-                            borderRadius: BorderRadius.circular(
-                              0,
-                            ), // For rectangular ink splash
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 14,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      item,
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            fontWeight:
-                                                isSelected
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                            color:
-                                                isSelected
-                                                    ? colorScheme.primary
-                                                    : colorScheme.onSurface,
-                                          ),
-                                    ),
-                                  ),
-                                  if (isSelected)
-                                    PhosphorIcon(
-                                      PhosphorIcons.checkCircle(
-                                        PhosphorIconsStyle.fill,
-                                      ),
-                                      color: colorScheme.primary,
-                                      size: 20,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
-
   Widget _buildColorField(bool isFabric) {
-    // Added isFabric parameter
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // If not fabric, don't build this field at all.
-    // This check is now redundant due to the conditional rendering in the parent build method,
-    // but kept for clarity if this widget were to be used elsewhere without that parent check.
-    if (!isFabric) {
-      return const SizedBox.shrink();
-    }
+    if (!isFabric) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Fabric Color *', // Label clearly indicates it's for fabric and required
+          'Fabric Color *',
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: _showFabricColorPicker,
+          onTap: _isLoading ? null : _showFabricColorPicker,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -920,7 +783,6 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
             ),
             child: Row(
               children: [
-                // Color preview
                 Container(
                   width: 28,
                   height: 28,
@@ -977,11 +839,11 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
             ),
           ),
         ),
-        if (isFabric && _colorName.trim().isEmpty) // Validator for fabric color
+        if (isFabric && _colorName.trim().isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Text(
-              'Fabric color is required.', // Clearer message
+              'Fabric color is required.',
               style: TextStyle(color: colorScheme.error, fontSize: 12),
             ),
           ),

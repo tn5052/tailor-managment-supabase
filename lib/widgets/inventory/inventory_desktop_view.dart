@@ -6,6 +6,7 @@ import 'add_inventory_desktop_dialog.dart';
 import 'fabric_color_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'inventory_detail_dialog_desktop.dart';
+import 'edit_inventory_desktop_dialog.dart';
 
 class InventoryDesktopView extends StatefulWidget {
   final String inventoryType; // 'fabric' or 'accessory'
@@ -680,10 +681,163 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
+  Future<void> _handleEditItem(Map<String, dynamic> item) async {
+    await EditInventoryDesktopDialog.show(
+      context,
+      item: item,
+      inventoryType: widget.inventoryType,
+      onItemUpdated: _loadInventoryItems,
+    );
+  }
+
+  Future<void> _handleDeleteItem(Map<String, dynamic> item) async {
+    final confirm = await _showDeleteConfirmationDialog(item);
+    if (confirm != true) return;
+
+    try {
+      final table =
+          widget.inventoryType == 'fabric'
+              ? 'fabric_inventory'
+              : 'accessories_inventory';
+
+      await _supabase
+          .from(table)
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', item['id']);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} deleted successfully',
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      _loadInventoryItems();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting item: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmationDialog(Map<String, dynamic> item) {
+    final theme = Theme.of(context);
+    final isFabric = widget.inventoryType == 'fabric';
+    final itemName =
+        item[isFabric ? 'fabric_item_name' : 'accessory_item_name'];
+
+    return showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  PhosphorIcons.warning(PhosphorIconsStyle.fill),
+                  color: theme.colorScheme.error,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Text('Confirm Deletion'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to delete this ${isFabric ? 'fabric' : 'accessory'}?',
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isFabric
+                            ? PhosphorIcons.scissors()
+                            : PhosphorIcons.package(),
+                        color: theme.colorScheme.error,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          itemName ?? 'Unknown Item',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'This action cannot be undone.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: Icon(PhosphorIcons.trash()),
+                label: const Text('Delete'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                  foregroundColor: theme.colorScheme.onError,
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   DataRow _buildFabricRow(Map<String, dynamic> fabric, ThemeData theme) {
     final isLowStock =
         (fabric['quantity_available'] ?? 0) <=
         (fabric['minimum_stock_level'] ?? 0);
+
+    final isDark = theme.brightness == Brightness.dark;
+    final Color typeBadgeColor = isDark ? Color(0xFF3954E4) : Color(0xFFECF2FF);
+    final Color typeBadgeTextColor = isDark ? Colors.white : Color(0xFF1541A6);
+    final Color stockBgColor =
+        isLowStock
+            ? (isDark ? Color(0x51DC2626) : Color(0xFFFFEBEF))
+            : (isDark ? Color(0xFF283E31) : Color(0xFFF0FAEF));
+    final Color stockTextColor =
+        isLowStock
+            ? (isDark ? Color(0xFFF08080) : Color(0xFFBE123C))
+            : (isDark ? Color(0xFF45C962) : Color(0xFF16A34A));
 
     return DataRow(
       cells: [
@@ -692,17 +846,17 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         DataCell(Text(fabric['fabric_item_name'] ?? '')),
         DataCell(
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(4),
+              color: typeBadgeColor,
+              borderRadius: BorderRadius.circular(100),
             ),
             child: Text(
               fabric['fabric_type'] ?? 'Uncategorized',
               style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+                color: typeBadgeTextColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -716,12 +870,12 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                 decoration: BoxDecoration(
                   color: _parseColor(fabric['color_code'] ?? ''),
                   border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.5),
+                    color: theme.colorScheme.outline.withOpacity(0.25),
                   ),
                   borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withOpacity(0.07),
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
@@ -742,33 +896,36 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      isLowStock
-                          ? theme.colorScheme.error.withOpacity(0.1)
-                          : theme.colorScheme.primaryContainer.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
                 ),
-                child: Text(
-                  '${fabric['quantity_available'] ?? 0}',
-                  style: TextStyle(
-                    color:
-                        isLowStock
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                decoration: BoxDecoration(
+                  color: stockBgColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isLowStock
+                          ? PhosphorIcons.warning()
+                          : PhosphorIcons.checkCircle(),
+                      size: 14,
+                      color: stockTextColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${fabric['quantity_available'] ?? 0}',
+                      style: TextStyle(
+                        color: stockTextColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (isLowStock) ...[
-                const SizedBox(width: 4),
-                Icon(
-                  PhosphorIcons.warning(),
-                  color: theme.colorScheme.error,
-                  size: 16,
-                ),
-              ],
             ],
           ),
         ),
@@ -792,35 +949,38 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
             children: [
               MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: Tooltip(
-                  message: 'Edit',
-                  child: IconButton(
-                    icon: Icon(
+                child: GestureDetector(
+                  onTap: () => _handleEditItem(fabric),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
                       PhosphorIcons.pencilSimple(),
+                      size: 16,
                       color: theme.colorScheme.primary,
                     ),
-                    onPressed: () {
-                      // Edit item
-                    },
-                    splashRadius: 20,
-                    hoverColor: theme.colorScheme.primary.withOpacity(0.1),
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: Tooltip(
-                  message: 'Delete',
-                  child: IconButton(
-                    icon: Icon(
+                child: GestureDetector(
+                  onTap: () => _handleDeleteItem(fabric),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
                       PhosphorIcons.trash(),
+                      size: 16,
                       color: theme.colorScheme.error,
                     ),
-                    onPressed: () {
-                      // Delete item
-                    },
-                    splashRadius: 20,
-                    hoverColor: theme.colorScheme.error.withOpacity(0.1),
                   ),
                 ),
               ),
@@ -830,21 +990,162 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       ],
       onSelectChanged: (selected) {
         if (selected == true) {
-          // Show the detail dialog when row is clicked
           InventoryDetailDialogDesktop.show(
             context,
             item: fabric,
             inventoryType: 'fabric',
-            onEdit: () {
-              // Implement edit functionality
-              Navigator.of(context).pop();
-              // Open edit dialog
-            },
-            onDelete: () {
-              // Implement delete functionality
-              Navigator.of(context).pop();
-              // Show delete confirmation
-            },
+            onEdit: _loadInventoryItems,
+            onDelete: _loadInventoryItems,
+          );
+        }
+      },
+    );
+  }
+
+  DataRow _buildAccessoryRow(Map<String, dynamic> accessory, ThemeData theme) {
+    final isLowStock =
+        (accessory['quantity_available'] ?? 0) <=
+        (accessory['minimum_stock_level'] ?? 0);
+
+    final isDark = theme.brightness == Brightness.dark;
+    final Color typeBadgeColor = isDark ? Color(0xFF26B686) : Color(0xFFD6FFF3);
+    final Color typeBadgeTextColor = isDark ? Colors.white : Color(0xFF07856B);
+    final Color stockBgColor =
+        isLowStock
+            ? (isDark ? Color(0x51DC2626) : Color(0xFFFFEBEF))
+            : (isDark ? Color(0xFF14404F) : Color(0xFFEAFDFE));
+    final Color stockTextColor =
+        isLowStock
+            ? (isDark ? Color(0xFFFFBE78) : Color(0xFF777126))
+            : (isDark ? Color(0xFF8CFDF9) : Color(0xFF149884));
+
+    return DataRow(
+      cells: [
+        DataCell(Text(accessory['accessory_code'] ?? '')),
+        DataCell(Text(accessory['accessory_item_name'] ?? '')),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: typeBadgeColor,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              accessory['accessory_type'] ?? 'Uncategorized',
+              style: TextStyle(
+                color: typeBadgeTextColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        DataCell(Text(accessory['brand_name'] ?? 'No Brand')),
+        DataCell(Text(accessory['color'] ?? 'N/A')),
+        DataCell(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: stockBgColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isLowStock
+                          ? PhosphorIcons.warning()
+                          : PhosphorIcons.checkCircle(),
+                      size: 14,
+                      color: stockTextColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${accessory['quantity_available'] ?? 0}',
+                      style: TextStyle(
+                        color: stockTextColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        DataCell(Text(accessory['unit_type'] ?? '')),
+        DataCell(
+          Text(
+            NumberFormat.currency(
+              symbol: '\$',
+            ).format(accessory['cost_per_unit'] ?? 0),
+          ),
+        ),
+        DataCell(
+          Text(
+            NumberFormat.currency(
+              symbol: '\$',
+            ).format(accessory['selling_price_per_unit'] ?? 0),
+          ),
+        ),
+        DataCell(
+          Row(
+            children: [
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => _handleEditItem(accessory),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.pencilSimple(),
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => _handleDeleteItem(accessory),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.trash(),
+                      size: 16,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      onSelectChanged: (selected) {
+        if (selected == true) {
+          InventoryDetailDialogDesktop.show(
+            context,
+            item: accessory,
+            inventoryType: 'accessory',
+            onEdit: _loadInventoryItems,
+            onDelete: _loadInventoryItems,
           );
         }
       },
@@ -898,147 +1199,6 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         );
       }
     }
-  }
-
-  DataRow _buildAccessoryRow(Map<String, dynamic> accessory, ThemeData theme) {
-    final isLowStock =
-        (accessory['quantity_available'] ?? 0) <=
-        (accessory['minimum_stock_level'] ?? 0);
-
-    return DataRow(
-      cells: [
-        DataCell(Text(accessory['accessory_code'] ?? '')),
-        DataCell(Text(accessory['accessory_item_name'] ?? '')),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.tertiaryContainer.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              accessory['accessory_type'] ?? 'Uncategorized',
-              style: TextStyle(
-                color: theme.colorScheme.onTertiaryContainer,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-        DataCell(Text(accessory['brand_name'] ?? 'No Brand')),
-        DataCell(Text(accessory['color'] ?? 'N/A')),
-        DataCell(
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      isLowStock
-                          ? theme.colorScheme.error.withOpacity(0.1)
-                          : theme.colorScheme.primaryContainer.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '${accessory['quantity_available'] ?? 0}',
-                  style: TextStyle(
-                    color:
-                        isLowStock
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (isLowStock) ...[
-                const SizedBox(width: 4),
-                Icon(
-                  PhosphorIcons.warning(),
-                  color: theme.colorScheme.error,
-                  size: 16,
-                ),
-              ],
-            ],
-          ),
-        ),
-        DataCell(Text(accessory['unit_type'] ?? '')),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(accessory['cost_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(accessory['selling_price_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Tooltip(
-                  message: 'Edit',
-                  child: IconButton(
-                    icon: Icon(
-                      PhosphorIcons.pencilSimple(),
-                      color: theme.colorScheme.primary,
-                    ),
-                    onPressed: () {
-                      // Edit item
-                    },
-                    splashRadius: 20,
-                    hoverColor: theme.colorScheme.primary.withOpacity(0.1),
-                  ),
-                ),
-              ),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Tooltip(
-                  message: 'Delete',
-                  child: IconButton(
-                    icon: Icon(
-                      PhosphorIcons.trash(),
-                      color: theme.colorScheme.error,
-                    ),
-                    onPressed: () {
-                      // Delete item
-                    },
-                    splashRadius: 20,
-                    hoverColor: theme.colorScheme.error.withOpacity(0.1),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-      onSelectChanged: (selected) {
-        if (selected == true) {
-          // Show the detail dialog when row is clicked
-          InventoryDetailDialogDesktop.show(
-            context,
-            item: accessory,
-            inventoryType: 'accessory',
-            onEdit: () {
-              // Implement edit functionality
-              Navigator.of(context).pop();
-              // Open edit dialog
-            },
-            onDelete: () {
-              // Implement delete functionality
-              Navigator.of(context).pop();
-              // Show delete confirmation
-            },
-          );
-        }
-      },
-    );
   }
 
   Color _parseColor(String colorCode) {

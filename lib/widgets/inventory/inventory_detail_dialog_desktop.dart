@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'edit_inventory_desktop_dialog.dart';
 
-class InventoryDetailDialogDesktop extends StatelessWidget {
+class InventoryDetailDialogDesktop extends StatefulWidget {
   final Map<String, dynamic> item;
   final String inventoryType; // 'fabric' or 'accessory'
   final VoidCallback? onEdit;
@@ -40,21 +42,185 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
   }
 
   @override
+  State<InventoryDetailDialogDesktop> createState() =>
+      _InventoryDetailDialogDesktopState();
+}
+
+class _InventoryDetailDialogDesktopState
+    extends State<InventoryDetailDialogDesktop> {
+  final _supabase = Supabase.instance.client;
+  bool _isProcessing = false;
+
+  Future<void> _handleEdit() async {
+    Navigator.of(context).pop();
+    await EditInventoryDesktopDialog.show(
+      context,
+      item: widget.item,
+      inventoryType: widget.inventoryType,
+      onItemUpdated: widget.onEdit,
+    );
+  }
+
+  Future<void> _handleDelete() async {
+    final confirm = await _showDeleteConfirmationDialog();
+    if (confirm != true) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final table =
+          widget.inventoryType == 'fabric'
+              ? 'fabric_inventory'
+              : 'accessories_inventory';
+
+      // Soft delete by setting is_active to false instead of hard delete
+      await _supabase
+          .from(table)
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', widget.item['id']);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} deleted successfully',
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onDelete?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting item: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmationDialog() {
+    final theme = Theme.of(context);
+    final isFabric = widget.inventoryType == 'fabric';
+    final itemName =
+        widget.item[isFabric ? 'fabric_item_name' : 'accessory_item_name'];
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  PhosphorIcons.warning(PhosphorIconsStyle.fill),
+                  color: theme.colorScheme.error,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Text('Confirm Deletion'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to delete this ${isFabric ? 'fabric' : 'accessory'}?',
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isFabric
+                            ? PhosphorIcons.scissors()
+                            : PhosphorIcons.package(),
+                        color: theme.colorScheme.error,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          itemName ?? 'Unknown Item',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'This action cannot be undone. The item will be removed from your inventory.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: Icon(PhosphorIcons.trash()),
+                label: const Text('Delete'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                  foregroundColor: theme.colorScheme.onError,
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool isFabric = inventoryType == 'fabric';
+    final bool isFabric = widget.inventoryType == 'fabric';
 
     // Determine item-specific details
     final String itemName =
-        item[isFabric ? 'fabric_item_name' : 'accessory_item_name'] ?? 'N/A';
+        widget.item[isFabric ? 'fabric_item_name' : 'accessory_item_name'] ??
+        'N/A';
     final String itemCode =
-        item[isFabric ? 'fabric_code' : 'accessory_code'] ?? 'N/A';
-    final String? itemBrand = item['brand_name'];
+        widget.item[isFabric ? 'fabric_code' : 'accessory_code'] ?? 'N/A';
+    final String? itemBrand = widget.item['brand_name'];
     final String itemCategory =
-        item[isFabric ? 'fabric_type' : 'accessory_type'] ?? 'N/A';
+        widget.item[isFabric ? 'fabric_type' : 'accessory_type'] ?? 'N/A';
 
-    final String? fabricColorName = isFabric ? item['shade_color'] : null;
-    final String? fabricColorCode = isFabric ? item['color_code'] : null;
+    final String? fabricColorName =
+        isFabric ? widget.item['shade_color'] : null;
+    final String? fabricColorCode = isFabric ? widget.item['color_code'] : null;
 
     final Color displayColor =
         isFabric && fabricColorCode != null && fabricColorCode.isNotEmpty
@@ -174,11 +340,11 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStockInfoCard(context, item),
+                          _buildStockInfoCard(context, widget.item),
                           const SizedBox(height: 20),
-                          _buildPricingInfoCard(context, item),
-                          if (item['notes'] != null &&
-                              item['notes'].isNotEmpty) ...[
+                          _buildPricingInfoCard(context, widget.item),
+                          if (widget.item['notes'] != null &&
+                              widget.item['notes'].isNotEmpty) ...[
                             const SizedBox(height: 20),
                             _buildAdditionalInfoCard(
                               context,
@@ -186,7 +352,7 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
                               icon: PhosphorIcons.notepad(),
                               children: [
                                 Text(
-                                  item['notes'],
+                                  widget.item['notes'],
                                   style: GoogleFonts.inter(
                                     color: Colors.black87,
                                     fontSize: 14,
@@ -208,7 +374,7 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1C1E), // Match dialog background
+                color: const Color(0xFF1A1C1E),
                 border: Border(
                   top: BorderSide(color: Colors.grey.shade700.withOpacity(0.5)),
                 ),
@@ -217,9 +383,19 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: onDelete,
-                    icon: Icon(PhosphorIcons.trash(), size: 18),
-                    label: const Text('Delete'),
+                    onPressed: _isProcessing ? null : _handleDelete,
+                    icon:
+                        _isProcessing
+                            ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.error,
+                              ),
+                            )
+                            : Icon(PhosphorIcons.trash(), size: 18),
+                    label: Text(_isProcessing ? 'Deleting...' : 'Delete'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: theme.colorScheme.error,
                       side: BorderSide(
@@ -236,9 +412,19 @@ class InventoryDetailDialogDesktop extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   FilledButton.icon(
-                    onPressed: onEdit,
-                    icon: Icon(PhosphorIcons.pencilSimple(), size: 18),
-                    label: const Text('Edit Item'),
+                    onPressed: _isProcessing ? null : _handleEdit,
+                    icon:
+                        _isProcessing
+                            ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            )
+                            : Icon(PhosphorIcons.pencilSimple(), size: 18),
+                    label: Text(_isProcessing ? 'Processing...' : 'Edit Item'),
                     style: FilledButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: theme.colorScheme.onPrimary,
