@@ -10,7 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-       url: 'https://ioniwnodlpekyxtrzayp.supabase.co',
+    url: 'https://ioniwnodlpekyxtrzayp.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlvbml3bm9kbHBla3l4dHJ6YXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4MjU1NTgsImV4cCI6MjA2MzQwMTU1OH0.jcq0AFNdGi1rbVi5TlTq4sre8xC_j6kiDWFlj9eTN3g',
     realtimeClientOptions: const RealtimeClientOptions(
@@ -39,7 +39,8 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode:
+              themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           home: StreamBuilder<AuthState>(
             stream: Supabase.instance.client.auth.onAuthStateChange,
             builder: (context, snapshot) {
