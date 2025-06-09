@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'inventory_design_config.dart';
 
 class FabricColorResult {
   final Color color;
@@ -157,126 +158,221 @@ class _FabricColorPickerState extends State<FabricColorPicker>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
-      width: MediaQuery.of(context).size.width > 600 ? 480 : double.infinity,
+      width: MediaQuery.of(context).size.width > 600 ? 500 : double.infinity,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
-        maxWidth: 480,
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxWidth: 500,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusXL),
+        border: Border.all(color: InventoryDesignConfig.borderPrimary),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
+          // Header with app theme styling
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color: InventoryDesignConfig.surfaceAccent,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
+                top: Radius.circular(InventoryDesignConfig.radiusXL),
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: InventoryDesignConfig.borderSecondary,
+                ),
               ),
             ),
             child: Row(
               children: [
-                Icon(PhosphorIcons.palette(), color: colorScheme.primary),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                  ),
+                  child: Icon(
+                    PhosphorIcons.palette(),
+                    color: InventoryDesignConfig.primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
                 Expanded(
                   child: Text(
                     'Fabric Color Picker',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: InventoryDesignConfig.headlineMedium,
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(
-                    PhosphorIcons.x(),
-                    color: colorScheme.onSurfaceVariant,
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(
+                        InventoryDesignConfig.spacingS,
+                      ),
+                      child: Icon(
+                        PhosphorIcons.x(),
+                        color: InventoryDesignConfig.textSecondary,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Color Preview
+          // Color Preview with enhanced styling
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            height: 80,
+            margin: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+            height: 90,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colorScheme.outlineVariant),
-              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
+              border: Border.all(color: InventoryDesignConfig.borderPrimary),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
-                // Color block
+                // Color block with better styling
                 Container(
                   width: 120,
                   decoration: BoxDecoration(
                     color: _selectedColor,
                     borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(15),
+                      left: Radius.circular(InventoryDesignConfig.radiusL),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _selectedColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(2, 0),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      PhosphorIcons.eyedropper(),
+                      size: 32,
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                 ),
-                // Info
+                // Info section with better typography
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(
+                      InventoryDesignConfig.spacingL,
+                    ),
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.surfaceColor,
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(InventoryDesignConfig.radiusL),
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           _colorName,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: InventoryDesignConfig.titleMedium,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: InventoryDesignConfig.spacingS),
                         Row(
                           children: [
-                            Text(
-                              _hexCode,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontFamily: 'monospace',
-                                color: colorScheme.primary,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: InventoryDesignConfig.spacingS,
+                                vertical: InventoryDesignConfig.spacingXS,
+                              ),
+                              decoration: BoxDecoration(
+                                color: InventoryDesignConfig.primaryColor
+                                    .withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(
+                                  InventoryDesignConfig.radiusS,
+                                ),
+                              ),
+                              child: Text(
+                                _hexCode,
+                                style: InventoryDesignConfig.code.copyWith(
+                                  color: InventoryDesignConfig.primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: _hexCode),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Color code copied to clipboard',
+                            const SizedBox(
+                              width: InventoryDesignConfig.spacingS,
+                            ),
+                            Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(
+                                InventoryDesignConfig.radiusS,
+                              ),
+                              child: InkWell(
+                                onTap: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: _hexCode),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Color code copied to clipboard',
+                                      ),
+                                      backgroundColor:
+                                          InventoryDesignConfig.successColor,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(
+                                  InventoryDesignConfig.radiusS,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                    InventoryDesignConfig.spacingXS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: InventoryDesignConfig.surfaceAccent,
+                                    borderRadius: BorderRadius.circular(
+                                      InventoryDesignConfig.radiusS,
                                     ),
                                   ),
-                                );
-                              },
-                              child: Icon(
-                                PhosphorIcons.copy(),
-                                size: 18,
-                                color: colorScheme.onSurfaceVariant,
+                                  child: Icon(
+                                    PhosphorIcons.copy(),
+                                    size: 16,
+                                    color: InventoryDesignConfig.textSecondary,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -289,16 +385,40 @@ class _FabricColorPickerState extends State<FabricColorPicker>
             ),
           ),
 
-          // Tabs
-          TabBar(
-            controller: _tabController,
-            labelColor: colorScheme.primary,
-            unselectedLabelColor: colorScheme.onSurfaceVariant,
-            tabs: const [
-              Tab(text: 'Fabric Colors'),
-              Tab(text: 'Custom'),
-              Tab(text: 'Manual'),
-            ],
+          // Tabs with app theme styling
+          Container(
+            margin: const EdgeInsets.symmetric(
+              horizontal: InventoryDesignConfig.spacingXXL,
+            ),
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXS),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: InventoryDesignConfig.primaryColor,
+              unselectedLabelColor: InventoryDesignConfig.textSecondary,
+              labelStyle: InventoryDesignConfig.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: InventoryDesignConfig.bodyMedium,
+              indicator: BoxDecoration(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              tabs: const [
+                Tab(text: 'Fabric Colors'),
+                Tab(text: 'Custom'),
+                Tab(text: 'Manual'),
+              ],
+            ),
           ),
 
           // Tab content
@@ -313,28 +433,92 @@ class _FabricColorPickerState extends State<FabricColorPicker>
             ),
           ),
 
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          // Action buttons with consistent app theme styling
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(InventoryDesignConfig.radiusXL),
+              ),
+              border: Border(
+                top: BorderSide(color: InventoryDesignConfig.borderSecondary),
+              ),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: () {
-                    widget.onColorSelected(
-                      FabricColorResult(
-                        color: _selectedColor,
-                        colorName: _colorName,
-                        hexCode: _hexCode,
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: InventoryDesignConfig.spacingXXL,
+                        vertical: InventoryDesignConfig.spacingM,
                       ),
-                    );
-                  },
-                  child: const Text('Select Color'),
+                      decoration:
+                          InventoryDesignConfig.buttonSecondaryDecoration,
+                      child: Text(
+                        'Cancel',
+                        style: InventoryDesignConfig.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingL),
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      widget.onColorSelected(
+                        FabricColorResult(
+                          color: _selectedColor,
+                          colorName: _colorName,
+                          hexCode: _hexCode,
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: InventoryDesignConfig.spacingXXL,
+                        vertical: InventoryDesignConfig.spacingM,
+                      ),
+                      decoration: InventoryDesignConfig.buttonPrimaryDecoration,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            PhosphorIcons.check(),
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: InventoryDesignConfig.spacingS),
+                          Text(
+                            'Select Color',
+                            style: InventoryDesignConfig.bodyMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -345,208 +529,498 @@ class _FabricColorPickerState extends State<FabricColorPicker>
   }
 
   Widget _buildFabricColorsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children:
-          _kandoraColorCategories.entries.map((entry) {
-            return ExpansionTile(
-              title: Text(
-                entry.key,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              children: [
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.2,
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      child: ListView(
+        children:
+            _kandoraColorCategories.entries.map((entry) {
+              return Container(
+                margin: const EdgeInsets.only(
+                  bottom: InventoryDesignConfig.spacingL,
+                ),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.surfaceAccent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusL,
                   ),
-                  itemCount: entry.value.length,
-                  itemBuilder: (context, index) {
-                    final color = entry.value[index];
-                    final materialColor = Color(color.colorValue);
-
-                    // Check if this color is selected
-                    final isSelected =
-                        materialColor.value == _selectedColor.value;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedColor = materialColor;
-                          _colorName = color.name;
-                          _hexCode =
-                              '#${materialColor.value.toRadixString(16).substring(2).toUpperCase()}';
-                          _colorNameController.text = _colorName;
-                          _hexController.text = _hexCode.substring(1);
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: materialColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color:
-                                isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.transparent,
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                  border: Border.all(
+                    color: InventoryDesignConfig.borderSecondary,
+                  ),
+                ),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent,
+                    expansionTileTheme: ExpansionTileThemeData(
+                      backgroundColor: Colors.transparent,
+                      collapsedBackgroundColor: Colors.transparent,
+                      iconColor: InventoryDesignConfig.primaryColor,
+                      collapsedIconColor: InventoryDesignConfig.textSecondary,
+                      textColor: InventoryDesignConfig.textPrimary,
+                      collapsedTextColor: InventoryDesignConfig.textPrimary,
+                    ),
+                  ),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(
+                      horizontal: InventoryDesignConfig.spacingL,
+                      vertical: InventoryDesignConfig.spacingS,
+                    ),
+                    childrenPadding: const EdgeInsets.only(
+                      left: InventoryDesignConfig.spacingL,
+                      right: InventoryDesignConfig.spacingL,
+                      bottom: InventoryDesignConfig.spacingL,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(
+                        InventoryDesignConfig.spacingS,
+                      ),
+                      decoration: BoxDecoration(
+                        color: InventoryDesignConfig.primaryColor.withOpacity(
+                          0.1,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (isSelected)
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.8),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  PhosphorIcons.check(),
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            const Spacer(),
-                            // Name displayed at bottom
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(8),
-                                ),
-                              ),
-                              child: Text(
-                                color.name,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusS,
                         ),
                       ),
-                    );
-                  },
+                      child: Icon(
+                        PhosphorIcons.palette(),
+                        size: 16,
+                        color: InventoryDesignConfig.primaryColor,
+                      ),
+                    ),
+                    title: Text(
+                      entry.key,
+                      style: InventoryDesignConfig.titleMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${entry.value.length} colors available',
+                      style: InventoryDesignConfig.bodySmall,
+                    ),
+                    children: [
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: InventoryDesignConfig.spacingM,
+                              mainAxisSpacing: InventoryDesignConfig.spacingM,
+                              childAspectRatio: 1.0,
+                            ),
+                        itemCount: entry.value.length,
+                        itemBuilder: (context, index) {
+                          final color = entry.value[index];
+                          final materialColor = Color(color.colorValue);
+                          final isSelected =
+                              materialColor.value == _selectedColor.value;
+
+                          return Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(
+                              InventoryDesignConfig.radiusM,
+                            ),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedColor = materialColor;
+                                  _colorName = color.name;
+                                  _hexCode =
+                                      '#${materialColor.value.toRadixString(16).substring(2).toUpperCase()}';
+                                  _colorNameController.text = _colorName;
+                                  _hexController.text = _hexCode.substring(1);
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(
+                                InventoryDesignConfig.radiusM,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: materialColor,
+                                  borderRadius: BorderRadius.circular(
+                                    InventoryDesignConfig.radiusM,
+                                  ),
+                                  border: Border.all(
+                                    color:
+                                        isSelected
+                                            ? InventoryDesignConfig.primaryColor
+                                            : InventoryDesignConfig
+                                                .borderPrimary,
+                                    width: isSelected ? 2.5 : 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: materialColor.withOpacity(0.3),
+                                      blurRadius: isSelected ? 8 : 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    // Color swatch with icon
+                                    Center(
+                                      child: Icon(
+                                        PhosphorIcons.eyedropper(),
+                                        size: 20,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+
+                                    // Selected indicator
+                                    if (isSelected)
+                                      Positioned(
+                                        top: InventoryDesignConfig.spacingS,
+                                        right: InventoryDesignConfig.spacingS,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(
+                                            InventoryDesignConfig.spacingXS,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                InventoryDesignConfig
+                                                    .primaryColor,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.2,
+                                                ),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            PhosphorIcons.check(),
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+
+                                    // Color name at bottom
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal:
+                                              InventoryDesignConfig.spacingXS,
+                                          vertical:
+                                              InventoryDesignConfig.spacingXS,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.7),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                bottom: Radius.circular(
+                                                  InventoryDesignConfig.radiusM,
+                                                ),
+                                              ),
+                                        ),
+                                        child: Text(
+                                          color.name,
+                                          textAlign: TextAlign.center,
+                                          style: InventoryDesignConfig.bodySmall
+                                              .copyWith(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            );
-          }).toList(),
+              );
+            }).toList(),
+      ),
     );
   }
 
   Widget _buildCustomColorTab() {
-    // Simplified placeholder - could integrate with image color picker in future
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            PhosphorIcons.palette(),
-            size: 64,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Custom color picker coming soon',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Please use the Fabric Colors or Manual tab',
-            style: TextStyle(fontSize: 14),
-          ),
-        ],
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.surfaceAccent,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusL,
+                ),
+                border: Border.all(
+                  color: InventoryDesignConfig.borderSecondary,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    PhosphorIcons.palette(),
+                    size: 48,
+                    color: InventoryDesignConfig.textTertiary,
+                  ),
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+                  Text(
+                    'Custom Color Picker',
+                    style: InventoryDesignConfig.titleLarge,
+                  ),
+                  const SizedBox(height: InventoryDesignConfig.spacingS),
+                  Text(
+                    'Advanced color picker coming soon',
+                    style: InventoryDesignConfig.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: InventoryDesignConfig.spacingXS),
+                  Text(
+                    'Please use the Fabric Colors or Manual tab for now',
+                    style: InventoryDesignConfig.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildManualInputTab() {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Color Name', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _colorNameController,
-            decoration: InputDecoration(
-              hintText: 'Enter color name',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _colorName = value;
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          Text('Color Code (Hex)', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _hexController,
-            decoration: InputDecoration(
-              hintText: 'FFFFFF',
-              prefixText: '# ',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F]')),
-              LengthLimitingTextInputFormatter(6),
-            ],
-            onChanged: _updateFromHex,
-          ),
-          const SizedBox(height: 24),
-          // Color tip card
+          // Color Name Input
+          Text('Color Name', style: InventoryDesignConfig.labelLarge),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
           Container(
-            padding: const EdgeInsets.all(16),
+            decoration: InventoryDesignConfig.inputDecoration,
+            child: TextField(
+              controller: _colorNameController,
+              style: InventoryDesignConfig.bodyLarge,
+              decoration: InputDecoration(
+                hintText: 'Enter color name (e.g., Pure White)',
+                hintStyle: InventoryDesignConfig.bodyMedium,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  child: Icon(
+                    PhosphorIcons.textT(),
+                    size: 18,
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: InventoryDesignConfig.spacingL,
+                  vertical: InventoryDesignConfig.spacingM,
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _colorName = value.isNotEmpty ? value : 'Custom Color';
+                });
+              },
+            ),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Hex Color Input
+          Text('Color Code (Hex)', style: InventoryDesignConfig.labelLarge),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          Container(
+            decoration: InventoryDesignConfig.inputDecoration,
+            child: TextField(
+              controller: _hexController,
+              style: InventoryDesignConfig.bodyLarge,
+              decoration: InputDecoration(
+                hintText: 'Enter hex code (e.g., FFFFFF)',
+                hintStyle: InventoryDesignConfig.bodyMedium,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  child: Text(
+                    '#',
+                    style: InventoryDesignConfig.titleMedium.copyWith(
+                      color: InventoryDesignConfig.textSecondary,
+                    ),
+                  ),
+                ),
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  child: Icon(
+                    PhosphorIcons.hash(),
+                    size: 18,
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: InventoryDesignConfig.spacingL,
+                  vertical: InventoryDesignConfig.spacingM,
+                ),
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F]')),
+                LengthLimitingTextInputFormatter(6),
+              ],
+              onChanged: _updateFromHex,
+            ),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Quick color swatches
+          Text('Quick Colors', style: InventoryDesignConfig.labelLarge),
+          const SizedBox(height: InventoryDesignConfig.spacingM),
+          Wrap(
+            spacing: InventoryDesignConfig.spacingM,
+            runSpacing: InventoryDesignConfig.spacingM,
+            children:
+                [
+                  Colors.white,
+                  Colors.black,
+                  Colors.red,
+                  Colors.blue,
+                  Colors.green,
+                  Colors.yellow,
+                  Colors.purple,
+                  Colors.orange,
+                  Colors.pink,
+                  Colors.brown,
+                  Colors.grey,
+                  Colors.teal,
+                ].map((color) {
+                  final isSelected = color.value == _selectedColor.value;
+                  return Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusS,
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedColor = color;
+                          _hexCode =
+                              '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+                          _hexController.text = _hexCode.substring(1);
+                          if (_colorNameController.text.isEmpty) {
+                            _colorName = _getColorName(color);
+                            _colorNameController.text = _colorName;
+                          }
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(
+                        InventoryDesignConfig.radiusS,
+                      ),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(
+                            InventoryDesignConfig.radiusS,
+                          ),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? InventoryDesignConfig.primaryColor
+                                    : InventoryDesignConfig.borderPrimary,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child:
+                            isSelected
+                                ? Icon(
+                                  PhosphorIcons.check(),
+                                  size: 16,
+                                  color:
+                                      color == Colors.white ||
+                                              color == Colors.yellow
+                                          ? Colors.black
+                                          : Colors.white,
+                                )
+                                : null,
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Info card about kandora colors
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
+              border: Border.all(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.15),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(PhosphorIcons.info(), color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusS,
+                    ),
+                  ),
+                  child: Icon(
+                    PhosphorIcons.info(),
+                    size: 16,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Common Kandora Colors',
-                        style: theme.textTheme.titleSmall,
+                        'Traditional Kandora Colors',
+                        style: InventoryDesignConfig.titleMedium.copyWith(
+                          color: InventoryDesignConfig.primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: InventoryDesignConfig.spacingXS),
                       Text(
-                        'Traditional white is the most popular color for everyday wear in UAE. Darker colors like navy blue and charcoal are often worn in winter, while lighter pastels may be chosen for special occasions.',
-                        style: theme.textTheme.bodySmall,
+                        'White is the most popular color for everyday wear in UAE. Darker colors like navy blue and charcoal are preferred in winter, while lighter pastels are chosen for special occasions and summer wear.',
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.primaryColor.withOpacity(
+                            0.8,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -557,6 +1031,22 @@ class _FabricColorPickerState extends State<FabricColorPicker>
         ],
       ),
     );
+  }
+
+  String _getColorName(Color color) {
+    if (color == Colors.white) return 'White';
+    if (color == Colors.black) return 'Black';
+    if (color == Colors.red) return 'Red';
+    if (color == Colors.blue) return 'Blue';
+    if (color == Colors.green) return 'Green';
+    if (color == Colors.yellow) return 'Yellow';
+    if (color == Colors.purple) return 'Purple';
+    if (color == Colors.orange) return 'Orange';
+    if (color == Colors.pink) return 'Pink';
+    if (color == Colors.brown) return 'Brown';
+    if (color == Colors.grey) return 'Grey';
+    if (color == Colors.teal) return 'Teal';
+    return 'Custom Color';
   }
 }
 

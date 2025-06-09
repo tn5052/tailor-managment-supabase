@@ -3,10 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_inventory_desktop_dialog.dart';
-import 'fabric_color_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'inventory_detail_dialog_desktop.dart';
 import 'edit_inventory_desktop_dialog.dart';
+import 'inventory_design_config.dart';
 
 class InventoryDesktopView extends StatefulWidget {
   final String inventoryType; // 'fabric' or 'accessory'
@@ -30,17 +30,6 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   final _searchController = TextEditingController();
   bool _isLoading = false;
   List<Map<String, dynamic>> _inventoryItems = [];
-
-  // Modern minimalistic color palette
-  static const _backgroundColor = Color(0xFFFAFAFA);
-  static const _surfaceColor = Color(0xFFFFFFFF);
-  static const _primaryColor = Color(0xFF2563EB);
-  static const _textPrimary = Color(0xFF111827);
-  static const _textSecondary = Color(0xFF6B7280);
-  static const _borderColor = Color(0xFFE5E7EB);
-  static const _successColor = Color(0xFF059669);
-  static const _warningColor = Color(0xFFD97706);
-  static const _errorColor = Color(0xFFDC2626);
 
   @override
   void initState() {
@@ -143,7 +132,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading inventory: ${e.toString()}'),
-            backgroundColor: _errorColor,
+            backgroundColor: InventoryDesignConfig.errorColor,
           ),
         );
       }
@@ -178,12 +167,16 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(color: _backgroundColor),
+      decoration: const BoxDecoration(
+        color: InventoryDesignConfig.backgroundColor,
+      ),
       child: Column(
         children: [
           // Compact header section with title and controls
           Container(
-            decoration: const BoxDecoration(color: _backgroundColor),
+            decoration: const BoxDecoration(
+              color: InventoryDesignConfig.backgroundColor,
+            ),
             padding: const EdgeInsets.fromLTRB(32, 20, 32, 16),
             child: Column(
               children: [
@@ -197,13 +190,14 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: _primaryColor.withOpacity(0.1),
+                            color: InventoryDesignConfig.primaryColor
+                                .withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             PhosphorIcons.warehouse(),
                             size: 22,
-                            color: _primaryColor,
+                            color: InventoryDesignConfig.primaryColor,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -215,7 +209,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                               style: GoogleFonts.inter(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
-                                color: _textPrimary,
+                                color: InventoryDesignConfig.textPrimary,
                                 letterSpacing: -0.3,
                               ),
                             ),
@@ -223,7 +217,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                               'Manage fabrics and accessories',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
-                                color: _textSecondary,
+                                color: InventoryDesignConfig.textSecondary,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -241,12 +235,11 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                         const SizedBox(width: 16),
                         _buildSearchField(),
                         const SizedBox(width: 12),
-                        _buildFilterButton(),
+                        _buildModernFilterButton(),
                         const SizedBox(width: 12),
-                        _buildActionButton(
+                        _buildModernPrimaryButton(
                           icon: PhosphorIcons.plus(),
                           label: 'Add Item',
-                          isPrimary: true,
                           onPressed: () {
                             AddInventoryDesktopDialog.show(
                               context,
@@ -263,7 +256,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                 const SizedBox(height: 20),
 
                 // Stats row - more compact
-                _buildStatsRow(),
+                _buildModernStatsRow(),
               ],
             ),
           ),
@@ -271,12 +264,16 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           // Table container with matching background
           Expanded(
             child: Container(
-              decoration: const BoxDecoration(color: _backgroundColor),
+              decoration: const BoxDecoration(
+                color: InventoryDesignConfig.backgroundColor,
+              ),
               padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
               child: Container(
                 decoration: BoxDecoration(
-                  color: _surfaceColor,
-                  border: Border.all(color: _borderColor),
+                  color: InventoryDesignConfig.surfaceColor,
+                  border: Border.all(
+                    color: InventoryDesignConfig.borderPrimary,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -298,11 +295,14 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
 
   Widget _buildTypeSelector() {
     return Container(
+      height: 40, // Match button height
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F3F4),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _borderColor.withOpacity(0.3)),
+        border: Border.all(
+          color: InventoryDesignConfig.borderPrimary.withOpacity(0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -338,7 +338,10 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? _surfaceColor : Colors.transparent,
+            color:
+                isSelected
+                    ? InventoryDesignConfig.surfaceColor
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
             boxShadow:
                 isSelected
@@ -357,7 +360,10 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? _primaryColor : _textSecondary,
+                color:
+                    isSelected
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.textSecondary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -365,7 +371,10 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? _textPrimary : _textSecondary,
+                  color:
+                      isSelected
+                          ? InventoryDesignConfig.textPrimary
+                          : InventoryDesignConfig.textSecondary,
                 ),
               ),
             ],
@@ -378,19 +387,22 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   Widget _buildSearchField() {
     return Container(
       width: 280,
-      height: 36,
+      height: 40, // Match button height
       decoration: BoxDecoration(
-        color: _surfaceColor,
-        border: Border.all(color: _borderColor),
+        color: InventoryDesignConfig.surfaceColor,
+        border: Border.all(color: InventoryDesignConfig.borderPrimary),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
         controller: _searchController,
-        style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          color: InventoryDesignConfig.textPrimary,
+        ),
         decoration: InputDecoration(
           hintText: 'Search inventory...',
           hintStyle: GoogleFonts.inter(
-            color: _textSecondary,
+            color: InventoryDesignConfig.textSecondary,
             fontSize: 14,
             fontWeight: FontWeight.w400,
           ),
@@ -399,7 +411,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
             child: Icon(
               PhosphorIcons.magnifyingGlass(),
               size: 16,
-              color: _textSecondary,
+              color: InventoryDesignConfig.textSecondary,
             ),
           ),
           suffixIcon:
@@ -408,7 +420,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                     icon: Icon(
                       PhosphorIcons.x(),
                       size: 14,
-                      color: _textSecondary,
+                      color: InventoryDesignConfig.textSecondary,
                     ),
                     onPressed: () {
                       _searchController.clear();
@@ -428,10 +440,10 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
-  Widget _buildFilterButton() {
+  Widget _buildModernFilterButton() {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
       child: InkWell(
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -441,25 +453,59 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _surfaceColor,
-            border: Border.all(color: _borderColor),
-            borderRadius: BorderRadius.circular(8),
+          height: 40, // Match other elements height
+          padding: const EdgeInsets.symmetric(
+            horizontal: InventoryDesignConfig.spacingL,
+            vertical: InventoryDesignConfig.spacingM,
           ),
+          decoration: InventoryDesignConfig.buttonSecondaryDecoration,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(PhosphorIcons.funnel(), size: 16, color: _textSecondary),
-              const SizedBox(width: 6),
+              Icon(
+                PhosphorIcons.funnel(),
+                size: 16,
+                color: InventoryDesignConfig.textSecondary,
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingXS),
+              Text('Filter', style: InventoryDesignConfig.bodyMedium),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernPrimaryButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: Container(
+          height: 40, // Match other elements height
+          padding: const EdgeInsets.symmetric(
+            horizontal: InventoryDesignConfig.spacingL,
+            vertical: InventoryDesignConfig.spacingM,
+          ),
+          decoration: InventoryDesignConfig.buttonPrimaryDecoration,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: InventoryDesignConfig.spacingXS),
               Text(
-                'Filter',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _textPrimary,
+                label,
+                style: InventoryDesignConfig.bodyMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -469,7 +515,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildModernStatsRow() {
     final totalItems = _inventoryItems.length;
     final lowStockItems =
         _inventoryItems.where((item) {
@@ -485,48 +531,41 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     });
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXL),
+      decoration: InventoryDesignConfig.cardDecoration,
       child: Row(
         children: [
-          _buildStatCard(
+          _buildModernStatCard(
             title: 'Total Items',
             value: totalItems.toString(),
             icon: PhosphorIcons.stack(),
-            color: _primaryColor,
+            color: InventoryDesignConfig.primaryAccent,
           ),
-          const SizedBox(width: 24),
-          _buildStatCard(
+          const SizedBox(width: InventoryDesignConfig.spacingXXL),
+          _buildModernStatCard(
             title: 'Low Stock',
             value: lowStockItems.toString(),
             icon: PhosphorIcons.warning(),
-            color: _warningColor,
+            color: InventoryDesignConfig.warningColor,
           ),
-          const SizedBox(width: 24),
-          _buildStatCard(
+          const SizedBox(width: InventoryDesignConfig.spacingXXL),
+          _buildModernStatCard(
             title: 'Total Value',
             value: NumberFormat.currency(symbol: '\$').format(totalValue),
             icon: PhosphorIcons.currencyDollar(),
-            color: _successColor,
+            color: InventoryDesignConfig.successColor,
           ),
           const Spacer(),
-          // Current inventory type indicator - smaller and more subtle
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: InventoryDesignConfig.spacingM,
+              vertical: InventoryDesignConfig.spacingXS,
+            ),
             decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(6),
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusS,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -536,14 +575,13 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                       ? PhosphorIcons.scissors()
                       : PhosphorIcons.package(),
                   size: 14,
-                  color: _primaryColor,
+                  color: InventoryDesignConfig.primaryColor,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: InventoryDesignConfig.spacingXS),
                 Text(
                   '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} Inventory',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: _primaryColor,
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.primaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -555,7 +593,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildModernStatCard({
     required String title,
     required String value,
     required IconData icon,
@@ -565,33 +603,19 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
           ),
-          child: Icon(icon, size: 16, color: color),
+          child: Icon(icon, size: 18, color: color),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: InventoryDesignConfig.spacingM),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _textPrimary,
-              ),
-            ),
-            Text(
-              title,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: _textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Text(value, style: InventoryDesignConfig.headlineMedium),
+            Text(title, style: InventoryDesignConfig.bodySmall),
           ],
         ),
       ],
@@ -599,7 +623,11 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(child: CircularProgressIndicator(color: _primaryColor));
+    return const Center(
+      child: CircularProgressIndicator(
+        color: InventoryDesignConfig.primaryAccent,
+      ),
+    );
   }
 
   Widget _buildInventoryTable() {
@@ -619,7 +647,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         _buildDataColumn('Unit', 'unit_type'),
         _buildDataColumn('Cost', 'cost_per_unit'),
         _buildDataColumn('Price', 'selling_price_per_unit'),
-        const DataColumn(label: Text('')), // Actions
+        const DataColumn(label: Text('')),
       ];
     } else {
       columns = [
@@ -632,43 +660,40 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         _buildDataColumn('Unit', 'unit_type'),
         _buildDataColumn('Cost', 'cost_per_unit'),
         _buildDataColumn('Price', 'selling_price_per_unit'),
-        const DataColumn(label: Text('')), // Actions
+        const DataColumn(label: Text('')),
       ];
     }
 
     return Theme(
       data: Theme.of(context).copyWith(
         dataTableTheme: DataTableThemeData(
-          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9FAFB)),
+          headingRowColor: MaterialStateProperty.all(
+            InventoryDesignConfig.surfaceAccent,
+          ),
           dataRowColor: MaterialStateProperty.resolveWith<Color>((states) {
             if (states.contains(MaterialState.hovered)) {
-              return const Color(0xFFF9FAFB);
+              return InventoryDesignConfig.surfaceLight;
             }
-            return Colors.white;
+            return InventoryDesignConfig.surfaceColor;
           }),
-          headingTextStyle: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: _textSecondary,
-            letterSpacing: 0.5,
-          ),
-          dataTextStyle: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+          headingTextStyle: InventoryDesignConfig.labelLarge,
+          dataTextStyle: InventoryDesignConfig.bodyLarge,
         ),
       ),
       child: SingleChildScrollView(
         child: Container(
           width: double.infinity,
           child: DataTable(
-            columnSpacing: 32,
-            horizontalMargin: 24,
-            headingRowHeight: 48,
-            dataRowMaxHeight: 56,
-            dataRowMinHeight: 56,
+            columnSpacing: InventoryDesignConfig.spacingXXXL,
+            horizontalMargin: InventoryDesignConfig.spacingXXL,
+            headingRowHeight: 52,
+            dataRowMaxHeight: 60,
+            dataRowMinHeight: 60,
             showCheckboxColumn: false,
             dividerThickness: 1,
             border: TableBorder(
               horizontalInside: BorderSide(
-                color: _borderColor.withOpacity(0.5),
+                color: InventoryDesignConfig.borderSecondary,
               ),
             ),
             columns: columns,
@@ -690,38 +715,32 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusXL,
+              ),
             ),
             child: Icon(
               widget.inventoryType == 'fabric'
                   ? PhosphorIcons.scissors()
                   : PhosphorIcons.package(),
-              size: 32,
-              color: _textSecondary,
+              size: 48,
+              color: InventoryDesignConfig.textTertiary,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'No items found',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: _textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+          Text('No items found', style: InventoryDesignConfig.headlineMedium),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
           Text(
             'Add some items to your inventory to get started',
-            style: GoogleFonts.inter(fontSize: 14, color: _textSecondary),
+            style: InventoryDesignConfig.bodyMedium,
           ),
-          const SizedBox(height: 24),
-          _buildActionButton(
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+          _buildModernPrimaryButton(
             icon: PhosphorIcons.plus(),
             label: 'Add New Item',
-            isPrimary: true,
             onPressed: () {
               AddInventoryDesktopDialog.show(
                 context,
@@ -744,13 +763,13 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         children: [
           Text(label.toUpperCase()),
           if (isSorted) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: InventoryDesignConfig.spacingXS),
             Icon(
               _sortAscending
                   ? PhosphorIcons.caretUp()
                   : PhosphorIcons.caretDown(),
               size: 12,
-              color: _primaryColor,
+              color: InventoryDesignConfig.primaryAccent,
             ),
           ],
         ],
@@ -768,7 +787,12 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       cells: [
         DataCell(_buildCodeCell(fabric['fabric_code'])),
         DataCell(_buildNameCell(fabric['fabric_item_name'])),
-        DataCell(_buildTypeCell(fabric['fabric_type'], _primaryColor)),
+        DataCell(
+          _buildTypeCell(
+            fabric['fabric_type'],
+            InventoryDesignConfig.primaryAccent,
+          ),
+        ),
         DataCell(_buildTextCell(fabric['brand_name'])),
         DataCell(_buildColorCell(fabric['shade_color'], fabric['color_code'])),
         DataCell(_buildStockCell(quantityAvailable, isLowStock)),
@@ -800,7 +824,12 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       cells: [
         DataCell(_buildCodeCell(accessory['accessory_code'])),
         DataCell(_buildNameCell(accessory['accessory_item_name'])),
-        DataCell(_buildTypeCell(accessory['accessory_type'], _successColor)),
+        DataCell(
+          _buildTypeCell(
+            accessory['accessory_type'],
+            InventoryDesignConfig.successColor,
+          ),
+        ),
         DataCell(_buildTextCell(accessory['brand_name'])),
         DataCell(_buildTextCell(accessory['color'])),
         DataCell(_buildStockCell(quantityAvailable, isLowStock)),
@@ -825,56 +854,44 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
 
   Widget _buildCodeCell(String? code) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingS,
+        vertical: InventoryDesignConfig.spacingXS,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(4),
+        color: InventoryDesignConfig.surfaceAccent,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
       ),
-      child: Text(
-        code ?? '',
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: _textSecondary,
-        ),
-      ),
+      child: Text(code ?? '', style: InventoryDesignConfig.code),
     );
   }
 
   Widget _buildNameCell(String? name) {
-    return Text(
-      name ?? '',
-      style: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: _textPrimary,
-      ),
-    );
+    return Text(name ?? '', style: InventoryDesignConfig.titleMedium);
   }
 
   Widget _buildTypeCell(String? type, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingS,
+        vertical: InventoryDesignConfig.spacingXS,
+      ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
       ),
       child: Text(
         type ?? '',
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+        style: InventoryDesignConfig.bodySmall.copyWith(
           color: color,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
   Widget _buildTextCell(String? text) {
-    return Text(
-      text ?? '',
-      style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
-    );
+    return Text(text ?? '', style: InventoryDesignConfig.bodyLarge);
   }
 
   Widget _buildColorCell(String? colorName, String? colorCode) {
@@ -886,15 +903,12 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           height: 16,
           decoration: BoxDecoration(
             color: _parseColor(colorCode ?? ''),
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: _borderColor),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+            border: Border.all(color: InventoryDesignConfig.borderPrimary),
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          colorName ?? '',
-          style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
-        ),
+        const SizedBox(width: InventoryDesignConfig.spacingS),
+        Text(colorName ?? '', style: InventoryDesignConfig.bodyLarge),
       ],
     );
   }
@@ -907,17 +921,21 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           width: 6,
           height: 6,
           decoration: BoxDecoration(
-            color: isLowStock ? _errorColor : _successColor,
+            color:
+                isLowStock
+                    ? InventoryDesignConfig.errorColor
+                    : InventoryDesignConfig.successColor,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: InventoryDesignConfig.spacingS),
         Text(
           '$quantity',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: isLowStock ? _errorColor : _textPrimary,
+          style: InventoryDesignConfig.titleMedium.copyWith(
+            color:
+                isLowStock
+                    ? InventoryDesignConfig.errorColor
+                    : InventoryDesignConfig.textPrimary,
           ),
         ),
       ],
@@ -928,11 +946,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     final numericPrice = _toDouble(price);
     return Text(
       NumberFormat.currency(symbol: '\$').format(numericPrice),
-      style: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: _textPrimary,
-      ),
+      style: InventoryDesignConfig.titleMedium,
     );
   }
 
@@ -943,13 +957,13 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         _buildActionIcon(
           icon: PhosphorIcons.pencilSimple(),
           onTap: () => _handleEditItem(item),
-          color: _primaryColor,
+          color: InventoryDesignConfig.primaryAccent,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: InventoryDesignConfig.spacingS),
         _buildActionIcon(
           icon: PhosphorIcons.trash(),
           onTap: () => _handleDeleteItem(item),
-          color: _errorColor,
+          color: InventoryDesignConfig.errorColor,
         ),
       ],
     );
@@ -962,11 +976,16 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   }) {
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
         child: Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+          ),
           child: Icon(icon, size: 16, color: color),
         ),
       ),
@@ -1005,7 +1024,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           content: Text(
             '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} deleted successfully',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: InventoryDesignConfig.successColor,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1015,7 +1034,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting item: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: InventoryDesignConfig.errorColor,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1033,17 +1052,22 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       builder:
           (context) => AlertDialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
             ),
             title: Row(
               children: [
                 Icon(
                   PhosphorIcons.warning(PhosphorIconsStyle.fill),
-                  color: theme.colorScheme.error,
+                  color: InventoryDesignConfig.errorColor,
                   size: 24,
                 ),
-                const SizedBox(width: 12),
-                const Text('Confirm Deletion'),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Text(
+                  'Confirm Deletion',
+                  style: InventoryDesignConfig.titleLarge,
+                ),
               ],
             ),
             content: Column(
@@ -1052,15 +1076,18 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
               children: [
                 Text(
                   'Are you sure you want to delete this ${isFabric ? 'fabric' : 'accessory'}?',
+                  style: InventoryDesignConfig.bodyLarge,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: InventoryDesignConfig.spacingM),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
+                    color: InventoryDesignConfig.errorColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
                     border: Border.all(
-                      color: theme.colorScheme.error.withOpacity(0.3),
+                      color: InventoryDesignConfig.errorColor.withOpacity(0.2),
                     ),
                   ),
                   child: Row(
@@ -1069,44 +1096,40 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
                         isFabric
                             ? PhosphorIcons.scissors()
                             : PhosphorIcons.package(),
-                        color: theme.colorScheme.error,
+                        color: InventoryDesignConfig.errorColor,
                         size: 16,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: InventoryDesignConfig.spacingS),
                       Expanded(
                         child: Text(
                           itemName ?? 'Unknown Item',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.error,
+                          style: InventoryDesignConfig.titleMedium.copyWith(
+                            color: InventoryDesignConfig.errorColor,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: InventoryDesignConfig.spacingM),
                 Text(
                   'This action cannot be undone.',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 13,
-                  ),
+                  style: InventoryDesignConfig.bodyMedium,
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text('Cancel', style: InventoryDesignConfig.bodyMedium),
               ),
               FilledButton.icon(
                 onPressed: () => Navigator.pop(context, true),
                 icon: Icon(PhosphorIcons.trash()),
                 label: const Text('Delete'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.error,
-                  foregroundColor: theme.colorScheme.onError,
+                  backgroundColor: InventoryDesignConfig.errorColor,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -1132,7 +1155,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   }
 
   Color _parseColor(String colorCode) {
-    if (colorCode.isEmpty) return Colors.grey;
+    if (colorCode.isEmpty) return InventoryDesignConfig.textTertiary;
 
     try {
       if (colorCode.startsWith('#')) {
@@ -1141,62 +1164,9 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           return Color(int.parse('FF$hexCode', radix: 16));
         }
       }
-      return Colors.grey;
+      return InventoryDesignConfig.textTertiary;
     } catch (e) {
-      return Colors.grey;
+      return InventoryDesignConfig.textTertiary;
     }
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    bool isPrimary = false,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isPrimary ? _primaryColor : _surfaceColor,
-            border: Border.all(color: isPrimary ? _primaryColor : _borderColor),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                isPrimary
-                    ? [
-                      BoxShadow(
-                        color: _primaryColor.withOpacity(0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isPrimary ? Colors.white : _textPrimary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isPrimary ? Colors.white : _textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -296,50 +296,70 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: options.map((option) {
-              final isSelected = _selectedFilter == option ||
-                  (title == 'Sort By' &&
-                      ((option == 'Newest First' && _sortBy == 'created_at') ||
-                          (option == 'Oldest First' && _sortBy == 'created_at') ||
-                          (option == 'Name (A-Z)' && _sortBy == (widget.inventoryType == 'fabric' ? 'fabric_item_name' : 'accessory_item_name')) ||
-                          (option == 'Name (Z-A)' && _sortBy == (widget.inventoryType == 'fabric' ? 'fabric_item_name' : 'accessory_item_name')) ||
-                          (option == 'Price (High-Low)' && _sortBy == 'selling_price_per_unit') ||
-                          (option == 'Price (Low-High)' && _sortBy == 'selling_price_per_unit')));
+            children:
+                options.map((option) {
+                  final isSelected =
+                      _selectedFilter == option ||
+                      (title == 'Sort By' &&
+                          ((option == 'Newest First' &&
+                                  _sortBy == 'created_at') ||
+                              (option == 'Oldest First' &&
+                                  _sortBy == 'created_at') ||
+                              (option == 'Name (A-Z)' &&
+                                  _sortBy ==
+                                      (widget.inventoryType == 'fabric'
+                                          ? 'fabric_item_name'
+                                          : 'accessory_item_name')) ||
+                              (option == 'Name (Z-A)' &&
+                                  _sortBy ==
+                                      (widget.inventoryType == 'fabric'
+                                          ? 'fabric_item_name'
+                                          : 'accessory_item_name')) ||
+                              (option == 'Price (High-Low)' &&
+                                  _sortBy == 'selling_price_per_unit') ||
+                              (option == 'Price (Low-High)' &&
+                                  _sortBy == 'selling_price_per_unit')));
 
-              return FilterChip(
-                label: Text(option),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (title == 'Sort By') {
-                      switch (option) {
-                        case 'Newest First':
-                          _sortBy = 'created_at';
-                          break;
-                        case 'Oldest First':
-                          _sortBy = 'created_at';
-                          break;
-                        case 'Name (A-Z)':
-                          _sortBy = widget.inventoryType == 'fabric' ? 'fabric_item_name' : 'accessory_item_name';
-                          break;
-                        case 'Name (Z-A)':
-                          _sortBy = widget.inventoryType == 'fabric' ? 'fabric_item_name' : 'accessory_item_name';
-                          break;
-                        case 'Price (High-Low)':
-                          _sortBy = 'selling_price_per_unit';
-                          break;
-                        case 'Price (Low-High)':
-                          _sortBy = 'selling_price_per_unit';
-                          break;
-                      }
-                    } else {
-                      _selectedFilter = selected ? option : null;
-                    }
-                  });
-                  _loadInventoryItems();
-                },
-              );
-            }).toList(),
+                  return FilterChip(
+                    label: Text(option),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (title == 'Sort By') {
+                          switch (option) {
+                            case 'Newest First':
+                              _sortBy = 'created_at';
+                              break;
+                            case 'Oldest First':
+                              _sortBy = 'created_at';
+                              break;
+                            case 'Name (A-Z)':
+                              _sortBy =
+                                  widget.inventoryType == 'fabric'
+                                      ? 'fabric_item_name'
+                                      : 'accessory_item_name';
+                              break;
+                            case 'Name (Z-A)':
+                              _sortBy =
+                                  widget.inventoryType == 'fabric'
+                                      ? 'fabric_item_name'
+                                      : 'accessory_item_name';
+                              break;
+                            case 'Price (High-Low)':
+                              _sortBy = 'selling_price_per_unit';
+                              break;
+                            case 'Price (Low-High)':
+                              _sortBy = 'selling_price_per_unit';
+                              break;
+                          }
+                        } else {
+                          _selectedFilter = selected ? option : null;
+                        }
+                      });
+                      _loadInventoryItems();
+                    },
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -492,96 +512,109 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          maxChildSize: 0.95,
-          minChildSize: 0.5,
-          expand: false,
-          builder: (context, scrollController) => CustomScrollView(
-            controller: scrollController,
-            slivers: [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    // Handle bar
-                    Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).dividerColor.withAlpha(100),
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
-                    ),
-
-                    // Header with actions
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} Details',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
+      builder:
+          (context) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              maxChildSize: 0.95,
+              minChildSize: 0.5,
+              expand: false,
+              builder:
+                  (context, scrollController) => CustomScrollView(
+                    controller: scrollController,
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            // Handle bar
+                            Container(
+                              margin: const EdgeInsets.only(top: 12, bottom: 8),
+                              width: 48,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).dividerColor.withAlpha(100),
+                                borderRadius: BorderRadius.circular(2.5),
                               ),
                             ),
-                          ),
-                          // Edit button
-                          IconButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              _handleEditItem(item);
-                            },
-                            icon: Icon(PhosphorIcons.pencilSimple()),
-                            tooltip: 'Edit',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              foregroundColor: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Delete button
-                          IconButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              _handleDeleteItem(item);
-                            },
-                            icon: Icon(PhosphorIcons.trash()),
-                            tooltip: 'Delete',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
-                              foregroundColor: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Close button
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: Icon(PhosphorIcons.x()),
-                            tooltip: 'Close',
-                          ),
-                        ],
-                      ),
-                    ),
 
-                    // Item details content
-                    _buildItemDetailsContent(item),
-                  ],
-                ),
-              ),
-            ],
+                            // Header with actions
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} Details',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  // Edit button
+                                  IconButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      _handleEditItem(item);
+                                    },
+                                    icon: Icon(PhosphorIcons.pencilSimple()),
+                                    tooltip: 'Edit',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.1),
+                                      foregroundColor:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Delete button
+                                  IconButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      _handleDeleteItem(item);
+                                    },
+                                    icon: Icon(PhosphorIcons.trash()),
+                                    tooltip: 'Delete',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error.withOpacity(0.1),
+                                      foregroundColor:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Close button
+                                  IconButton(
+                                    onPressed:
+                                        () => Navigator.of(context).pop(),
+                                    icon: Icon(PhosphorIcons.x()),
+                                    tooltip: 'Close',
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Item details content
+                            _buildItemDetailsContent(item),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -1144,25 +1177,28 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
         label: Text(
           label,
           style: GoogleFonts.inter(
-            color: isSelected
-                ? (isDark ? Colors.white : theme.colorScheme.onPrimary)
-                : theme.colorScheme.onSurface.withOpacity(0.8),
+            color:
+                isSelected
+                    ? (isDark ? Colors.white : theme.colorScheme.onPrimary)
+                    : theme.colorScheme.onSurface.withOpacity(0.8),
             fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
             fontSize: 13,
           ),
         ),
         selected: isSelected,
         showCheckmark: false,
-        avatar: isSelected
-            ? Icon(
-                PhosphorIcons.check(),
-                size: 14,
-                color: isDark ? Colors.white : theme.colorScheme.onPrimary,
-              )
-            : null,
-        backgroundColor: isDark
-            ? const Color(0xFF2D2F31)
-            : theme.colorScheme.surfaceVariant.withOpacity(0.7),
+        avatar:
+            isSelected
+                ? Icon(
+                  PhosphorIcons.check(),
+                  size: 14,
+                  color: isDark ? Colors.white : theme.colorScheme.onPrimary,
+                )
+                : null,
+        backgroundColor:
+            isDark
+                ? const Color(0xFF2D2F31)
+                : theme.colorScheme.surfaceVariant.withOpacity(0.7),
         selectedColor: theme.colorScheme.primary.withOpacity(
           isDark ? 0.3 : 0.2,
         ),
@@ -1170,11 +1206,12 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         onSelected: (selected) {
           setState(() {
-            _selectedFilter = selected
-                ? label == 'All'
-                    ? null
-                    : label
-                : null;
+            _selectedFilter =
+                selected
+                    ? label == 'All'
+                        ? null
+                        : label
+                    : null;
           });
           _loadInventoryItems();
         },
@@ -1188,8 +1225,10 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
     final cardColor = isDark ? const Color(0xFF2D2F31) : theme.cardColor;
     final isFabric = widget.inventoryType == 'fabric';
 
-    final isLowStock = (item['quantity_available'] ?? 0) <= (item['minimum_stock_level'] ?? 0);
-    final itemName = isFabric ? item['fabric_item_name'] : item['accessory_item_name'];
+    final isLowStock =
+        (item['quantity_available'] ?? 0) <= (item['minimum_stock_level'] ?? 0);
+    final itemName =
+        isFabric ? item['fabric_item_name'] : item['accessory_item_name'];
     final itemCode = isFabric ? item['fabric_code'] : item['accessory_code'];
     final itemType = isFabric ? item['fabric_type'] : item['accessory_type'];
     final itemColor = isFabric ? item['shade_color'] : item['color'];
@@ -1229,7 +1268,10 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: isFabric ? _parseColor(colorCode) : _parseColor(colorCode),
+                        color:
+                            isFabric
+                                ? _parseColor(colorCode)
+                                : _parseColor(colorCode),
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
@@ -1241,7 +1283,9 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
                       ),
                       child: Center(
                         child: Icon(
-                          isFabric ? PhosphorIcons.scissors() : _getAccessoryIcon(itemType),
+                          isFabric
+                              ? PhosphorIcons.scissors()
+                              : _getAccessoryIcon(itemType),
                           color: Colors.white,
                           size: 20,
                         ),
@@ -1381,16 +1425,24 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: isLowStock ? theme.colorScheme.error.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                            color:
+                                isLowStock
+                                    ? theme.colorScheme.error.withOpacity(0.1)
+                                    : Colors.green.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isLowStock ? PhosphorIcons.warning() : PhosphorIcons.checkCircle(),
+                                isLowStock
+                                    ? PhosphorIcons.warning()
+                                    : PhosphorIcons.checkCircle(),
                                 size: 10,
-                                color: isLowStock ? theme.colorScheme.error : Colors.green,
+                                color:
+                                    isLowStock
+                                        ? theme.colorScheme.error
+                                        : Colors.green,
                               ),
                               const SizedBox(width: 2),
                               Text(
@@ -1398,7 +1450,10 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: isLowStock ? theme.colorScheme.error : Colors.green,
+                                  color:
+                                      isLowStock
+                                          ? theme.colorScheme.error
+                                          : Colors.green,
                                 ),
                               ),
                             ],
