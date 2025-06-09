@@ -31,6 +31,17 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _inventoryItems = [];
 
+  // Modern minimalistic color palette
+  static const _backgroundColor = Color(0xFFFAFAFA);
+  static const _surfaceColor = Color(0xFFFFFFFF);
+  static const _primaryColor = Color(0xFF2563EB);
+  static const _textPrimary = Color(0xFF111827);
+  static const _textSecondary = Color(0xFF6B7280);
+  static const _borderColor = Color(0xFFE5E7EB);
+  static const _successColor = Color(0xFF059669);
+  static const _warningColor = Color(0xFFD97706);
+  static const _errorColor = Color(0xFFDC2626);
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +63,6 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
               ? 'fabric_inventory'
               : 'accessories_inventory';
 
-      // Updated query to join with brands and categories tables
       String selectQuery;
       if (widget.inventoryType == 'fabric') {
         selectQuery = '''
@@ -94,12 +104,10 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         ascending: _sortAscending,
       );
 
-      // Process the response and enhance it with brand and category info
       final processedItems =
           response.map<Map<String, dynamic>>((item) {
             final Map<String, dynamic> processedItem = Map.from(item);
 
-            // Extract brand info
             if (item['brands'] != null) {
               processedItem['brand_name'] =
                   item['brands']['name'] ?? 'No Brand';
@@ -108,7 +116,6 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
               processedItem['brand_name'] = 'No Brand';
             }
 
-            // Extract category info
             if (item['inventory_categories'] != null) {
               processedItem[widget.inventoryType == 'fabric'
                       ? 'fabric_type'
@@ -132,12 +139,11 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading inventory: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: _errorColor,
           ),
         );
       }
@@ -159,7 +165,6 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
   @override
   void didUpdateWidget(InventoryDesktopView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Refresh data when inventory type changes
     if (oldWidget.inventoryType != widget.inventoryType) {
       _searchController.clear();
       _searchQuery = '';
@@ -172,183 +177,117 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
-      color: Color(0xFF1A1C1E), // Dark background
+      decoration: const BoxDecoration(color: _backgroundColor),
       child: Column(
         children: [
-          // Top Header with simplified layout and switcher
-          Padding(
-            padding: const EdgeInsets.all(24),
+          // Compact header section with title and controls
+          Container(
+            decoration: const BoxDecoration(color: _backgroundColor),
+            padding: const EdgeInsets.fromLTRB(32, 20, 32, 16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with Type Switcher
+                // Main header row - compact design
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Type Switcher - Clean, minimal toggle buttons
-                    Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: Color(0xFF2D2F31),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildTypeSwitcherButton(
-                            title: 'Fabrics',
-                            icon: PhosphorIcons.scissors(),
-                            isSelected: widget.inventoryType == 'fabric',
-                            onTap: () => widget.onTypeChanged?.call('fabric'),
+                    // Title section
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          _buildTypeSwitcherButton(
-                            title: 'Accessories',
-                            icon: PhosphorIcons.package(),
-                            isSelected: widget.inventoryType == 'accessory',
-                            onTap:
-                                () => widget.onTypeChanged?.call('accessory'),
+                          child: Icon(
+                            PhosphorIcons.warehouse(),
+                            size: 22,
+                            color: _primaryColor,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Inventory Management',
+                              style: GoogleFonts.inter(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            Text(
+                              'Manage fabrics and accessories',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: _textSecondary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    // Subtitle text
-                    Text(
-                      'Manage your ${widget.inventoryType} inventory',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
+
                     const Spacer(),
-                    // Search Field with Modern Design
-                    Container(
-                      width: 300,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: Color(0xFF2D2F31),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        style: GoogleFonts.inter(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Search inventory...',
-                          hintStyle: GoogleFonts.inter(color: Colors.white54),
-                          prefixIcon: Icon(
-                            PhosphorIcons.magnifyingGlass(),
-                            color: Colors.white54,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
+
+                    // Right side controls - in a single row
+                    Row(
+                      children: [
+                        _buildTypeSelector(),
+                        const SizedBox(width: 16),
+                        _buildSearchField(),
+                        const SizedBox(width: 12),
+                        _buildFilterButton(),
+                        const SizedBox(width: 12),
+                        _buildActionButton(
+                          icon: PhosphorIcons.plus(),
+                          label: 'Add Item',
+                          isPrimary: true,
+                          onPressed: () {
+                            AddInventoryDesktopDialog.show(
+                              context,
+                              inventoryType: widget.inventoryType,
+                              onItemAdded: _loadInventoryItems,
+                            );
+                          },
                         ),
-                        onChanged: (value) {
-                          setState(() => _searchQuery = value);
-                          _loadInventoryItems();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Filter button
-                    _buildActionButton(
-                      icon: PhosphorIcons.funnelSimple(),
-                      label: 'Filter',
-                      onPressed: () {
-                        /* Show filter */
-                      },
-                      bgColor: Color(0xFF2D2F31),
-                      textColor: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    // Add New button
-                    _buildActionButton(
-                      icon: PhosphorIcons.plus(),
-                      label: 'Add New',
-                      onPressed: () {
-                        AddInventoryDesktopDialog.show(
-                          context,
-                          inventoryType: widget.inventoryType,
-                          onItemAdded: _loadInventoryItems,
-                        );
-                      },
-                      bgColor: Color(0xFF2B5EE3), // Accent blue
-                      textColor: Colors.white,
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                // Stats Cards Row
-                Row(
-                  children: [
-                    _buildStatCard(
-                      icon: PhosphorIcons.stack(),
-                      title: 'Total Items',
-                      value: _inventoryItems.length.toString(),
-                      trend: '+5% from last month',
-                      trendUp: true,
-                    ),
-                    _buildStatCard(
-                      icon: PhosphorIcons.warning(),
-                      title: 'Low Stock Items',
-                      value:
-                          _inventoryItems
-                              .where(
-                                (item) =>
-                                    (item['quantity_available'] ?? 0) <=
-                                    (item['minimum_stock_level'] ?? 0),
-                              )
-                              .length
-                              .toString(),
-                      trend: '2 items need attention',
-                      trendUp: false,
-                      isWarning: true,
-                    ),
-                    _buildStatCard(
-                      icon: PhosphorIcons.currencyDollar(),
-                      title: 'Total Value',
-                      value: NumberFormat.currency(symbol: '\$').format(
-                        _inventoryItems.fold<double>(
-                          0,
-                          (sum, item) =>
-                              sum +
-                              ((item['quantity_available'] ?? 0) *
-                                  (item['cost_per_unit'] ?? 0)),
-                        ),
-                      ),
-                      trend: '+12% from last month',
-                      trendUp: true,
-                    ),
-                  ],
-                ),
+
+                const SizedBox(height: 20),
+
+                // Stats row - more compact
+                _buildStatsRow(),
               ],
             ),
           ),
 
-          // Table Container
+          // Table container with matching background
           Expanded(
             child: Container(
-              margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              decoration: BoxDecoration(
-                color: Color(0xFF2D2F31),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+              decoration: const BoxDecoration(color: _backgroundColor),
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _surfaceColor,
+                  border: Border.all(color: _borderColor),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
                 child:
-                    _isLoading
-                        ? Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2B5EE3),
-                          ),
-                        )
-                        : _buildInventoryTable(theme),
+                    _isLoading ? _buildLoadingState() : _buildInventoryTable(),
               ),
             ),
           ),
@@ -357,9 +296,36 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
-  // Type switcher button widget
-  Widget _buildTypeSwitcherButton({
-    required String title,
+  Widget _buildTypeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _borderColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildTypeSelectorButton(
+            label: 'Fabrics',
+            icon: PhosphorIcons.scissors(),
+            isSelected: widget.inventoryType == 'fabric',
+            onTap: () => widget.onTypeChanged?.call('fabric'),
+          ),
+          _buildTypeSelectorButton(
+            label: 'Accessories',
+            icon: PhosphorIcons.package(),
+            isSelected: widget.inventoryType == 'accessory',
+            onTap: () => widget.onTypeChanged?.call('accessory'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeSelectorButton({
+    required String label,
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
@@ -368,204 +334,292 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Color(0xFF2B5EE3) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? _surfaceColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                    : null,
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                color: isSelected ? Colors.white : Colors.white70,
-                size: 18,
+                size: 16,
+                color: isSelected ? _primaryColor : _textSecondary,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
-                title,
+                label,
                 style: GoogleFonts.inter(
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? _textPrimary : _textSecondary,
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      width: 280,
+      height: 36,
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        border: Border.all(color: _borderColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+        decoration: InputDecoration(
+          hintText: 'Search inventory...',
+          hintStyle: GoogleFonts.inter(
+            color: _textSecondary,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              PhosphorIcons.magnifyingGlass(),
+              size: 16,
+              color: _textSecondary,
+            ),
+          ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: Icon(
+                      PhosphorIcons.x(),
+                      size: 14,
+                      color: _textSecondary,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                      _loadInventoryItems();
+                    },
+                  )
+                  : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+        onChanged: (value) {
+          setState(() => _searchQuery = value);
+          _loadInventoryItems();
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterButton() {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Filter functionality coming soon!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: _surfaceColor,
+            border: Border.all(color: _borderColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(PhosphorIcons.funnel(), size: 16, color: _textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                'Filter',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    final totalItems = _inventoryItems.length;
+    final lowStockItems =
+        _inventoryItems.where((item) {
+          final quantityAvailable = _toInt(item['quantity_available']);
+          final minimumStockLevel = _toInt(item['minimum_stock_level']);
+          return quantityAvailable <= minimumStockLevel;
+        }).length;
+
+    final totalValue = _inventoryItems.fold<double>(0, (sum, item) {
+      final quantity = _toDouble(item['quantity_available']);
+      final cost = _toDouble(item['cost_per_unit']);
+      return sum + (quantity * cost);
+    });
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildStatCard(
+            title: 'Total Items',
+            value: totalItems.toString(),
+            icon: PhosphorIcons.stack(),
+            color: _primaryColor,
+          ),
+          const SizedBox(width: 24),
+          _buildStatCard(
+            title: 'Low Stock',
+            value: lowStockItems.toString(),
+            icon: PhosphorIcons.warning(),
+            color: _warningColor,
+          ),
+          const SizedBox(width: 24),
+          _buildStatCard(
+            title: 'Total Value',
+            value: NumberFormat.currency(symbol: '\$').format(totalValue),
+            icon: PhosphorIcons.currencyDollar(),
+            color: _successColor,
+          ),
+          const Spacer(),
+          // Current inventory type indicator - smaller and more subtle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _primaryColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.inventoryType == 'fabric'
+                      ? PhosphorIcons.scissors()
+                      : PhosphorIcons.package(),
+                  size: 14,
+                  color: _primaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} Inventory',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: _primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatCard({
-    required IconData icon,
     required String title,
     required String value,
-    required String trend,
-    required bool trendUp,
-    bool isWarning = false,
+    required IconData icon,
+    required Color color,
   }) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Color(0xFF2D2F31),
-          borderRadius: BorderRadius.circular(16),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
         ),
-        child: Column(
+        const SizedBox(width: 10),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isWarning ? Color(0xFF392E2E) : Color(0xFF2B3147),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isWarning ? Color(0xFFE57373) : Color(0xFF64B5F6),
-                    size: 20,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Icon(
-                      trendUp
-                          ? PhosphorIcons.arrowUp()
-                          : PhosphorIcons.arrowDown(),
-                      color: trendUp ? Color(0xFF81C784) : Color(0xFFE57373),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      trend,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: trendUp ? Color(0xFF81C784) : Color(0xFFE57373),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Text(
               value,
               style: GoogleFonts.inter(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
             Text(
               title,
-              style: GoogleFonts.inter(fontSize: 14, color: Colors.white70),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: _textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required Color bgColor,
-    required Color textColor,
-  }) {
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(icon, color: textColor, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  color: textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Widget _buildLoadingState() {
+    return const Center(child: CircularProgressIndicator(color: _primaryColor));
   }
 
-  // Update _buildInventoryTable method to match the new design and make the table full width
-  Widget _buildInventoryTable(ThemeData theme) {
+  Widget _buildInventoryTable() {
     if (_inventoryItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              widget.inventoryType == 'fabric'
-                  ? PhosphorIcons.scissors()
-                  : PhosphorIcons.package(),
-              size: 64,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No items found',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add some items to your inventory',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () {
-                AddInventoryDesktopDialog.show(
-                  context,
-                  inventoryType: widget.inventoryType,
-                  onItemAdded: _loadInventoryItems,
-                );
-              },
-              icon: Icon(PhosphorIcons.plus()),
-              label: const Text('Add New Item'),
-            ),
-          ],
-        ),
-      );
+      return _buildEmptyState();
     }
 
-    // Determine columns based on inventory type - UPDATED
     List<DataColumn> columns = [];
     if (widget.inventoryType == 'fabric') {
       columns = [
         _buildDataColumn('Code', 'fabric_code'),
-        _buildDataColumn('Brand', 'brand_name'),
-        _buildDataColumn('Fabric Name', 'fabric_item_name'),
+        _buildDataColumn('Name', 'fabric_item_name'),
         _buildDataColumn('Type', 'fabric_type'),
+        _buildDataColumn('Brand', 'brand_name'),
         _buildDataColumn('Color', 'shade_color'),
-        _buildDataColumn('Available', 'quantity_available'),
+        _buildDataColumn('Stock', 'quantity_available'),
         _buildDataColumn('Unit', 'unit_type'),
         _buildDataColumn('Cost', 'cost_per_unit'),
         _buildDataColumn('Price', 'selling_price_per_unit'),
-        const DataColumn(label: Text('Actions')),
+        const DataColumn(label: Text('')), // Actions
       ];
     } else {
       columns = [
@@ -574,84 +628,109 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
         _buildDataColumn('Type', 'accessory_type'),
         _buildDataColumn('Brand', 'brand_name'),
         _buildDataColumn('Color', 'color'),
-        _buildDataColumn('Available', 'quantity_available'),
+        _buildDataColumn('Stock', 'quantity_available'),
         _buildDataColumn('Unit', 'unit_type'),
         _buildDataColumn('Cost', 'cost_per_unit'),
         _buildDataColumn('Price', 'selling_price_per_unit'),
-        const DataColumn(label: Text('Actions')),
+        const DataColumn(label: Text('')), // Actions
       ];
     }
 
-    return Scrollbar(
+    return Theme(
+      data: Theme.of(context).copyWith(
+        dataTableTheme: DataTableThemeData(
+          headingRowColor: MaterialStateProperty.all(const Color(0xFFF9FAFB)),
+          dataRowColor: MaterialStateProperty.resolveWith<Color>((states) {
+            if (states.contains(MaterialState.hovered)) {
+              return const Color(0xFFF9FAFB);
+            }
+            return Colors.white;
+          }),
+          headingTextStyle: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _textSecondary,
+            letterSpacing: 0.5,
+          ),
+          dataTextStyle: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+        ),
+      ),
       child: SingleChildScrollView(
-        padding: EdgeInsets.zero,
-        child: Theme(
-          data: theme.copyWith(
-            cardTheme: CardTheme(
-              elevation: 0,
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          child: DataTable(
+            columnSpacing: 32,
+            horizontalMargin: 24,
+            headingRowHeight: 48,
+            dataRowMaxHeight: 56,
+            dataRowMinHeight: 56,
+            showCheckboxColumn: false,
+            dividerThickness: 1,
+            border: TableBorder(
+              horizontalInside: BorderSide(
+                color: _borderColor.withOpacity(0.5),
               ),
             ),
-            dividerTheme: const DividerThemeData(thickness: 0.3),
-            // Add hover styling to the data table theme
-            dataTableTheme: DataTableThemeData(
-              dataRowColor: MaterialStateProperty.resolveWith<Color?>((
-                Set<MaterialState> states,
-              ) {
-                if (states.contains(MaterialState.hovered)) {
-                  return theme.colorScheme.primary.withOpacity(0.05);
-                }
-                if (states.contains(MaterialState.selected)) {
-                  return theme.colorScheme.primary.withOpacity(0.08);
-                }
-                return Colors.transparent;
-              }),
+            columns: columns,
+            rows:
+                _inventoryItems.map((item) {
+                  return widget.inventoryType == 'fabric'
+                      ? _buildFabricRow(item)
+                      : _buildAccessoryRow(item);
+                }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              widget.inventoryType == 'fabric'
+                  ? PhosphorIcons.scissors()
+                  : PhosphorIcons.package(),
+              size: 32,
+              color: _textSecondary,
             ),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Container(
-                width: constraints.maxWidth,
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(Color(0xFF21252A)),
-                  dataRowColor: MaterialStateProperty.resolveWith<Color>((
-                    Set<MaterialState> states,
-                  ) {
-                    if (states.contains(MaterialState.hovered)) {
-                      return theme.colorScheme.primary.withOpacity(0.05);
-                    }
-                    if (states.contains(MaterialState.selected)) {
-                      return theme.colorScheme.primary.withOpacity(0.08);
-                    }
-                    return Colors.transparent;
-                  }),
-                  headingTextStyle: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  dataRowMaxHeight: 64,
-                  dataRowMinHeight: 64,
-                  columnSpacing: 24,
-                  horizontalMargin: 16,
-                  showCheckboxColumn: false,
-                  dividerThickness: 0.3,
-                  columns: columns,
-                  rows:
-                      _inventoryItems.map((item) {
-                        if (widget.inventoryType == 'fabric') {
-                          return _buildFabricRow(item, theme);
-                        } else {
-                          return _buildAccessoryRow(item, theme);
-                        }
-                      }).toList(),
-                ),
+          const SizedBox(height: 16),
+          Text(
+            'No items found',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: _textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add some items to your inventory to get started',
+            style: GoogleFonts.inter(fontSize: 14, color: _textSecondary),
+          ),
+          const SizedBox(height: 24),
+          _buildActionButton(
+            icon: PhosphorIcons.plus(),
+            label: 'Add New Item',
+            isPrimary: true,
+            onPressed: () {
+              AddInventoryDesktopDialog.show(
+                context,
+                inventoryType: widget.inventoryType,
+                onItemAdded: _loadInventoryItems,
               );
             },
           ),
-        ),
+        ],
       ),
     );
   }
@@ -661,23 +740,236 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
 
     return DataColumn(
       label: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isSorted ? FontWeight.bold : FontWeight.w500,
-            ),
-          ),
-          if (isSorted)
+          Text(label.toUpperCase()),
+          if (isSorted) ...[
+            const SizedBox(width: 4),
             Icon(
               _sortAscending
-                  ? PhosphorIcons.arrowUp()
-                  : PhosphorIcons.arrowDown(),
-              size: 16,
+                  ? PhosphorIcons.caretUp()
+                  : PhosphorIcons.caretDown(),
+              size: 12,
+              color: _primaryColor,
             ),
+          ],
         ],
       ),
       onSort: (_, __) => _onSort(column),
+    );
+  }
+
+  DataRow _buildFabricRow(Map<String, dynamic> fabric) {
+    final quantityAvailable = _toInt(fabric['quantity_available']);
+    final minimumStockLevel = _toInt(fabric['minimum_stock_level']);
+    final isLowStock = quantityAvailable <= minimumStockLevel;
+
+    return DataRow(
+      cells: [
+        DataCell(_buildCodeCell(fabric['fabric_code'])),
+        DataCell(_buildNameCell(fabric['fabric_item_name'])),
+        DataCell(_buildTypeCell(fabric['fabric_type'], _primaryColor)),
+        DataCell(_buildTextCell(fabric['brand_name'])),
+        DataCell(_buildColorCell(fabric['shade_color'], fabric['color_code'])),
+        DataCell(_buildStockCell(quantityAvailable, isLowStock)),
+        DataCell(_buildTextCell(fabric['unit_type'])),
+        DataCell(_buildPriceCell(fabric['cost_per_unit'])),
+        DataCell(_buildPriceCell(fabric['selling_price_per_unit'])),
+        DataCell(_buildActionsCell(fabric)),
+      ],
+      onSelectChanged: (selected) {
+        if (selected == true) {
+          InventoryDetailDialogDesktop.show(
+            context,
+            item: fabric,
+            inventoryType: 'fabric',
+            onEdit: _loadInventoryItems,
+            onDelete: _loadInventoryItems,
+          );
+        }
+      },
+    );
+  }
+
+  DataRow _buildAccessoryRow(Map<String, dynamic> accessory) {
+    final quantityAvailable = _toInt(accessory['quantity_available']);
+    final minimumStockLevel = _toInt(accessory['minimum_stock_level']);
+    final isLowStock = quantityAvailable <= minimumStockLevel;
+
+    return DataRow(
+      cells: [
+        DataCell(_buildCodeCell(accessory['accessory_code'])),
+        DataCell(_buildNameCell(accessory['accessory_item_name'])),
+        DataCell(_buildTypeCell(accessory['accessory_type'], _successColor)),
+        DataCell(_buildTextCell(accessory['brand_name'])),
+        DataCell(_buildTextCell(accessory['color'])),
+        DataCell(_buildStockCell(quantityAvailable, isLowStock)),
+        DataCell(_buildTextCell(accessory['unit_type'])),
+        DataCell(_buildPriceCell(accessory['cost_per_unit'])),
+        DataCell(_buildPriceCell(accessory['selling_price_per_unit'])),
+        DataCell(_buildActionsCell(accessory)),
+      ],
+      onSelectChanged: (selected) {
+        if (selected == true) {
+          InventoryDetailDialogDesktop.show(
+            context,
+            item: accessory,
+            inventoryType: 'accessory',
+            onEdit: _loadInventoryItems,
+            onDelete: _loadInventoryItems,
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildCodeCell(String? code) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        code ?? '',
+        style: GoogleFonts.jetBrainsMono(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: _textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNameCell(String? name) {
+    return Text(
+      name ?? '',
+      style: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: _textPrimary,
+      ),
+    );
+  }
+
+  Widget _buildTypeCell(String? type, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        type ?? '',
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextCell(String? text) {
+    return Text(
+      text ?? '',
+      style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+    );
+  }
+
+  Widget _buildColorCell(String? colorName, String? colorCode) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: _parseColor(colorCode ?? ''),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: _borderColor),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          colorName ?? '',
+          style: GoogleFonts.inter(fontSize: 14, color: _textPrimary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStockCell(int quantity, bool isLowStock) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: isLowStock ? _errorColor : _successColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$quantity',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isLowStock ? _errorColor : _textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPriceCell(dynamic price) {
+    final numericPrice = _toDouble(price);
+    return Text(
+      NumberFormat.currency(symbol: '\$').format(numericPrice),
+      style: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: _textPrimary,
+      ),
+    );
+  }
+
+  Widget _buildActionsCell(Map<String, dynamic> item) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildActionIcon(
+          icon: PhosphorIcons.pencilSimple(),
+          onTap: () => _handleEditItem(item),
+          color: _primaryColor,
+        ),
+        const SizedBox(width: 8),
+        _buildActionIcon(
+          icon: PhosphorIcons.trash(),
+          onTap: () => _handleDeleteItem(item),
+          color: _errorColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionIcon({
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      ),
     );
   }
 
@@ -822,383 +1114,21 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     );
   }
 
-  DataRow _buildFabricRow(Map<String, dynamic> fabric, ThemeData theme) {
-    final isLowStock =
-        (fabric['quantity_available'] ?? 0) <=
-        (fabric['minimum_stock_level'] ?? 0);
-
-    final isDark = theme.brightness == Brightness.dark;
-    final Color typeBadgeColor = isDark ? Color(0xFF3954E4) : Color(0xFFECF2FF);
-    final Color typeBadgeTextColor = isDark ? Colors.white : Color(0xFF1541A6);
-    final Color stockBgColor =
-        isLowStock
-            ? (isDark ? Color(0x51DC2626) : Color(0xFFFFEBEF))
-            : (isDark ? Color(0xFF283E31) : Color(0xFFF0FAEF));
-    final Color stockTextColor =
-        isLowStock
-            ? (isDark ? Color(0xFFF08080) : Color(0xFFBE123C))
-            : (isDark ? Color(0xFF45C962) : Color(0xFF16A34A));
-
-    return DataRow(
-      cells: [
-        DataCell(Text(fabric['fabric_code'] ?? '')),
-        DataCell(Text(fabric['brand_name'] ?? 'No Brand')),
-        DataCell(Text(fabric['fabric_item_name'] ?? '')),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: typeBadgeColor,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              fabric['fabric_type'] ?? 'Uncategorized',
-              style: TextStyle(
-                color: typeBadgeTextColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: _parseColor(fabric['color_code'] ?? ''),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.25),
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.07),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  fabric['shade_color'] ?? 'No color',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: stockBgColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isLowStock
-                          ? PhosphorIcons.warning()
-                          : PhosphorIcons.checkCircle(),
-                      size: 14,
-                      color: stockTextColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${fabric['quantity_available'] ?? 0}',
-                      style: TextStyle(
-                        color: stockTextColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        DataCell(Text(fabric['unit_type'] ?? '')),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(fabric['cost_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(fabric['selling_price_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _handleEditItem(fabric),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      PhosphorIcons.pencilSimple(),
-                      size: 16,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _handleDeleteItem(fabric),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      PhosphorIcons.trash(),
-                      size: 16,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-      onSelectChanged: (selected) {
-        if (selected == true) {
-          InventoryDetailDialogDesktop.show(
-            context,
-            item: fabric,
-            inventoryType: 'fabric',
-            onEdit: _loadInventoryItems,
-            onDelete: _loadInventoryItems,
-          );
-        }
-      },
-    );
+  // Helper methods for type conversion
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
-  DataRow _buildAccessoryRow(Map<String, dynamic> accessory, ThemeData theme) {
-    final isLowStock =
-        (accessory['quantity_available'] ?? 0) <=
-        (accessory['minimum_stock_level'] ?? 0);
-
-    final isDark = theme.brightness == Brightness.dark;
-    final Color typeBadgeColor = isDark ? Color(0xFF26B686) : Color(0xFFD6FFF3);
-    final Color typeBadgeTextColor = isDark ? Colors.white : Color(0xFF07856B);
-    final Color stockBgColor =
-        isLowStock
-            ? (isDark ? Color(0x51DC2626) : Color(0xFFFFEBEF))
-            : (isDark ? Color(0xFF14404F) : Color(0xFFEAFDFE));
-    final Color stockTextColor =
-        isLowStock
-            ? (isDark ? Color(0xFFFFBE78) : Color(0xFF777126))
-            : (isDark ? Color(0xFF8CFDF9) : Color(0xFF149884));
-
-    return DataRow(
-      cells: [
-        DataCell(Text(accessory['accessory_code'] ?? '')),
-        DataCell(Text(accessory['accessory_item_name'] ?? '')),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: typeBadgeColor,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              accessory['accessory_type'] ?? 'Uncategorized',
-              style: TextStyle(
-                color: typeBadgeTextColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
-        DataCell(Text(accessory['brand_name'] ?? 'No Brand')),
-        DataCell(Text(accessory['color'] ?? 'N/A')),
-        DataCell(
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: stockBgColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isLowStock
-                          ? PhosphorIcons.warning()
-                          : PhosphorIcons.checkCircle(),
-                      size: 14,
-                      color: stockTextColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${accessory['quantity_available'] ?? 0}',
-                      style: TextStyle(
-                        color: stockTextColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        DataCell(Text(accessory['unit_type'] ?? '')),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(accessory['cost_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Text(
-            NumberFormat.currency(
-              symbol: '\$',
-            ).format(accessory['selling_price_per_unit'] ?? 0),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _handleEditItem(accessory),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      PhosphorIcons.pencilSimple(),
-                      size: 16,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _handleDeleteItem(accessory),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      PhosphorIcons.trash(),
-                      size: 16,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-      onSelectChanged: (selected) {
-        if (selected == true) {
-          InventoryDetailDialogDesktop.show(
-            context,
-            item: accessory,
-            inventoryType: 'accessory',
-            onEdit: _loadInventoryItems,
-            onDelete: _loadInventoryItems,
-          );
-        }
-      },
-    );
-  }
-
-  // Add this method to open the color picker
-  Future<void> _openColorPicker({required Map<String, dynamic> fabric}) async {
-    Color? initialColor;
-    if (fabric['color_code'] != null && fabric['color_code'].isNotEmpty) {
-      try {
-        initialColor = _parseColor(fabric['color_code']);
-      } catch (e) {
-        // Use default if parsing fails
-        initialColor = Colors.white;
-      }
-    }
-
-    final result = await FabricColorPicker.show(
-      context,
-      initialColor: initialColor,
-      initialColorName: fabric['shade_color'],
-    );
-
-    if (result != null) {
-      // Update the color in the database
-      try {
-        await _supabase
-            .from('fabric_inventory')
-            .update({
-              'shade_color': result.colorName,
-              'color_code': result.hexCode,
-            })
-            .eq('id', fabric['id']);
-
-        // Refresh the list
-        _loadInventoryItems();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Color updated to ${result.colorName}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating color: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 
   Color _parseColor(String colorCode) {
@@ -1215,5 +1145,58 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
     } catch (e) {
       return Colors.grey;
     }
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    bool isPrimary = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isPrimary ? _primaryColor : _surfaceColor,
+            border: Border.all(color: isPrimary ? _primaryColor : _borderColor),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow:
+                isPrimary
+                    ? [
+                      BoxShadow(
+                        color: _primaryColor.withOpacity(0.15),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isPrimary ? Colors.white : _textPrimary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isPrimary ? Colors.white : _textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

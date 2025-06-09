@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../widgets/inventory/inventory_mobile_view.dart';
 import '../widgets/inventory/inventory_desktop_view.dart';
 
@@ -28,28 +26,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
         },
       );
     } else {
-      // Return desktop view with appropriate scaffolding
-      return Scaffold(
-        backgroundColor: const Color(0xFF1A1C1E),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1A1C1E),
-          elevation: 0,
-          leading: BackButton(color: Colors.white),
-          title: Text(
-            'Inventory Management',
-            style: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        body: InventoryDesktopView(
-          inventoryType: _currentInventoryType,
-          onTypeChanged: (type) {
-            setState(() => _currentInventoryType = type);
-          },
-        ),
+      // Return desktop view without app bar
+      return InventoryDesktopView(
+        inventoryType: _currentInventoryType,
+        onTypeChanged: (type) {
+          setState(() => _currentInventoryType = type);
+        },
       );
     }
   }
