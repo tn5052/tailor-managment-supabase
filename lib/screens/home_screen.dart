@@ -19,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   final _screens = [
-    const DashboardScreen(),
+    // const DashboardScreen(),
+    const InventoryScreen(),
     const CustomerListScreen(),
     const MeasurementListScreen(),
     InvoiceListScreen(),

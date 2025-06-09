@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../theme/app_theme.dart';
+import 'inventory_design_config.dart';
 
 class EditInventoryMobileSheet extends StatefulWidget {
   final Map<String, dynamic> item;
-  final String inventoryType;
+  final String inventoryType; // 'fabric' or 'accessory'
   final VoidCallback? onItemUpdated;
 
   const EditInventoryMobileSheet({
@@ -21,10 +22,13 @@ class EditInventoryMobileSheet extends StatefulWidget {
     required String inventoryType,
     VoidCallback? onItemUpdated,
   }) {
-    return showModalBottomSheet<void>(
+    return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useSafeArea: true,
       builder:
           (context) => EditInventoryMobileSheet(
             item: item,
@@ -39,43 +43,62 @@ class EditInventoryMobileSheet extends StatefulWidget {
       _EditInventoryMobileSheetState();
 }
 
-class _EditInventoryMobileSheetState extends State<EditInventoryMobileSheet> {
-  final _formKey = GlobalKey<FormState>();
+class _EditInventoryMobileSheetState extends State<EditInventoryMobileSheet>
+    with TickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
 
-  // Controllers with existing data
+  // Animation controllers
+  late AnimationController _sheetAnimationController;
+  late AnimationController _contentAnimationController;
+  late Animation<double> _sheetAnimation;
+
+  // Focus nodes for keyboard management
+  final _sheetFocusNode = FocusNode();
+  final _itemNameFocusNode = FocusNode();
+  final _itemCodeFocusNode = FocusNode();
+  final _quantityFocusNode = FocusNode();
+  final _minimumStockFocusNode = FocusNode();
+  final _costFocusNode = FocusNode();
+  final _priceFocusNode = FocusNode();
+
+  // Form controllers
   late final TextEditingController _itemNameController;
   late final TextEditingController _itemCodeController;
   late final TextEditingController _colorController;
   late final TextEditingController _colorCodeController;
   late final TextEditingController _quantityController;
-  late final TextEditingController _minStockController;
+  late final TextEditingController _minimumStockController;
   late final TextEditingController _costController;
   late final TextEditingController _priceController;
-  late final TextEditingController _notesController;
 
-  String? _selectedBrand;
-  String? _selectedCategory;
-  String? _selectedUnitType;
+  // Form state
+  SearchableAddableDropdownItem? _selectedBrand;
+  SearchableAddableDropdownItem? _selectedCategory;
+  String _selectedUnitType = 'meter';
+  bool _isSaving = false;
 
-  List<Map<String, dynamic>> _brands = [];
-  List<Map<String, dynamic>> _categories = [];
+  // Keyboard state
+  double _keyboardHeight = 0;
+  bool _isKeyboardVisible = false;
 
-  final List<String> _unitTypes = [
-    'Meter',
-    'Yard',
-    'Piece',
-    'Kg',
-    'Gram',
-    'Set',
-  ];
+  // Unit type options
+  final List<String> _unitTypes = ['meter', 'yard', 'piece', 'kg', 'gram'];
 
   @override
   void initState() {
     super.initState();
     _initializeControllers();
-    _loadDropdownData();
+    _initializeAnimations();
+    _setupKeyboardListener();
+    _setupFormListeners();
+
+    // Request focus for accessibility
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sheetFocusNode.requestFocus();
+      _startEntryAnimation();
+    });
   }
 
   void _initializeControllers() {
@@ -96,486 +119,999 @@ class _EditInventoryMobileSheetState extends State<EditInventoryMobileSheet> {
       text: widget.item['color_code'] ?? '',
     );
     _quantityController = TextEditingController(
-      text: (widget.item['quantity_available'] ?? 0).toString(),
+      text: widget.item['quantity_available']?.toString() ?? '0',
     );
-    _minStockController = TextEditingController(
-      text: (widget.item['minimum_stock_level'] ?? 0).toString(),
+    _minimumStockController = TextEditingController(
+      text: widget.item['minimum_stock_level']?.toString() ?? '0',
     );
     _costController = TextEditingController(
-      text: (widget.item['cost_per_unit'] ?? 0.0).toString(),
+      text: widget.item['cost_per_unit']?.toString() ?? '0.00',
     );
     _priceController = TextEditingController(
-      text: (widget.item['selling_price_per_unit'] ?? 0.0).toString(),
+      text: widget.item['selling_price_per_unit']?.toString() ?? '0.00',
     );
-    _notesController = TextEditingController(text: widget.item['notes'] ?? '');
 
-    _selectedBrand = widget.item['brand_id']?.toString();
-    _selectedCategory = widget.item['category_id']?.toString();
+    // Initialize selected values
+    _selectedUnitType = widget.item['unit_type'] ?? 'meter';
 
-    // Fix the unit type dropdown issue by validating the value
-    final storedUnitType = widget.item['unit_type'];
-    _selectedUnitType =
-        _unitTypes.contains(storedUnitType) ? storedUnitType : null;
+    // Initialize brand if exists
+    if (widget.item['brand_name'] != null) {
+      _selectedBrand = SearchableAddableDropdownItem(
+        id: widget.item['brand_id'] ?? '',
+        name: widget.item['brand_name'],
+      );
+    }
+
+    // Initialize category if exists
+    final categoryName =
+        widget.item[isFabric ? 'fabric_type' : 'accessory_type'];
+    if (categoryName != null) {
+      _selectedCategory = SearchableAddableDropdownItem(
+        id: widget.item['category_id'] ?? '',
+        name: categoryName,
+      );
+    }
+  }
+
+  void _initializeAnimations() {
+    _sheetAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _contentAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _sheetAnimation = CurvedAnimation(
+      parent: _sheetAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _setupKeyboardListener() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final mediaQuery = MediaQuery.of(context);
+      final keyboardHeight = mediaQuery.viewInsets.bottom;
+
+      if (keyboardHeight != _keyboardHeight) {
+        setState(() {
+          _keyboardHeight = keyboardHeight;
+          _isKeyboardVisible = keyboardHeight > 0;
+        });
+
+        // Auto-scroll to focused field when keyboard appears
+        if (_isKeyboardVisible) {
+          _scrollToFocusedField();
+        }
+      }
+    });
+  }
+
+  void _setupFormListeners() {
+    // Auto-generate profit margin when cost/price changes
+    _costController.addListener(_calculateProfitMargin);
+    _priceController.addListener(_calculateProfitMargin);
+  }
+
+  void _calculateProfitMargin() {
+    final cost = double.tryParse(_costController.text) ?? 0;
+    final price = double.tryParse(_priceController.text) ?? 0;
+    // Trigger rebuild to update profit margin indicator
+    setState(() {});
+  }
+
+  void _scrollToFocusedField() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _startEntryAnimation() async {
+    await _sheetAnimationController.forward();
+    await _contentAnimationController.forward();
   }
 
   @override
   void dispose() {
+    _sheetAnimationController.dispose();
+    _contentAnimationController.dispose();
+    _scrollController.dispose();
+
+    // Dispose focus nodes
+    _sheetFocusNode.dispose();
+    _itemNameFocusNode.dispose();
+    _itemCodeFocusNode.dispose();
+    _quantityFocusNode.dispose();
+    _minimumStockFocusNode.dispose();
+    _costFocusNode.dispose();
+    _priceFocusNode.dispose();
+
+    // Dispose controllers
     _itemNameController.dispose();
     _itemCodeController.dispose();
     _colorController.dispose();
     _colorCodeController.dispose();
     _quantityController.dispose();
-    _minStockController.dispose();
+    _minimumStockController.dispose();
     _costController.dispose();
     _priceController.dispose();
-    _notesController.dispose();
+
     super.dispose();
   }
 
-  Future<void> _loadDropdownData() async {
-    try {
-      final brandsResponse = await _supabase
-          .from('brands')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
+  Future<void> _handleClose() async {
+    // Haptic feedback
+    HapticFeedback.lightImpact();
 
-      final categoriesResponse = await _supabase
-          .from('inventory_categories')
-          .select('id, category_name')
-          .eq('is_active', true)
-          .order('category_name');
+    // Hide keyboard
+    FocusScope.of(context).unfocus();
 
-      setState(() {
-        _brands = List<Map<String, dynamic>>.from(brandsResponse);
-        _categories = List<Map<String, dynamic>>.from(categoriesResponse);
-      });
-    } catch (e) {
-      // Handle error silently or show message
-    }
-  }
+    // Animate out
+    await _contentAnimationController.reverse();
+    await _sheetAnimationController.reverse();
 
-  Future<void> _updateItem() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final table =
-          widget.inventoryType == 'fabric'
-              ? 'fabric_inventory'
-              : 'accessories_inventory';
-
-      final data = {
-        if (widget.inventoryType == 'fabric') ...{
-          'fabric_item_name': _itemNameController.text.trim(),
-          'fabric_code': _itemCodeController.text.trim(),
-          'shade_color': _colorController.text.trim(),
-        } else ...{
-          'accessory_item_name': _itemNameController.text.trim(),
-          'accessory_code': _itemCodeController.text.trim(),
-          'color': _colorController.text.trim(),
-        },
-        'color_code': _colorCodeController.text.trim(),
-        'unit_type': _selectedUnitType,
-        'quantity_available': int.parse(_quantityController.text),
-        'minimum_stock_level': int.parse(_minStockController.text),
-        'cost_per_unit': double.parse(_costController.text),
-        'selling_price_per_unit': double.parse(_priceController.text),
-        'notes':
-            _notesController.text.trim().isEmpty
-                ? null
-                : _notesController.text.trim(),
-        'brand_id': _selectedBrand,
-        'category_id': _selectedCategory,
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-
-      await _supabase.from(table).update(data).eq('id', widget.item['id']);
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onItemUpdated?.call();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} updated successfully',
-            ),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating item: ${e.toString()}'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    if (mounted) {
+      Navigator.of(context).pop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenHeight = MediaQuery.of(context).size.height;
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final safeAreaTop = mediaQuery.padding.top;
+    final safeAreaBottom = mediaQuery.padding.bottom;
+
+    return AnimatedBuilder(
+      animation: _sheetAnimation,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: Colors.black.withOpacity(
+            0.4 * _sheetAnimation.value,
+          ),
+          body: GestureDetector(
+            onTap: _handleClose,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: screenHeight * 0.95,
+                  child: Transform.translate(
+                    offset: Offset(
+                      0,
+                      (screenHeight * 0.95) * (1 - _sheetAnimation.value),
+                    ),
+                    child: _buildSheetContent(safeAreaBottom),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSheetContent(double safeAreaBottom) {
+    return Container(
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Focus(
+        focusNode: _sheetFocusNode,
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(child: _buildFormContent(safeAreaBottom)),
+            _buildActionButtons(safeAreaBottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
     final isFabric = widget.inventoryType == 'fabric';
 
     return Container(
-      height: screenHeight * 0.9,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: const BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
       ),
       child: Column(
         children: [
-          // Handle bar
+          // Drag handle
           Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 48,
-            height: 5,
+            margin: const EdgeInsets.only(
+              top: InventoryDesignConfig.spacingM,
+              bottom: InventoryDesignConfig.spacingS,
+            ),
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
-              color: theme.dividerColor.withAlpha(100),
-              borderRadius: BorderRadius.circular(2.5),
+              color: InventoryDesignConfig.borderPrimary,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
 
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          // Header content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              InventoryDesignConfig.spacingXL,
+              InventoryDesignConfig.spacingS,
+              InventoryDesignConfig.spacingL,
+              InventoryDesignConfig.spacingL,
+            ),
             child: Row(
               children: [
-                Icon(
-                  PhosphorIcons.pencilSimple(),
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Edit ${isFabric ? 'Fabric' : 'Accessory'}',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
                     ),
                   ),
+                  child: Icon(
+                    PhosphorIcons.pencilSimple(),
+                    size: 20,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(PhosphorIcons.x()),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Edit ${isFabric ? 'Fabric' : 'Accessory'}',
+                        style: InventoryDesignConfig.headlineMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Update item details',
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildHeaderActionButton(
+                  icon: PhosphorIcons.x(),
+                  onTap: _handleClose,
+                  semanticLabel: 'Close',
                 ),
               ],
             ),
           ),
 
-          const Divider(height: 1),
+          // Divider
+          Container(height: 1, color: InventoryDesignConfig.borderSecondary),
+        ],
+      ),
+    );
+  }
 
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Basic Information
-                    _buildSection('Basic Information', PhosphorIcons.info(), [
-                      _buildTextField(
-                        controller: _itemNameController,
-                        label: '${isFabric ? 'Fabric' : 'Accessory'} Name',
-                        hint: 'Enter item name',
-                        icon: PhosphorIcons.textT(),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter item name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _itemCodeController,
-                        label: 'Item Code',
-                        hint: 'SKU/Code',
-                        icon: PhosphorIcons.barcode(),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter item code';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDropdown<String>(
-                        value: _selectedBrand,
-                        label: 'Brand',
-                        hint: 'Select brand',
-                        icon: PhosphorIcons.tag(),
-                        items:
-                            _brands
-                                .map(
-                                  (brand) => DropdownMenuItem<String>(
-                                    value: brand['id'].toString(),
-                                    child: Text(brand['name']),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged:
-                            (value) => setState(() => _selectedBrand = value),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDropdown<String>(
-                        value: _selectedCategory,
-                        label: 'Category',
-                        hint: 'Select category',
-                        icon: PhosphorIcons.folder(),
-                        items:
-                            _categories
-                                .map(
-                                  (category) => DropdownMenuItem<String>(
-                                    value: category['id'].toString(),
-                                    child: Text(category['category_name']),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged:
-                            (value) =>
-                                setState(() => _selectedCategory = value),
-                      ),
-                    ]),
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String semanticLabel,
+  }) {
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceLight,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: InventoryDesignConfig.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                    const SizedBox(height: 24),
+  Widget _buildFormContent(double safeAreaBottom) {
+    return Form(
+      key: _formKey,
+      child: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: InventoryDesignConfig.spacingXL,
+            right: InventoryDesignConfig.spacingXL,
+            top: InventoryDesignConfig.spacingL,
+            bottom: InventoryDesignConfig.spacingXL + _keyboardHeight,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Basic Information Section
+              _buildFormSection(
+                title: 'Basic Information',
+                icon: PhosphorIcons.info(),
+                children: [
+                  _buildTextFormField(
+                    label: 'Item Name',
+                    controller: _itemNameController,
+                    focusNode: _itemNameFocusNode,
+                    nextFocusNode: _itemCodeFocusNode,
+                    validator:
+                        (value) =>
+                            value?.isEmpty ?? true
+                                ? 'Item name is required'
+                                : null,
+                    textInputAction: TextInputAction.next,
+                    prefixIcon: PhosphorIcons.tag(),
+                  ),
 
-                    // Color Information
-                    _buildSection(
-                      'Color Information',
-                      PhosphorIcons.palette(),
-                      [
-                        _buildTextField(
-                          controller: _colorController,
-                          label: isFabric ? 'Shade Color' : 'Color',
-                          hint: 'Enter color name',
-                          icon: PhosphorIcons.eyedropper(),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _colorCodeController,
-                          label: 'Color Code',
-                          hint: '#FFFFFF or color name',
-                          icon: PhosphorIcons.hash(),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
 
-                    const SizedBox(height: 24),
+                  _buildTextFormField(
+                    label: 'Item Code',
+                    controller: _itemCodeController,
+                    focusNode: _itemCodeFocusNode,
+                    validator:
+                        (value) =>
+                            value?.isEmpty ?? true
+                                ? 'Item code is required'
+                                : null,
+                    textInputAction: TextInputAction.done,
+                    prefixIcon: PhosphorIcons.barcode(),
+                  ),
 
-                    // Inventory Details
-                    _buildSection(
-                      'Inventory Details',
-                      PhosphorIcons.package(),
-                      [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _quantityController,
-                                label: 'Quantity Available',
-                                hint: '0',
-                                icon: PhosphorIcons.stack(),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter quantity';
-                                  }
-                                  if (int.tryParse(value) == null) {
-                                    return 'Please enter valid number';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _minStockController,
-                                label: 'Minimum Stock Level',
-                                hint: '0',
-                                icon: PhosphorIcons.arrowsInLineVertical(),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter minimum stock';
-                                  }
-                                  if (int.tryParse(value) == null) {
-                                    return 'Please enter valid number';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDropdown<String>(
-                          value: _selectedUnitType,
-                          label: 'Unit Type',
-                          hint: 'Select unit',
-                          icon: PhosphorIcons.ruler(),
-                          items:
-                              _unitTypes
-                                  .map(
-                                    (unit) => DropdownMenuItem<String>(
-                                      value: unit,
-                                      child: Text(unit),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged:
-                              (value) =>
-                                  setState(() => _selectedUnitType = value),
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+
+                  _buildDropdownField(
+                    label: 'Category',
+                    value: _selectedCategory?.name,
+                    onTap: () => _showCategoryPicker(),
+                    validator:
+                        _selectedCategory == null
+                            ? 'Category is required'
+                            : null,
+                    prefixIcon: PhosphorIcons.folder(),
+                  ),
+
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+
+                  _buildDropdownField(
+                    label: 'Brand',
+                    value: _selectedBrand?.name,
+                    onTap: () => _showBrandPicker(),
+                    validator:
+                        widget.inventoryType == 'fabric' &&
+                                _selectedBrand == null
+                            ? 'Brand is required for fabrics'
+                            : null,
+                    prefixIcon: PhosphorIcons.certificate(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+              // Color Information Section
+              _buildFormSection(
+                title: 'Color Information',
+                icon: PhosphorIcons.paintBrush(),
+                children: [
+                  _buildDropdownField(
+                    label: 'Color',
+                    value:
+                        _colorController.text.isEmpty
+                            ? null
+                            : _colorController.text,
+                    onTap: () => _showColorPicker(),
+                    validator:
+                        widget.inventoryType == 'fabric' &&
+                                _colorController.text.isEmpty
+                            ? 'Color is required for fabrics'
+                            : null,
+                    prefixIcon: PhosphorIcons.palette(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+              // Inventory Details Section
+              _buildFormSection(
+                title: 'Inventory Details',
+                icon: PhosphorIcons.warehouse(),
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: _buildTextFormField(
+                          label: 'Quantity',
+                          controller: _quantityController,
+                          focusNode: _quantityFocusNode,
+                          nextFocusNode: _minimumStockFocusNode,
+                          keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value == null) {
-                              return 'Please select unit type';
-                            }
+                            if (value?.isEmpty ?? true)
+                              return 'Quantity is required';
+                            final num? parsed = num.tryParse(value!);
+                            if (parsed == null || parsed < 0)
+                              return 'Enter valid quantity';
                             return null;
                           },
+                          textInputAction: TextInputAction.next,
+                          prefixIcon: PhosphorIcons.package(),
                         ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Pricing Information
-                    _buildSection(
-                      'Pricing Information',
-                      PhosphorIcons.currencyDollar(),
-                      [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _costController,
-                                label: 'Cost per Unit',
-                                hint: '0.00',
-                                icon: PhosphorIcons.arrowDown(),
-                                keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter cost';
-                                  }
-                                  if (double.tryParse(value) == null) {
-                                    return 'Please enter valid amount';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTextField(
-                                controller: _priceController,
-                                label: 'Selling Price per Unit',
-                                hint: '0.00',
-                                icon: PhosphorIcons.arrowUp(),
-                                keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter selling price';
-                                  }
-                                  if (double.tryParse(value) == null) {
-                                    return 'Please enter valid amount';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Additional Notes
-                    _buildSection('Additional Notes', PhosphorIcons.notepad(), [
-                      _buildTextField(
-                        controller: _notesController,
-                        label: 'Notes (Optional)',
-                        hint: 'Any additional information...',
-                        icon: PhosphorIcons.note(),
-                        maxLines: 3,
                       ),
-                    ]),
 
-                    const SizedBox(
-                      height: 100,
-                    ), // Extra space for floating buttons
+                      const SizedBox(width: InventoryDesignConfig.spacingM),
+
+                      Expanded(child: _buildUnitTypeDropdown()),
+                    ],
+                  ),
+
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+
+                  _buildTextFormField(
+                    label: 'Minimum Stock Level',
+                    controller: _minimumStockController,
+                    focusNode: _minimumStockFocusNode,
+                    nextFocusNode: _costFocusNode,
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true)
+                        return 'Minimum stock is required';
+                      final num? parsed = num.tryParse(value!);
+                      if (parsed == null || parsed < 0)
+                        return 'Enter valid minimum stock';
+                      return null;
+                    },
+                    textInputAction: TextInputAction.next,
+                    prefixIcon: PhosphorIcons.warning(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+              // Pricing Information Section
+              _buildFormSection(
+                title: 'Pricing Information',
+                icon: PhosphorIcons.currencyDollar(),
+                children: [
+                  _buildTextFormField(
+                    label: 'Cost per Unit',
+                    controller: _costController,
+                    focusNode: _costFocusNode,
+                    nextFocusNode: _priceFocusNode,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Cost is required';
+                      final num? parsed = num.tryParse(value!);
+                      if (parsed == null || parsed < 0)
+                        return 'Enter valid cost';
+                      return null;
+                    },
+                    textInputAction: TextInputAction.next,
+                    prefixIcon: PhosphorIcons.coins(),
+                    prefixText: '\$ ',
+                  ),
+
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+
+                  _buildTextFormField(
+                    label: 'Selling Price per Unit',
+                    controller: _priceController,
+                    focusNode: _priceFocusNode,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Price is required';
+                      final num? parsed = num.tryParse(value!);
+                      if (parsed == null || parsed < 0)
+                        return 'Enter valid price';
+                      return null;
+                    },
+                    textInputAction: TextInputAction.done,
+                    prefixIcon: PhosphorIcons.tag(),
+                    prefixText: '\$ ',
+                  ),
+
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+
+                  _buildProfitMarginIndicator(),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusS,
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingM),
+            Text(
+              title,
+              style: InventoryDesignConfig.titleLarge.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingL),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildTextFormField({
+    required String label,
+    required TextEditingController controller,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    TextInputAction? textInputAction,
+    Function(String)? onFieldSubmitted,
+    IconData? prefixIcon,
+    String? prefixText,
+    String? helperText,
+  }) {
+    return Semantics(
+      label: label,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: InventoryDesignConfig.textPrimary,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            validator: validator,
+            style: InventoryDesignConfig.bodyLarge.copyWith(
+              color: InventoryDesignConfig.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Enter $label',
+              hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+                color: InventoryDesignConfig.textTertiary,
+              ),
+              prefixIcon:
+                  prefixIcon != null
+                      ? Padding(
+                        padding: const EdgeInsets.all(
+                          InventoryDesignConfig.spacingM,
+                        ),
+                        child: Icon(
+                          prefixIcon,
+                          size: 18,
+                          color: InventoryDesignConfig.textSecondary,
+                        ),
+                      )
+                      : null,
+              prefixText: prefixText,
+              prefixStyle: InventoryDesignConfig.bodyLarge.copyWith(
+                color: InventoryDesignConfig.textSecondary,
+              ),
+              helperText: helperText,
+              helperStyle: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.textTertiary,
+              ),
+              filled: true,
+              fillColor: InventoryDesignConfig.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.borderPrimary,
+                  width: 1,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.borderPrimary,
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.primaryColor,
+                  width: 2,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.errorColor,
+                  width: 1,
+                ),
+              ),
+              contentPadding: const EdgeInsets.all(
+                InventoryDesignConfig.spacingL,
+              ),
+            ),
+            onTapOutside: (_) {
+              focusNode?.unfocus();
+            },
+            onFieldSubmitted:
+                onFieldSubmitted ??
+                (String value) {
+                  if (textInputAction == TextInputAction.next) {
+                    if (nextFocusNode != null) {
+                      FocusScope.of(context).requestFocus(nextFocusNode);
+                    } else {
+                      focusNode?.unfocus();
+                      FocusScope.of(context).unfocus();
+                    }
+                  } else if (textInputAction == TextInputAction.done) {
+                    focusNode?.unfocus();
+                    FocusScope.of(context).unfocus();
+                  }
+                },
+            onEditingComplete: () {
+              if (textInputAction == TextInputAction.done) {
+                focusNode?.unfocus();
+                FocusScope.of(context).unfocus();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    String? value,
+    required VoidCallback onTap,
+    String? validator,
+    required IconData prefixIcon,
+  }) {
+    return Semantics(
+      label: label,
+      button: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: InventoryDesignConfig.textPrimary,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.surfaceLight,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  border: Border.all(
+                    color:
+                        validator != null
+                            ? InventoryDesignConfig.errorColor
+                            : InventoryDesignConfig.borderPrimary,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      prefixIcon,
+                      size: 18,
+                      color: InventoryDesignConfig.textSecondary,
+                    ),
+                    const SizedBox(width: InventoryDesignConfig.spacingM),
+                    Expanded(
+                      child: Text(
+                        value ?? 'Select $label',
+                        style: InventoryDesignConfig.bodyLarge.copyWith(
+                          color:
+                              value != null
+                                  ? InventoryDesignConfig.textPrimary
+                                  : InventoryDesignConfig.textTertiary,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      PhosphorIcons.caretDown(),
+                      size: 16,
+                      color: InventoryDesignConfig.textSecondary,
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-
-          // Action buttons
-          Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-              top: 16,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              border: Border(
-                top: BorderSide(color: theme.colorScheme.outlineVariant),
+          if (validator != null) ...[
+            const SizedBox(height: InventoryDesignConfig.spacingXS),
+            Text(
+              validator,
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.errorColor,
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed:
-                        _isLoading ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnitTypeDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Unit',
+          style: InventoryDesignConfig.bodyMedium.copyWith(
+            fontWeight: FontWeight.w600,
+            color: InventoryDesignConfig.textPrimary,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showUnitTypePicker(),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.surfaceLight,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                border: Border.all(
+                  color: InventoryDesignConfig.borderPrimary,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    PhosphorIcons.ruler(),
+                    size: 18,
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingM),
+                  Expanded(
+                    child: Text(
+                      _selectedUnitType,
+                      style: InventoryDesignConfig.bodyLarge.copyWith(
+                        color: InventoryDesignConfig.textPrimary,
                       ),
                     ),
-                    child: const Text('Cancel'),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _updateItem,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child:
-                        _isLoading
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : const Text('Update Item'),
+                  Icon(
+                    PhosphorIcons.caretDown(),
+                    size: 16,
+                    color: InventoryDesignConfig.textSecondary,
                   ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfitMarginIndicator() {
+    final cost = double.tryParse(_costController.text) ?? 0;
+    final price = double.tryParse(_priceController.text) ?? 0;
+    final profit = price - cost;
+    final marginPercent = cost > 0 ? (profit / cost) * 100 : 0;
+
+    Color profitColor;
+    String healthText;
+
+    if (marginPercent <= 0) {
+      profitColor = InventoryDesignConfig.errorColor;
+      healthText = 'Loss';
+    } else if (marginPercent < 15) {
+      profitColor = InventoryDesignConfig.warningColor;
+      healthText = 'Low Margin';
+    } else if (marginPercent < 30) {
+      profitColor = InventoryDesignConfig.successColor;
+      healthText = 'Good Margin';
+    } else {
+      profitColor = InventoryDesignConfig.successColor;
+      healthText = 'Excellent Margin';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        color: profitColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        border: Border.all(color: profitColor.withOpacity(0.2), width: 1),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.trendUp(), size: 16, color: profitColor),
+              const SizedBox(width: InventoryDesignConfig.spacingS),
+              Text(
+                'Profit Margin',
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: profitColor,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+              ),
+              const Spacer(),
+              Text(
+                healthText,
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: profitColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${profit.toStringAsFixed(2)} profit',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  color: profitColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${marginPercent.toStringAsFixed(1)}%',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  color: profitColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(double safeAreaBottom) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        InventoryDesignConfig.spacingXL,
+        InventoryDesignConfig.spacingL,
+        InventoryDesignConfig.spacingXL,
+        InventoryDesignConfig.spacingL + safeAreaBottom,
+      ),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        border: Border(
+          top: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              label: 'Cancel',
+              icon: PhosphorIcons.x(),
+              color: InventoryDesignConfig.textSecondary,
+              backgroundColor: InventoryDesignConfig.surfaceLight,
+              onTap: _handleClose,
+            ),
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            flex: 2,
+            child: _buildActionButton(
+              label: 'Update Item',
+              icon: PhosphorIcons.check(),
+              color: InventoryDesignConfig.surfaceColor,
+              backgroundColor: InventoryDesignConfig.primaryColor,
+              onTap: _isSaving ? null : _handleSave,
+              loading: _isSaving,
             ),
           ),
         ],
@@ -583,164 +1119,1173 @@ class _EditInventoryMobileSheetState extends State<EditInventoryMobileSheet> {
     );
   }
 
-  Widget _buildSection(String title, IconData icon, List<Widget> children) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+  Widget _buildActionButton({
+    required String label,
+    IconData? icon,
+    required Color color,
+    required Color backgroundColor,
+    VoidCallback? onTap,
+    bool loading = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              vertical: InventoryDesignConfig.spacingL,
+              horizontal: InventoryDesignConfig.spacingM,
             ),
-            const SizedBox(width: 12),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              border: Border.all(
+                color:
+                    backgroundColor == InventoryDesignConfig.surfaceLight
+                        ? InventoryDesignConfig.borderPrimary
+                        : backgroundColor,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (loading) ...[
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                ] else ...[
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: color),
+                    const SizedBox(width: InventoryDesignConfig.spacingS),
+                  ],
+                  Text(
+                    label,
+                    style: InventoryDesignConfig.bodyMedium.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Picker methods (same as add sheet)
+  void _showCategoryPicker() {
+    FocusScope.of(context).unfocus();
+    _showSearchableAddableBottomSheet(
+      title: 'Select Category',
+      searchHint: 'Search categories...',
+      fetchItems: _fetchCategories,
+      addItem: _addCategory,
+      onItemSelected: (item) {
+        setState(() => _selectedCategory = item);
+      },
+    );
+  }
+
+  void _showBrandPicker() {
+    FocusScope.of(context).unfocus();
+    _showSearchableAddableBottomSheet(
+      title: 'Select Brand',
+      searchHint: 'Search brands...',
+      fetchItems: _fetchBrands,
+      addItem: _addBrand,
+      onItemSelected: (item) {
+        setState(() => _selectedBrand = item);
+      },
+    );
+  }
+
+  void _showColorPicker() {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      builder:
+          (context) => _ColorPickerSheet(
+            initialColor: _colorController.text,
+            initialColorCode: _colorCodeController.text,
+            onColorSelected: (colorName, colorCode) {
+              setState(() {
+                _colorController.text = colorName;
+                _colorCodeController.text = colorCode;
+              });
+            },
+          ),
+    );
+  }
+
+  void _showUnitTypePicker() {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => _UnitTypePickerSheet(
+            selectedUnit: _selectedUnitType,
+            unitTypes: _unitTypes,
+            onUnitSelected: (unit) {
+              setState(() => _selectedUnitType = unit);
+            },
+          ),
+    );
+  }
+
+  // Data methods (same as add sheet)
+  Future<List<SearchableAddableDropdownItem>> _fetchBrands(
+    String? searchText,
+  ) async {
+    var query = _supabase
+        .from('brands')
+        .select('id, name')
+        .eq('is_active', true)
+        .eq('tenant_id', _supabase.auth.currentUser?.id ?? '');
+
+    if (searchText != null && searchText.isNotEmpty) {
+      query = query.ilike('name', '%$searchText%');
+    }
+
+    final response = await query.order('name', ascending: true);
+    return response
+        .map((e) => SearchableAddableDropdownItem(id: e['id'], name: e['name']))
+        .toList();
+  }
+
+  Future<SearchableAddableDropdownItem?> _addBrand(String brandName) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final response =
+          await _supabase
+              .from('brands')
+              .insert({
+                'name': brandName.trim(),
+                'brand_type': 'general',
+                'is_active': true,
+                'tenant_id': userId,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .select('id, name')
+              .single();
+
+      return SearchableAddableDropdownItem(
+        id: response['id'],
+        name: response['name'],
+      );
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error adding brand: ${e.toString()}');
+      }
+      return null;
+    }
+  }
+
+  Future<List<SearchableAddableDropdownItem>> _fetchCategories(
+    String? searchText,
+  ) async {
+    var query = _supabase
+        .from('inventory_categories')
+        .select('id, category_name')
+        .eq('category_type', widget.inventoryType)
+        .eq('is_active', true)
+        .eq('tenant_id', _supabase.auth.currentUser?.id ?? '');
+
+    if (searchText != null && searchText.isNotEmpty) {
+      query = query.ilike('category_name', '%$searchText%');
+    }
+
+    final response = await query.order('category_name', ascending: true);
+    return response
+        .map(
+          (e) => SearchableAddableDropdownItem(
+            id: e['id'],
+            name: e['category_name'],
+          ),
+        )
+        .toList();
+  }
+
+  Future<SearchableAddableDropdownItem?> _addCategory(
+    String categoryName,
+  ) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final response =
+          await _supabase
+              .from('inventory_categories')
+              .insert({
+                'category_name': categoryName.trim(),
+                'category_type': widget.inventoryType,
+                'is_active': true,
+                'tenant_id': userId,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .select('id, category_name')
+              .single();
+
+      return SearchableAddableDropdownItem(
+        id: response['id'],
+        name: response['category_name'],
+      );
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error adding category: ${e.toString()}');
+      }
+      return null;
+    }
+  }
+
+  void _showSearchableAddableBottomSheet({
+    required String title,
+    required String searchHint,
+    required Future<List<SearchableAddableDropdownItem>> Function(String?)
+    fetchItems,
+    required Future<SearchableAddableDropdownItem?> Function(String) addItem,
+    required Function(SearchableAddableDropdownItem) onItemSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      builder:
+          (context) => _SearchableAddableDropdown(
+            title: title,
+            searchHint: searchHint,
+            fetchItems: fetchItems,
+            addItem: addItem,
+            onItemSelected: onItemSelected,
+          ),
+    );
+  }
+
+  Future<void> _handleSave() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      await _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+
+    if (_selectedCategory == null) {
+      _showErrorSnackBar('Please select a category');
+      return;
+    }
+
+    if (widget.inventoryType == 'fabric' && _selectedBrand == null) {
+      _showErrorSnackBar('Please select a brand for fabric items');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final isFabric = widget.inventoryType == 'fabric';
+      final table = isFabric ? 'fabric_inventory' : 'accessories_inventory';
+
+      final data = {
+        if (isFabric)
+          'fabric_item_name': _itemNameController.text.trim()
+        else
+          'accessory_item_name': _itemNameController.text.trim(),
+        if (isFabric)
+          'fabric_code': _itemCodeController.text.trim()
+        else
+          'accessory_code': _itemCodeController.text.trim(),
+        if (isFabric)
+          'shade_color': _colorController.text.trim()
+        else
+          'color': _colorController.text.trim(),
+        'color_code': _colorCodeController.text.trim(),
+        'quantity_available': int.parse(_quantityController.text),
+        'minimum_stock_level': int.parse(_minimumStockController.text),
+        'cost_per_unit': double.parse(_costController.text),
+        'selling_price_per_unit': double.parse(_priceController.text),
+        'unit_type': _selectedUnitType,
+        'category_id': _selectedCategory!.id,
+        'brand_id': _selectedBrand?.id,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      await _supabase
+          .from(table)
+          .update(data)
+          .eq('id', widget.item['id'])
+          .eq('tenant_id', userId);
+
+      if (mounted) {
+        _showSuccessSnackBar(
+          '${isFabric ? 'Fabric' : 'Accessory'} updated successfully',
+        );
+        widget.onItemUpdated?.call();
+        _handleClose();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error updating item: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: InventoryDesignConfig.successColor,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: InventoryDesignConfig.errorColor,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+}
+
+// Supporting classes (from add sheet)
+class SearchableAddableDropdownItem {
+  final String id;
+  final String name;
+
+  SearchableAddableDropdownItem({required this.id, required this.name});
+}
+
+class _SearchableAddableDropdown extends StatefulWidget {
+  final String title;
+  final String searchHint;
+  final Future<List<SearchableAddableDropdownItem>> Function(String?)
+  fetchItems;
+  final Future<SearchableAddableDropdownItem?> Function(String) addItem;
+  final Function(SearchableAddableDropdownItem) onItemSelected;
+
+  const _SearchableAddableDropdown({
+    required this.title,
+    required this.searchHint,
+    required this.fetchItems,
+    required this.addItem,
+    required this.onItemSelected,
+  });
+
+  @override
+  State<_SearchableAddableDropdown> createState() =>
+      __SearchableAddableDropdownState();
+}
+
+class __SearchableAddableDropdownState extends State<_SearchableAddableDropdown>
+    with TickerProviderStateMixin {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
+
+  late AnimationController _animationController;
+  late Animation<double> _sheetAnimation;
+
+  bool _isLoading = false;
+  bool _isAdding = false;
+  List<SearchableAddableDropdownItem> _items = [];
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _loadItems();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _initializeAnimations() {
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _sheetAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _searchController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadItems() async {
+    setState(() => _isLoading = true);
+    try {
+      final items = await widget.fetchItems(
+        _searchQuery.isEmpty ? null : _searchQuery,
+      );
+      setState(() {
+        _items = items;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addNewItem() async {
+    if (_searchQuery.trim().isEmpty) return;
+
+    setState(() => _isAdding = true);
+    try {
+      final newItem = await widget.addItem(_searchQuery.trim());
+      if (newItem != null) {
+        widget.onItemSelected(newItem);
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Error handling is done in the parent
+    } finally {
+      setState(() => _isAdding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return AnimatedBuilder(
+      animation: _sheetAnimation,
+      builder: (context, child) {
+        return Container(
+          height: screenHeight * 0.8,
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(InventoryDesignConfig.radiusXL),
+            ),
+          ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildSearchSection(),
+              Expanded(child: _buildItemsList()),
+              if (_searchQuery.isNotEmpty &&
+                  !_items.any(
+                    (item) =>
+                        item.name.toLowerCase() == _searchQuery.toLowerCase(),
+                  ))
+                _buildAddNewSection(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIcons.magnifyingGlass(),
+            color: InventoryDesignConfig.primaryColor,
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: Text(widget.title, style: InventoryDesignConfig.titleLarge),
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(PhosphorIcons.x()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _focusNode,
+        style: InventoryDesignConfig.bodyLarge,
+        decoration: InputDecoration(
+          hintText: widget.searchHint,
+          hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+            color: InventoryDesignConfig.textTertiary,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+            child: Icon(
+              PhosphorIcons.magnifyingGlass(),
+              size: 18,
+              color: InventoryDesignConfig.textSecondary,
+            ),
+          ),
+          filled: true,
+          fillColor: InventoryDesignConfig.surfaceLight,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: InventoryDesignConfig.spacingM,
+          ),
+        ),
+        onChanged: (value) {
+          setState(() => _searchQuery = value);
+          _loadItems();
+        },
+      ),
+    );
+  }
+
+  Widget _buildItemsList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: InventoryDesignConfig.primaryColor,
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              PhosphorIcons.package(),
+              size: 48,
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            const SizedBox(height: InventoryDesignConfig.spacingL),
+            Text('No items found', style: InventoryDesignConfig.titleMedium),
             Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+              _searchQuery.isEmpty
+                  ? 'No items available'
+                  : 'Try a different search term',
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                color: InventoryDesignConfig.textSecondary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        ...children,
-      ],
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingL,
+      ),
+      itemCount: _items.length,
+      itemBuilder: (context, index) {
+        final item = _items[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              widget.onItemSelected(item);
+              Navigator.of(context).pop();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: InventoryDesignConfig.borderSecondary,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.primaryColor.withOpacity(
+                        0.1,
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        InventoryDesignConfig.radiusM,
+                      ),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.tag(),
+                      size: 20,
+                      color: InventoryDesignConfig.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingM),
+                  Expanded(
+                    child: Text(
+                      item.name,
+                      style: InventoryDesignConfig.bodyLarge,
+                    ),
+                  ),
+                  Icon(
+                    PhosphorIcons.caretRight(),
+                    size: 16,
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
+  Widget _buildAddNewSection() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceLight,
+        border: Border(
+          top: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
           ),
         ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(
-              icon,
-              size: 18,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            filled: true,
-            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary,
-                width: 1.5,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isAdding ? null : _addNewItem,
+          borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              border: Border.all(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.3),
               ),
             ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.colorScheme.error),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isAdding) ...[
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        InventoryDesignConfig.primaryColor,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Icon(
+                    PhosphorIcons.plus(),
+                    size: 18,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingS),
+                  Text(
+                    'Add "${_searchQuery.trim()}"',
+                    style: InventoryDesignConfig.bodyMedium.copyWith(
+                      color: InventoryDesignConfig.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _ColorPickerSheet extends StatefulWidget {
+  final String initialColor;
+  final String initialColorCode;
+  final Function(String colorName, String colorCode) onColorSelected;
+
+  const _ColorPickerSheet({
+    required this.initialColor,
+    required this.initialColorCode,
+    required this.onColorSelected,
+  });
+
+  @override
+  State<_ColorPickerSheet> createState() => __ColorPickerSheetState();
+}
+
+class __ColorPickerSheetState extends State<_ColorPickerSheet> {
+  late String _selectedColor;
+  late String _selectedColorCode;
+  final _customColorController = TextEditingController();
+
+  final List<Map<String, String>> _predefinedColors = [
+    {'name': 'Red', 'code': '#FF0000'},
+    {'name': 'Blue', 'code': '#0000FF'},
+    {'name': 'Green', 'code': '#008000'},
+    {'name': 'Yellow', 'code': '#FFFF00'},
+    {'name': 'Orange', 'code': '#FFA500'},
+    {'name': 'Purple', 'code': '#800080'},
+    {'name': 'Pink', 'code': '#FFC0CB'},
+    {'name': 'Brown', 'code': '#A52A2A'},
+    {'name': 'Black', 'code': '#000000'},
+    {'name': 'White', 'code': '#FFFFFF'},
+    {'name': 'Gray', 'code': '#808080'},
+    {'name': 'Navy', 'code': '#000080'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedColor = widget.initialColor;
+    _selectedColorCode = widget.initialColorCode;
+  }
+
+  @override
+  void dispose() {
+    _customColorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Choose Color',
+                    style: InventoryDesignConfig.titleMedium,
+                  ),
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+                  _buildColorGrid(),
+                  const SizedBox(height: InventoryDesignConfig.spacingXXL),
+                  Text(
+                    'Or enter custom color',
+                    style: InventoryDesignConfig.titleMedium,
+                  ),
+                  const SizedBox(height: InventoryDesignConfig.spacingL),
+                  _buildCustomColorInput(),
+                ],
+              ),
+            ),
+          ),
+          _buildActionButtons(),
+        ],
+      ),
     );
   }
 
-  Widget _buildDropdown<T>({
-    required T? value,
-    required String label,
-    required String hint,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-    String? Function(T?)? validator,
-  }) {
-    final theme = Theme.of(context);
-
-    // Ensure the value exists in the items list, otherwise set to null
-    final validValue = items.any((item) => item.value == value) ? value : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
           ),
         ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<T>(
-          value: validValue, // Use validated value
-          validator: validator,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(
-              icon,
-              size: 18,
-              color: theme.colorScheme.onSurfaceVariant,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIcons.palette(),
+            color: InventoryDesignConfig.primaryColor,
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: Text(
+              'Select Color',
+              style: InventoryDesignConfig.titleLarge,
             ),
-            filled: true,
-            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary,
-                width: 1.5,
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(PhosphorIcons.x()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: InventoryDesignConfig.spacingM,
+        mainAxisSpacing: InventoryDesignConfig.spacingM,
+        childAspectRatio: 1,
+      ),
+      itemCount: _predefinedColors.length,
+      itemBuilder: (context, index) {
+        final color = _predefinedColors[index];
+        final isSelected = _selectedColor == color['name'];
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedColor = color['name']!;
+              _selectedColorCode = color['code']!;
+            });
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: _parseColor(color['code']!),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              border: Border.all(
+                color:
+                    isSelected
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.borderPrimary,
+                width: isSelected ? 3 : 1,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isSelected)
+                  Icon(
+                    PhosphorIcons.check(),
+                    color:
+                        color['name'] == 'White' || color['name'] == 'Yellow'
+                            ? Colors.black
+                            : Colors.white,
+                    size: 24,
+                  ),
+                const SizedBox(height: InventoryDesignConfig.spacingXS),
+                Text(
+                  color['name']!,
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color:
+                        color['name'] == 'White' || color['name'] == 'Yellow'
+                            ? Colors.black
+                            : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-          items: items,
-          onChanged: onChanged,
+        );
+      },
+    );
+  }
+
+  Widget _buildCustomColorInput() {
+    return TextField(
+      controller: _customColorController,
+      style: InventoryDesignConfig.bodyLarge,
+      decoration: InputDecoration(
+        hintText: 'Enter color name',
+        hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+          color: InventoryDesignConfig.textTertiary,
         ),
-      ],
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+          child: Icon(
+            PhosphorIcons.textT(),
+            size: 18,
+            color: InventoryDesignConfig.textSecondary,
+          ),
+        ),
+        filled: true,
+        fillColor: InventoryDesignConfig.surfaceLight,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: InventoryDesignConfig.spacingM,
+        ),
+      ),
+      onChanged: (value) {
+        setState(() {
+          _selectedColor = value;
+          _selectedColorCode = '';
+        });
+      },
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                final colorName =
+                    _customColorController.text.isNotEmpty
+                        ? _customColorController.text.trim()
+                        : _selectedColor;
+                widget.onColorSelected(colorName, _selectedColorCode);
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: InventoryDesignConfig.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Select'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _parseColor(String colorCode) {
+    try {
+      return Color(int.parse(colorCode.substring(1), radix: 16) + 0xFF000000);
+    } catch (e) {
+      return InventoryDesignConfig.textTertiary;
+    }
+  }
+}
+
+class _UnitTypePickerSheet extends StatelessWidget {
+  final String selectedUnit;
+  final List<String> unitTypes;
+  final Function(String) onUnitSelected;
+
+  const _UnitTypePickerSheet({
+    required this.selectedUnit,
+    required this.unitTypes,
+    required this.onUnitSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(context),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: InventoryDesignConfig.spacingL,
+              ),
+              itemCount: unitTypes.length,
+              itemBuilder: (context, index) {
+                final unit = unitTypes[index];
+                final isSelected = selectedUnit == unit;
+
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      onUnitSelected(unit);
+                      Navigator.of(context).pop();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(
+                        InventoryDesignConfig.spacingL,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? InventoryDesignConfig.primaryColor
+                                    .withOpacity(0.1)
+                                : Colors.transparent,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: InventoryDesignConfig.borderSecondary,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color:
+                                  isSelected
+                                      ? InventoryDesignConfig.primaryColor
+                                      : InventoryDesignConfig.surfaceLight,
+                              borderRadius: BorderRadius.circular(
+                                InventoryDesignConfig.radiusS,
+                              ),
+                            ),
+                            child: Icon(
+                              PhosphorIcons.ruler(),
+                              size: 16,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : InventoryDesignConfig.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: InventoryDesignConfig.spacingM),
+                          Expanded(
+                            child: Text(
+                              unit,
+                              style: InventoryDesignConfig.bodyLarge.copyWith(
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                color:
+                                    isSelected
+                                        ? InventoryDesignConfig.primaryColor
+                                        : InventoryDesignConfig.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(
+                              PhosphorIcons.check(),
+                              size: 18,
+                              color: InventoryDesignConfig.primaryColor,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIcons.ruler(),
+            color: InventoryDesignConfig.primaryColor,
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: Text(
+              'Select Unit Type',
+              style: InventoryDesignConfig.titleLarge,
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(PhosphorIcons.x()),
+          ),
+        ],
+      ),
     );
   }
 }

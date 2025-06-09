@@ -65,8 +65,6 @@ class _EditInventoryDesktopDialogState
   String? _selectedBrandName;
   String? _selectedCategoryName;
 
-  List<Map<String, dynamic>> _brands = [];
-  List<Map<String, dynamic>> _categories = [];
 
   final List<String> _unitTypes = [
     'Meter',
@@ -226,8 +224,6 @@ class _EditInventoryDesktopDialogState
           .order('category_name');
 
       setState(() {
-        _brands = List<Map<String, dynamic>>.from(brandsResponse);
-        _categories = List<Map<String, dynamic>>.from(categoriesResponse);
       });
     } catch (e) {
       // Handle error silently or show message
