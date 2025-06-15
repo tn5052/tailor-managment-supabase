@@ -1,25 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/customer.dart';
 import '../../services/customer_service.dart';
-import 'customer_selector_dialog.dart'; // Import CustomerSelectorDialog
-import 'family_selector_section.dart'; // Import FamilySelectorSection
-import '../measurement/add_measurement_dialog.dart';
-import '../invoice/add_invoice_dailog.dart';
+import 'customer_selector_dialog.dart';
+import '../inventory/inventory_design_config.dart';
 
 class AddCustomerDialog extends StatefulWidget {
   final Customer? customer;
   final int? index;
   final bool isEditing;
+  final VoidCallback? onCustomerAdded;
 
   const AddCustomerDialog({
     super.key,
     this.customer,
     this.index,
     this.isEditing = false,
+    this.onCustomerAdded,
   });
+
+  static Future<void> show(
+    BuildContext context, {
+    Customer? customer,
+    int? index,
+    bool isEditing = false,
+    VoidCallback? onCustomerAdded,
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AddCustomerDialog(
+            customer: customer,
+            index: index,
+            isEditing: isEditing,
+            onCustomerAdded: onCustomerAdded,
+          ),
+    );
+  }
 
   @override
   State<AddCustomerDialog> createState() => _AddCustomerDialogState();
@@ -33,85 +54,67 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   final _phoneController = TextEditingController();
   final _whatsappController = TextEditingController();
   final _addressController = TextEditingController();
+
   late Gender _selectedGender;
   bool _useCustomBillNumber = false;
   Customer? _referredBy;
-  int _referralCount = 0;
-
-  // Add these fields
   Customer? _familyMember;
   FamilyRelation? _familyRelation;
+  bool _isSaving = false;
 
   List<Customer> _referredCustomers = [];
   List<Customer> _familyMembers = [];
 
   final String _draftKey = "add_customer_dialog_draft";
 
-  // Save draft data
-  Future<void> _saveDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final draftData = {
-      "billNumber": _billNumberController.text,
-      "name": _nameController.text,
-      "phone": _phoneController.text,
-      "whatsapp": _whatsappController.text,
-      "address": _addressController.text,
-      "selectedGender": _selectedGender.toString(), // as string
-    };
-    prefs.setString(_draftKey, jsonEncode(draftData));
-  }
+  // Gender options
+  final List<Gender> _genderOptions = [Gender.male, Gender.female];
 
-  // Load draft data
-  Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey(_draftKey)) {
-      final draftData = jsonDecode(prefs.getString(_draftKey)!);
-      setState(() {
-        _billNumberController.text = draftData["billNumber"] ?? "";
-        _nameController.text = draftData["name"] ?? "";
-        _phoneController.text = draftData["phone"] ?? "";
-        _whatsappController.text = draftData["whatsapp"] ?? "";
-        _addressController.text = draftData["address"] ?? "";
-        // Optionally update _selectedGender from the string if needed
-      });
-    }
-  }
-
-  Future<void> _clearDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.remove(_draftKey);
-  }
+  // Family relation options
+  final List<FamilyRelation> _familyRelationOptions = [
+    FamilyRelation.parent,
+    FamilyRelation.spouse,
+    FamilyRelation.child,
+    FamilyRelation.sibling,
+    FamilyRelation.other,
+  ];
 
   @override
   void initState() {
     super.initState();
+    _initializeData();
+    _setupFormListeners();
+  }
+
+  void _initializeData() {
     if (widget.isEditing && widget.customer != null) {
-      _nameController.text = widget.customer!.name;
-      _phoneController.text = widget.customer!.phone;
-      _whatsappController.text = widget.customer!.whatsapp;
-      _addressController.text = widget.customer!.address;
-      _selectedGender = widget.customer!.gender;
-      _billNumberController.text = widget.customer!.billNumber;
-      
-      // Load referring customer if exists
-      if (widget.customer!.referredBy != null) {
-        _loadReferringCustomer(widget.customer!.referredBy!);
+      final customer = widget.customer!;
+      _nameController.text = customer.name;
+      _phoneController.text = customer.phone;
+      _whatsappController.text = customer.whatsapp;
+      _addressController.text = customer.address;
+      _selectedGender = customer.gender;
+      _billNumberController.text = customer.billNumber;
+
+      if (customer.referredBy != null) {
+        _loadReferringCustomer(customer.referredBy!);
+      }
+      if (customer.familyId != null) {
+        _loadFamilyMember(customer.familyId!);
+        _familyRelation = customer.familyRelation;
       }
 
-      if (widget.customer!.familyId != null) {
-        _loadFamilyMember(widget.customer!.familyId!);
-      }
-
-      _loadReferredCustomers(widget.customer!.id);
-      _loadFamilyMembers(widget.customer!.id);
+      _loadReferredCustomers(customer.id);
+      _loadFamilyMembers(customer.id);
     } else {
       _selectedGender = Gender.male;
-    }
-    // Load draft state (only for new customers)
-    if (!widget.isEditing) {
+      _generateBillNumber();
       _loadDraft();
-      
-      // Attach auto-save listeners to controllers
+    }
+  }
+
+  void _setupFormListeners() {
+    if (!widget.isEditing) {
       final controllers = [
         _billNumberController,
         _nameController,
@@ -123,65 +126,30 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
         controller.addListener(_saveDraft);
       }
     }
-    if (!widget.isEditing) {
-      // Initialize with a default value when adding a new customer
-      _supabaseService.generateUniqueBillNumber().then((billNumber) {
-        setState(() {
-          _billNumberController.text = billNumber;
-        });
-      });
-    }
-  }
 
-  Future<void> _loadReferringCustomer(String referredById) async {
-    try {
-      final customer = await _supabaseService.getCustomerById(referredById);
-      if (customer != null) {
-        final count = await _supabaseService.getReferralCount(referredById);
-        setState(() {
-          _referredBy = customer;
-          _referralCount = count;
-        });
+    // Auto-capitalize first letter of each word in name
+    _nameController.addListener(() {
+      final text = _nameController.text;
+      final selection = _nameController.selection;
+      if (text.isNotEmpty) {
+        final words = text.split(' ');
+        final capitalizedWords = words
+            .map((word) {
+              if (word.isNotEmpty) {
+                return word[0].toUpperCase() + word.substring(1).toLowerCase();
+              }
+              return word;
+            })
+            .join(' ');
+
+        if (capitalizedWords != text) {
+          _nameController.value = TextEditingValue(
+            text: capitalizedWords,
+            selection: selection,
+          );
+        }
       }
-    } catch (e) {
-      debugPrint('Error loading referring customer: $e');
-    }
-  }
-
-  Future<void> _loadFamilyMember(String familyId) async {
-    try {
-      final member = await _supabaseService.getCustomerById(familyId);
-      if (member != null) {
-        setState(() {
-          _familyMember = member;
-          _familyRelation = widget.customer!.familyRelation;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading family member: $e');
-    }
-  }
-
-  Future<void> _loadReferredCustomers(String customerId) async {
-    try {
-      final customers = await _supabaseService.getReferredCustomers(customerId);
-      setState(() {
-        _referredCustomers = customers;
-      });
-    } catch (e) {
-      debugPrint('Error loading referred customers: $e');
-    }
-  }
-
-  Future<void> _loadFamilyMembers(String customerId) async {
-    try {
-      final familyMembers = await _supabaseService.getFamilyMembers(customerId);
-      setState(() {
-        _familyMembers = familyMembers;
-      });
-    } catch (e) {
-      debugPrint('Error loading family members: $e');
-    }
+    });
   }
 
   @override
@@ -194,11 +162,87 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     super.dispose();
   }
 
-  Future<String> _generateBillNumber() async {
-    if (_useCustomBillNumber && _billNumberController.text.isNotEmpty) {
-      return _billNumberController.text;
+  Future<void> _generateBillNumber() async {
+    if (!widget.isEditing) {
+      try {
+        final billNumber = await _supabaseService.generateUniqueBillNumber();
+        _billNumberController.text = billNumber;
+      } catch (e) {
+        // Handle error silently
+      }
     }
-    return await _supabaseService.generateUniqueBillNumber();
+  }
+
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftData = {
+      "billNumber": _billNumberController.text,
+      "name": _nameController.text,
+      "phone": _phoneController.text,
+      "whatsapp": _whatsappController.text,
+      "address": _addressController.text,
+      "selectedGender": _selectedGender.toString(),
+    };
+    prefs.setString(_draftKey, jsonEncode(draftData));
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(_draftKey)) {
+      final draftData = jsonDecode(prefs.getString(_draftKey)!);
+      setState(() {
+        _billNumberController.text = draftData["billNumber"] ?? "";
+        _nameController.text = draftData["name"] ?? "";
+        _phoneController.text = draftData["phone"] ?? "";
+        _whatsappController.text = draftData["whatsapp"] ?? "";
+        _addressController.text = draftData["address"] ?? "";
+      });
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove(_draftKey);
+  }
+
+  Future<void> _loadReferringCustomer(String referredById) async {
+    try {
+      final customer = await _supabaseService.getCustomerById(referredById);
+      if (customer != null && mounted) {
+        setState(() => _referredBy = customer);
+      }
+    } catch (e) {
+      debugPrint('Error loading referring customer: $e');
+    }
+  }
+
+  Future<void> _loadFamilyMember(String familyId) async {
+    try {
+      final member = await _supabaseService.getCustomerById(familyId);
+      if (member != null && mounted) {
+        setState(() => _familyMember = member);
+      }
+    } catch (e) {
+      debugPrint('Error loading family member: $e');
+    }
+  }
+
+  Future<void> _loadReferredCustomers(String customerId) async {
+    try {
+      final customers = await _supabaseService.getReferredCustomers(customerId);
+      setState(() => _referredCustomers = customers);
+    } catch (e) {
+      debugPrint('Error loading referred customers: $e');
+    }
+  }
+
+  Future<void> _loadFamilyMembers(String customerId) async {
+    try {
+      final familyMembers = await _supabaseService.getFamilyMembers(customerId);
+      setState(() => _familyMembers = familyMembers);
+    } catch (e) {
+      debugPrint('Error loading family members: $e');
+    }
   }
 
   String? _validateBillNumber(String? value) {
@@ -207,212 +251,131 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     if (value == null || value.isEmpty) {
       return 'Please enter a bill number';
     }
-    // Only allow numeric values
     if (!RegExp(r'^\d+$').hasMatch(value)) {
       return 'Please enter only numbers';
     }
     return null;
   }
 
-  // Add new method to check if form is valid without saving
   bool _isFormValid() {
     return _formKey.currentState?.validate() ?? false;
   }
 
-  // Modify _saveCustomer to return the saved customer
   Future<Customer?> _saveCustomer({bool showSnackbar = true}) async {
-    if (_formKey.currentState?.validate() ?? false) {
-      try {
-        String billNumber;
-        if (widget.isEditing) {
-          billNumber = widget.customer!.billNumber;
+    if (!_formKey.currentState!.validate()) return null;
+
+    setState(() => _isSaving = true);
+
+    try {
+      String billNumber;
+      if (widget.isEditing) {
+        billNumber = widget.customer!.billNumber;
+      } else {
+        if (_useCustomBillNumber) {
+          billNumber = _billNumberController.text;
+          final isUnique = await _supabaseService.isBillNumberUnique(
+            billNumber,
+          );
+          if (!isUnique) {
+            throw Exception(
+              'This bill number already exists. Please try another.',
+            );
+          }
         } else {
-          if (_useCustomBillNumber) {
-            billNumber = _billNumberController.text;
-            final isUnique = await _supabaseService.isBillNumberUnique(billNumber);
-            if (!isUnique) {
-              if (!mounted) return null;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('This bill number already exists. Please try another.'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return null;
-            }
-          } else {
-            billNumber = await _generateBillNumber();
-          }
-        }
-
-        if (showSnackbar && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Saving customer...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
-
-        final customer = Customer(
-          id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
-          billNumber: billNumber,
-          name: _nameController.text,
-          phone: _phoneController.text,
-          whatsapp: _whatsappController.text,
-          address: _addressController.text,
-          gender: _selectedGender,
-          referredBy: _referredBy?.id, // Save the ID of the referred customer
-          familyId: _familyMember?.id,
-          familyRelation: _familyRelation,
-        );
-
-        // If editing and family connection was removed, remove it from database
-        if (widget.isEditing && 
-            widget.customer?.familyId != null && 
-            _familyMember == null) {
-          await _supabaseService.removeFamilyMember(widget.customer!.id);
-        }
-
-        // Retry logic for saving
-        int retries = 0;
-        while (retries < 3) {
-          try {
-            if (widget.isEditing) {
-              await _supabaseService.updateCustomer(customer);
-            } else {
-              await _supabaseService.addCustomer(customer);
-            }
-            break; // Success, exit loop
-          } catch (e) {
-            retries++;
-            if (retries == 3) rethrow; // Throw on final retry
-            await Future.delayed(Duration(milliseconds: 500 * retries));
-          }
-        }
-
-        // Clear saved draft on success
-        await _clearDraft();
-
-        if (showSnackbar && mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                widget.isEditing
-                    ? '${customer.name} has been updated'
-                    : '${customer.name} has been added',
-              ),
-            ),
-          );
-        }
-
-        return customer;
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          billNumber = await _supabaseService.generateUniqueBillNumber();
         }
       }
+
+      final customer = Customer(
+        id: widget.isEditing ? widget.customer!.id : const Uuid().v4(),
+        billNumber: billNumber,
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        whatsapp: _whatsappController.text.trim(),
+        address: _addressController.text.trim(),
+        gender: _selectedGender,
+        referredBy: _referredBy?.id,
+        familyId: _familyMember?.id,
+        familyRelation: _familyRelation,
+      );
+
+      if (widget.isEditing) {
+        await _supabaseService.updateCustomer(customer);
+      } else {
+        await _supabaseService.addCustomer(customer);
+        await _clearDraft();
+      }
+
+      if (mounted && showSnackbar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.isEditing
+                  ? '${customer.name} updated successfully'
+                  : '${customer.name} added successfully',
+            ),
+            backgroundColor: InventoryDesignConfig.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      return customer;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: InventoryDesignConfig.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return null;
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
-    return null;
   }
 
-  // Add new method to show quick actions
-  Future<void> _showQuickActions() async {
-    final theme = Theme.of(context);
-    final customer = await _saveCustomer(showSnackbar: false);
-    
-    if (customer == null || !mounted) return;
+  Future<void> _handleSave() async {
+    final customer = await _saveCustomer();
+    if (customer != null && mounted) {
+      widget.onCustomerAdded?.call();
+      Navigator.of(context).pop();
+    }
+  }
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final maxHeight = screenSize.height * 0.9;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 700, maxHeight: maxHeight),
         child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
+            color: InventoryDesignConfig.surfaceColor,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusXL),
+            border: Border.all(color: InventoryDesignConfig.borderPrimary),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                child: Icon(
-                  Icons.check_circle_outline,
-                  size: 40,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Customer Added Successfully',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'What would you like to do next?',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      onPressed: () async {
-                        Navigator.pop(context); // Close quick actions
-                        Navigator.pop(context); // Close add customer dialog
-                        await AddMeasurementDialog.show(
-                          context,
-                          customer: customer,
-                        );
-                      },
-                      icon: const Icon(Icons.straighten),
-                      label: const Text('Add Measurement'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      onPressed: () async {
-                        Navigator.pop(context); // Close quick actions
-                        Navigator.pop(context); // Close add customer dialog
-                        await InvoiceScreen.show(
-                          context,
-                          customer: customer,
-                        );
-                      },
-                      icon: const Icon(Icons.receipt),
-                      label: const Text('Create Invoice'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close quick actions
-                  Navigator.pop(context); // Close add customer dialog
-                },
-                child: const Text('DONE'),
-              ),
+              _buildHeader(),
+              Flexible(child: _buildContent()),
+              _buildFooter(),
             ],
           ),
         ),
@@ -420,1256 +383,1145 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     );
   }
 
-  Future<void> _confirmRemoveReferral(BuildContext context) {
-    final theme = Theme.of(context);
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Referral'),
-        content: Text(
-          'Are you sure you want to remove ${_referredBy?.name} as the referring customer?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          FilledButton.tonal(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _referredBy = null;
-                _referralCount = 0;
-              });
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.errorContainer,
-              foregroundColor: theme.colorScheme.onErrorContainer,
-            ),
-            child: const Text('REMOVE'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReferralSection(ThemeData theme) {
-    final brightness = theme.brightness;
-    
+  Widget _buildHeader() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: brightness == Brightness.light
-            ? theme.colorScheme.primaryContainer.withOpacity(0.1)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with remove option
-          Row(
-            children: [
-              Icon(
-                Icons.person_add_outlined,
-                size: 20,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Referral',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              if (_referredBy != null) ...[
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.link_off, size: 18),
-                  tooltip: 'Remove referral',
-                  onPressed: () => _confirmRemoveReferral(context),
-                ),
-              ],
-            ],
-          ),
-
-          if (_referredBy != null) ...[
-            const SizedBox(height: 8),
-            // Selected referrer info
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: brightness == Brightness.light
-                    ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
-                    : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
-                    child: Text(
-                      _referredBy!.name[0].toUpperCase(),
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _referredBy!.name,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          '#${_referredBy!.billNumber} · ${_referredBy!.phone}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Edit button
-                  IconButton.filledTonal(
-                    onPressed: () async {
-                      final customer = await CustomerSelectorDialog.show(
-                        context,
-                        await _supabaseService.getAllCustomers(),
-                      );
-                      if (customer != null) {
-                        final count = await _supabaseService.getReferralCount(customer.id);
-                        setState(() {
-                          _referredBy = customer;
-                          _referralCount = count;
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.edit, size: 16),
-                  ),
-                ],
-              ),
-            ),
-
-            if (_referralCount > 0) ...[
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: () => _showReferralsList(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 16,
-                        color: theme.colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$_referralCount ${_referralCount == 1 ? 'referral' : 'referrals'}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.secondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 12,
-                        color: theme.colorScheme.secondary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: FilledButton.tonalIcon(
-                onPressed: () async {
-                  final customer = await CustomerSelectorDialog.show(
-                    context,
-                    await _supabaseService.getAllCustomers(),
-                  );
-                  if (customer != null) {
-                    final count = await _supabaseService.getReferralCount(customer.id);
-                    setState(() {
-                      _referredBy = customer;
-                      _referralCount = count;
-                    });
-                  }
-                },
-                icon: const Icon(Icons.person_search, size: 18),
-                label: const Text('SELECT REFERRING CUSTOMER'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.secondaryContainer,
-                  foregroundColor: theme.colorScheme.onSecondaryContainer,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showReferralsList(BuildContext context) async {
-    if (_referredBy == null) return;
-
-    final theme = Theme.of(context);
-    final customers = await _supabaseService.getReferredCustomers(_referredBy!.id);
-
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 400,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                      child: Text(
-                        _referredBy!.name[0].toUpperCase(),
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Referrals by ${_referredBy!.name}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '${customers.length} ${customers.length == 1 ? 'customer' : 'customers'}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: customers.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final customer = customers[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                        child: Text(
-                          customer.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(customer.name),
-                      subtitle: Text('#${customer.billNumber}'),
-                      trailing: Text(
-                        customer.createdAt.toString().split(' ')[0],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showReferredCustomersDialog(BuildContext context) async {
-    final theme = Theme.of(context);
-
-    await showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 400,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                      child: Text(
-                        widget.customer!.name[0].toUpperCase(),
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Referred Customers by ${widget.customer!.name}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '${_referredCustomers.length} ${_referredCustomers.length == 1 ? 'customer' : 'customers'}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _referredCustomers.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final customer = _referredCustomers[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                        child: Text(
-                          customer.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(customer.name),
-                      subtitle: Text('#${customer.billNumber} · ${customer.phone}'),
-                      trailing: Text(
-                        customer.createdAt.toString().split(' ')[0],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showFamilyMembersDialog(BuildContext context) async {
-    final theme = Theme.of(context);
-
-    await showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 400,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                      child: Text(
-                        widget.customer!.name[0].toUpperCase(),
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Family Members of ${widget.customer!.name}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '${_familyMembers.length} ${_familyMembers.length == 1 ? 'member' : 'members'}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _familyMembers.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final member = _familyMembers[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                        child: Text(
-                          member.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(member.name),
-                      subtitle: Text(member.familyRelationDisplay),
-                      trailing: Text(
-                        member.createdAt.toString().split(' ')[0],
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _buildInputDecoration(ThemeData theme, {
-    required String label,
-    required IconData icon,
-    String? helperText,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      helperText: helperText,
-      prefixIcon: Icon(icon, color: theme.colorScheme.primary.withOpacity(0.7)),
-      labelStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.colorScheme.outline),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.colorScheme.outline.withOpacity(0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: theme.colorScheme.error),
-      ),
-      filled: true,
-      fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    );
-  }
-
-  Widget _buildHeaderSection(ThemeData theme, bool isDesktop) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: isDesktop ? 24 : 16,
-        horizontal: isDesktop ? 24 : 16,
+      height: 64,
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingXXL,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(isDesktop ? 28 : 0),
-          topRight: Radius.circular(isDesktop ? 28 : 0),
+        color: InventoryDesignConfig.surfaceAccent,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(InventoryDesignConfig.radiusXL),
+          topRight: Radius.circular(InventoryDesignConfig.radiusXL),
         ),
         border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-          ),
+          bottom: BorderSide(color: InventoryDesignConfig.borderSecondary),
         ),
       ),
       child: Row(
         children: [
-          if (!isDesktop) 
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
             ),
+            child: Icon(
+              widget.isEditing
+                  ? PhosphorIcons.pencilSimple()
+                  : PhosphorIcons.userPlus(),
+              size: 18,
+              color: InventoryDesignConfig.primaryColor,
+            ),
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingL),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.isEditing ? 'Edit Customer' : 'Add New Customer',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                    fontSize: isDesktop ? null : 20,
-                  ),
+                  style: InventoryDesignConfig.headlineMedium,
                 ),
-                if (widget.isEditing) ...[
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildInfoBadge(
-                          theme,
-                          'Bill #${widget.customer?.billNumber}',
-                          Icons.receipt_outlined,
-                          theme.colorScheme.primary,
-                        ),
-                        if (_referredCustomers.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          _buildActionBadge(
-                            theme,
-                            '${_referredCustomers.length} Referred',
-                            Icons.people_outline,
-                            theme.colorScheme.secondary,
-                            () => _showReferredCustomersDialog(context),
-                          ),
-                        ],
-                        if (_familyMembers.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          _buildActionBadge(
-                            theme,
-                            '${_familyMembers.length} Family',
-                            Icons.family_restroom,
-                            theme.colorScheme.tertiary,
-                            () => _showFamilyMembersDialog(context),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(ThemeData theme, String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoBadge(
-    ThemeData theme,
-    String text,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20), // More rounded corners
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionBadge(
-    ThemeData theme,
-    String text,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20), // Match the container radius
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Text(
-                text,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 14,
-                color: color.withOpacity(0.7),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileLayout(ThemeData theme) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isEditing ? 'Edit Customer' : 'Add New Customer',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          _buildSaveButton(theme),
-          const SizedBox(width: 16),
-        ],
-        bottom: widget.isEditing ? PreferredSize(
-          preferredSize: const Size.fromHeight(72), // Increased height
-          child: SizedBox(
-            height: 72, // Fixed height for the header section
-            child: Column(
-              children: [
-                const Divider(height: 1),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _buildInfoBadge(
-                        theme,
-                        'Bill #${widget.customer?.billNumber}',
-                        Icons.receipt_outlined,
-                        theme.colorScheme.primary,
-                      ),
-                      if (_referredCustomers.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        _buildActionBadge(
-                          theme,
-                          '${_referredCustomers.length} Referred',
-                          Icons.people_outline,
-                          theme.colorScheme.secondary,
-                          () => _showReferredCustomersDialog(context),
-                        ),
-                      ],
-                      if (_familyMembers.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        _buildActionBadge(
-                          theme,
-                          '${_familyMembers.length} Family',
-                          Icons.family_restroom,
-                          theme.colorScheme.tertiary,
-                          () => _showFamilyMembersDialog(context),
-                        ),
-                      ],
-                      // Add indicator that shows more content is available
-                      if (_referredCustomers.isNotEmpty || _familyMembers.isNotEmpty)
-                        Container(
-                          width: 24,
-                          margin: const EdgeInsets.only(left: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.centerRight,
-                              end: Alignment.centerLeft,
-                              colors: [
-                                theme.colorScheme.surface,
-                                theme.colorScheme.surface.withOpacity(0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
+                Text(
+                  widget.isEditing
+                      ? 'Update customer information'
+                      : 'Create a new customer profile',
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-        ) : null,
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: InkWell(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                child: Icon(
+                  PhosphorIcons.x(),
+                  size: 18,
+                  color: InventoryDesignConfig.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+      child: Form(
+        key: _formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!widget.isEditing)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Bill Number Section (only for new customers)
+            if (!widget.isEditing) ...[
+              _buildSection('Bill Number', PhosphorIcons.receipt(), [
+                Row(
                   children: [
-                    _buildSectionHeader(
-                      theme,
-                      'Bill Number',
-                      Icons.receipt_outlined,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _billNumberController,
-                            keyboardType: TextInputType.number,
-                            decoration: _buildInputDecoration(
-                              theme,
-                              label: 'Bill Number',
-                              icon: Icons.receipt_outlined,
-                              helperText: _useCustomBillNumber ? 'Must be unique' : 'Auto-generated',
-                            ),
-                            enabled: _useCustomBillNumber,
-                            validator: _validateBillNumber,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Switch(
-                          value: _useCustomBillNumber,
-                          onChanged: (value) {
-                            setState(() {
-                              _useCustomBillNumber = value;
-                              if (!value) {
-                                // Reset to auto-generated number when switching off
-                                _supabaseService.generateUniqueBillNumber().then((billNumber) {
-                                  setState(() {
-                                    _billNumberController.text = billNumber;
-                                  });
-                                });
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Use custom bill number',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _billNumberController,
+                        label: 'Bill Number',
+                        hint:
+                            _useCustomBillNumber
+                                ? 'Enter custom bill number'
+                                : 'Auto-generated',
+                        icon: PhosphorIcons.receipt(),
+                        enabled: _useCustomBillNumber,
+                        validator: _validateBillNumber,
+                        keyboardType: TextInputType.number,
+                      ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: InventoryDesignConfig.spacingL),
+                _buildSwitchTile(
+                  title: 'Use custom bill number',
+                  subtitle: 'Enable to set a custom bill number',
+                  value: _useCustomBillNumber,
+                  onChanged: (value) {
+                    setState(() {
+                      _useCustomBillNumber = value;
+                      if (!value) {
+                        _generateBillNumber();
+                      }
+                    });
+                  },
+                ),
+              ]),
+              const SizedBox(height: InventoryDesignConfig.spacingXXL),
+            ],
 
             // Basic Information Section
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      theme,
-                      'Basic Information',
-                      Icons.person_outline,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'Name',
-                        icon: Icons.person_outline,
-                      ),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a name' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'Phone',
-                        icon: Icons.phone_outlined,
-                      ),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter a phone number' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _whatsappController,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'WhatsApp (Optional)',
-                        icon: Icons.whatshot_outlined,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _addressController,
-                      maxLines: 2,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'Address',
-                        icon: Icons.location_on_outlined,
-                      ),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter an address' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Text(
-                          'Gender',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: SegmentedButton<Gender>(
-                            segments: const [
-                              ButtonSegment(
-                                value: Gender.male,
-                                label: Text('Male'),
-                                icon: Icon(Icons.male),
-                              ),
-                              ButtonSegment(
-                                value: Gender.female,
-                                label: Text('Female'),
-                                icon: Icon(Icons.female),
-                              ),
-                            ],
-                            selected: {_selectedGender},
-                            onSelectionChanged: (Set<Gender> selection) {
-                              setState(() {
-                                _selectedGender = selection.first;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Referral Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            _buildSection('Basic Information', PhosphorIcons.user(), [
+              Row(
                 children: [
-                  _buildSectionHeader(
-                    theme,
-                    'Referral & Family',
-                    Icons.people_outline,
-                  ),
-                  const SizedBox(height: 8),
-                  _buildReferralSection(theme),
-                  FamilySelectorSection(
-                    selectedFamilyMember: _familyMember,
-                    selectedRelation: _familyRelation,
-                    onFamilyMemberSelected: (customer) {
-                      setState(() => _familyMember = customer);
-                    },
-                    onRelationChanged: (relation) {
-                      setState(() => _familyRelation = relation);
-                    },
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      hint: 'Enter customer full name',
+                      icon: PhosphorIcons.user(),
+                      validator:
+                          (value) =>
+                              value?.isEmpty ?? true
+                                  ? 'Name is required'
+                                  : null,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: InventoryDesignConfig.spacingL),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      hint: 'Enter phone number',
+                      icon: PhosphorIcons.phone(),
+                      keyboardType: TextInputType.phone,
+                      validator:
+                          (value) =>
+                              value?.isEmpty ?? true
+                                  ? 'Phone is required'
+                                  : null,
+                    ),
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingL),
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _whatsappController,
+                      label: 'WhatsApp (Optional)',
+                      hint: 'WhatsApp number',
+                      icon: PhosphorIcons.whatsappLogo(),
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: InventoryDesignConfig.spacingL),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _addressController,
+                      label: 'Address',
+                      hint: 'Enter full address',
+                      icon: PhosphorIcons.mapPin(),
+                      maxLines: 2,
+                      validator:
+                          (value) =>
+                              value?.isEmpty ?? true
+                                  ? 'Address is required'
+                                  : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: InventoryDesignConfig.spacingL),
+              _buildGenderSelector(),
+            ]),
+
+            const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+            // Referral & Family Section
+            _buildSection('Referral & Family', PhosphorIcons.users(), [
+              _buildReferralSelector(),
+              const SizedBox(height: InventoryDesignConfig.spacingL),
+              _buildFamilySelector(),
+            ]),
+
+            // Show referred customers and family members for existing customers
+            if (widget.isEditing) ...[
+              const SizedBox(height: InventoryDesignConfig.spacingXXL),
+              _buildRelationshipsSection(),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // Modify the build method's save button to handle quick actions
-  Widget _buildSaveButton(ThemeData theme) {
-    return FilledButton.icon(
-      onPressed: () async {
-        if (_isFormValid()) {
-          await _showQuickActions();
-        } else {
-          await _saveCustomer();
-        }
-      },
-      icon: Icon(widget.isEditing ? Icons.save : Icons.add),
-      label: Text(widget.isEditing ? 'SAVE' : 'ADD'),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
-    final isDesktop = screenSize.width >= 1024;
-
-    if (!isDesktop) {
-      return _buildMobileLayout(theme);
-    }
-
-    // Return existing desktop layout
+  Widget _buildFooter() {
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: screenSize.height * (isDesktop ? 0.9 : 0.95),
+      height: 72,
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingXXL,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(isDesktop ? 28 : 0),
+        color: InventoryDesignConfig.surfaceAccent,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(InventoryDesignConfig.radiusXL),
+          bottomRight: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
+        border: Border(
+          top: BorderSide(color: InventoryDesignConfig.borderSecondary),
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          _buildHeaderSection(theme, isDesktop),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isDesktop ? 24 : 16,
-                vertical: isDesktop ? 24 : 16,
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: InkWell(
+              onTap: _isSaving ? null : () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!widget.isEditing) ...[
-                    _buildSectionHeader(
-                      theme,
-                      'Bill Number',
-                      Icons.receipt_outlined,
-                    ),
-                    TextFormField(
-                      controller: _billNumberController,
-                      keyboardType: TextInputType.number,
-                      decoration: _buildInputDecoration(
-                        theme,
-                        label: 'Bill Number',
-                        icon: Icons.receipt_outlined,
-                        helperText: _useCustomBillNumber ? 'Must be unique' : 'Auto-generated',
-                      ),
-                      enabled: _useCustomBillNumber,
-                      validator: _validateBillNumber,
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Switch(
-                          value: _useCustomBillNumber,
-                          onChanged: (value) {
-                            setState(() {
-                              _useCustomBillNumber = value;
-                              if (!value) {
-                                // Reset to auto-generated number when switching off
-                                _supabaseService.generateUniqueBillNumber().then((billNumber) {
-                                  setState(() {
-                                    _billNumberController.text = billNumber;
-                                  });
-                                });
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Use custom bill number',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  _buildSectionHeader(
-                    theme,
-                    'Basic Information',
-                    Icons.person_outline,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: InventoryDesignConfig.spacingXXL,
+                  vertical: InventoryDesignConfig.spacingM,
+                ),
+                decoration: InventoryDesignConfig.buttonSecondaryDecoration,
+                child: Text(
+                  'Cancel',
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
                   ),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        // Basic info fields
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: _buildInputDecoration(
-                            theme,
-                            label: 'Name',
-                            icon: Icons.person_outline,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a name';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _phoneController,
-                                decoration: _buildInputDecoration(
-                                  theme,
-                                  label: 'Phone',
-                                  icon: Icons.phone_outlined,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter a phone number';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _whatsappController,
-                                decoration: _buildInputDecoration(
-                                  theme,
-                                  label: 'WhatsApp (Optional)',
-                                  icon: Icons.whatshot_outlined,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _addressController,
-                          decoration: _buildInputDecoration(
-                            theme,
-                            label: 'Address',
-                            icon: Icons.location_on_outlined,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter an address';
-                            }
-                            return null;
-                          },
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Gender:',
-                              style: TextStyle(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            SegmentedButton<Gender>(
-                              segments: const [
-                                ButtonSegment(
-                                  value: Gender.male,
-                                  label: Text('Male'),
-                                  icon: Icon(Icons.male),
-                                ),
-                                ButtonSegment(
-                                  value: Gender.female,
-                                  label: Text('Female'),
-                                  icon: Icon(Icons.female),
-                                ),
-                              ],
-                              selected: {_selectedGender},
-                              onSelectionChanged: (Set<Gender> selection) {
-                                setState(() {
-                                  _selectedGender = selection.first;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildSectionHeader(
-                    theme,
-                    'Referral & Family',
-                    Icons.people_outline,
-                  ),
-                  _buildReferralSection(theme),
-                  FamilySelectorSection(
-                    selectedFamilyMember: _familyMember,
-                    selectedRelation: _familyRelation,
-                    onFamilyMemberSelected: (customer) {
-                      setState(() => _familyMember = customer);
-                    },
-                    onRelationChanged: (relation) {
-                      setState(() => _familyRelation = relation);
-                    },
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-
-          // Footer with actions
-          Container(
-            padding: EdgeInsets.all(isDesktop ? 24 : 16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              border: Border(
-                top: BorderSide(color: theme.colorScheme.outlineVariant),
+          const SizedBox(width: InventoryDesignConfig.spacingL),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: InkWell(
+              onTap: _isSaving ? null : _handleSave,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('CANCEL'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: InventoryDesignConfig.spacingXXL,
+                  vertical: InventoryDesignConfig.spacingM,
                 ),
-                const SizedBox(width: 16),
-                _buildSaveButton(theme),
-              ],
+                decoration: InventoryDesignConfig.buttonPrimaryDecoration,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isSaving)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        widget.isEditing
+                            ? PhosphorIcons.check()
+                            : PhosphorIcons.userPlus(),
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    const SizedBox(width: InventoryDesignConfig.spacingS),
+                    Text(
+                      _isSaving
+                          ? 'Saving...'
+                          : (widget.isEditing
+                              ? 'Update Customer'
+                              : 'Add Customer'),
+                      style: InventoryDesignConfig.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSection(String title, IconData icon, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceAccent.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusL),
+        border: Border.all(color: InventoryDesignConfig.borderSecondary),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.05),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(InventoryDesignConfig.radiusL),
+                topRight: Radius.circular(InventoryDesignConfig.radiusL),
+              ),
+              border: Border(
+                bottom: BorderSide(
+                  color: InventoryDesignConfig.borderSecondary,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusS,
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 16,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Text(
+                  title,
+                  style: InventoryDesignConfig.titleMedium.copyWith(
+                    color: InventoryDesignConfig.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    bool enabled = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: InventoryDesignConfig.labelLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          enabled: enabled,
+          style: InventoryDesignConfig.bodyLarge.copyWith(
+            color:
+                enabled
+                    ? InventoryDesignConfig.textPrimary
+                    : InventoryDesignConfig.textTertiary,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            prefixIcon: Icon(
+              icon,
+              size: 18,
+              color:
+                  enabled
+                      ? InventoryDesignConfig.textSecondary
+                      : InventoryDesignConfig.textTertiary,
+            ),
+            filled: true,
+            fillColor:
+                enabled
+                    ? InventoryDesignConfig.surfaceLight
+                    : InventoryDesignConfig.surfaceAccent,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.primaryColor,
+                width: 2.0,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.errorColor,
+                width: 2.0,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.errorColor,
+                width: 2.0,
+              ),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: InventoryDesignConfig.spacingL,
+              vertical:
+                  maxLines > 1
+                      ? InventoryDesignConfig.spacingL
+                      : InventoryDesignConfig.spacingM,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceLight,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        border: Border.all(color: InventoryDesignConfig.borderPrimary),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIcons.toggleLeft(),
+            color: InventoryDesignConfig.primaryColor,
+            size: 20,
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: InventoryDesignConfig.primaryColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Gender',
+          style: InventoryDesignConfig.labelLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Row(
+          children:
+              _genderOptions.map((gender) {
+                final isSelected = _selectedGender == gender;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right:
+                          gender != _genderOptions.last
+                              ? InventoryDesignConfig.spacingM
+                              : 0,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        InventoryDesignConfig.radiusM,
+                      ),
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedGender = gender),
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusM,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(
+                            InventoryDesignConfig.spacingL,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected
+                                    ? InventoryDesignConfig.primaryColor
+                                        .withOpacity(0.1)
+                                    : InventoryDesignConfig.surfaceLight,
+                            borderRadius: BorderRadius.circular(
+                              InventoryDesignConfig.radiusM,
+                            ),
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? InventoryDesignConfig.primaryColor
+                                      : InventoryDesignConfig.borderPrimary,
+                              width: isSelected ? 2.0 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                PhosphorIcons.user(),
+                                color:
+                                    isSelected
+                                        ? InventoryDesignConfig.primaryColor
+                                        : InventoryDesignConfig.textSecondary,
+                                size: 18,
+                              ),
+                              const SizedBox(
+                                width: InventoryDesignConfig.spacingS,
+                              ),
+                              Text(
+                                gender.name.toUpperCase(),
+                                style: InventoryDesignConfig.bodyMedium
+                                    .copyWith(
+                                      color:
+                                          isSelected
+                                              ? InventoryDesignConfig
+                                                  .primaryColor
+                                              : InventoryDesignConfig
+                                                  .textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReferralSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              PhosphorIcons.userPlus(),
+              size: 16,
+              color: InventoryDesignConfig.primaryColor,
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Text(
+              'Referral Information',
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingM),
+
+        if (_referredBy != null) ...[
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              border: Border.all(color: InventoryDesignConfig.borderPrimary),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: InventoryDesignConfig.primaryColor
+                      .withOpacity(0.1),
+                  child: Text(
+                    _referredBy!.name[0].toUpperCase(),
+                    style: InventoryDesignConfig.bodySmall.copyWith(
+                      color: InventoryDesignConfig.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _referredBy!.name,
+                        style: InventoryDesignConfig.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '#${_referredBy!.billNumber}',
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _referredBy = null),
+                  icon: Icon(
+                    PhosphorIcons.x(),
+                    size: 16,
+                    color: InventoryDesignConfig.errorColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: InkWell(
+              onTap: _selectReferringCustomer,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.surfaceLight,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  border: Border.all(
+                    color: InventoryDesignConfig.borderPrimary,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      PhosphorIcons.userPlus(),
+                      size: 16,
+                      color: InventoryDesignConfig.primaryColor,
+                    ),
+                    const SizedBox(width: InventoryDesignConfig.spacingS),
+                    Text(
+                      'Select Referring Customer',
+                      style: InventoryDesignConfig.bodyMedium.copyWith(
+                        color: InventoryDesignConfig.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFamilySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              PhosphorIcons.users(),
+              size: 16,
+              color: InventoryDesignConfig.primaryColor,
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Text(
+              'Family Information',
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingM),
+
+        if (_familyMember != null) ...[
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              border: Border.all(color: InventoryDesignConfig.borderPrimary),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: InventoryDesignConfig.successColor
+                          .withOpacity(0.1),
+                      child: Text(
+                        _familyMember!.name[0].toUpperCase(),
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.successColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: InventoryDesignConfig.spacingM),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _familyMember!.name,
+                            style: InventoryDesignConfig.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '#${_familyMember!.billNumber}',
+                            style: InventoryDesignConfig.bodySmall.copyWith(
+                              color: InventoryDesignConfig.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed:
+                          () => setState(() {
+                            _familyMember = null;
+                            _familyRelation = null;
+                          }),
+                      icon: Icon(
+                        PhosphorIcons.x(),
+                        size: 16,
+                        color: InventoryDesignConfig.errorColor,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_familyMember != null) ...[
+                  const SizedBox(height: InventoryDesignConfig.spacingM),
+                  _buildFamilyRelationSelector(),
+                ],
+              ],
+            ),
+          ),
+        ] else ...[
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            child: InkWell(
+              onTap: _selectFamilyMember,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.surfaceLight,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  border: Border.all(
+                    color: InventoryDesignConfig.borderPrimary,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      PhosphorIcons.users(),
+                      size: 16,
+                      color: InventoryDesignConfig.primaryColor,
+                    ),
+                    const SizedBox(width: InventoryDesignConfig.spacingS),
+                    Text(
+                      'Select Family Member',
+                      style: InventoryDesignConfig.bodyMedium.copyWith(
+                        color: InventoryDesignConfig.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFamilyRelationSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Relationship',
+          style: InventoryDesignConfig.bodySmall.copyWith(
+            fontWeight: FontWeight.w600,
+            color: InventoryDesignConfig.textSecondary,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Wrap(
+          spacing: InventoryDesignConfig.spacingS,
+          runSpacing: InventoryDesignConfig.spacingS,
+          children:
+              _familyRelationOptions.map((relation) {
+                final isSelected = _familyRelation == relation;
+                return Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusS,
+                  ),
+                  child: InkWell(
+                    onTap: () => setState(() => _familyRelation = relation),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusS,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: InventoryDesignConfig.spacingM,
+                        vertical: InventoryDesignConfig.spacingS,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? InventoryDesignConfig.primaryColor
+                                : InventoryDesignConfig.surfaceLight,
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusS,
+                        ),
+                        border: Border.all(
+                          color:
+                              isSelected
+                                  ? InventoryDesignConfig.primaryColor
+                                  : InventoryDesignConfig.borderPrimary,
+                        ),
+                      ),
+                      child: Text(
+                        relation.name.toUpperCase(),
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color:
+                              isSelected
+                                  ? InventoryDesignConfig.surfaceColor
+                                  : InventoryDesignConfig.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRelationshipsSection() {
+    if (_referredCustomers.isEmpty && _familyMembers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildSection('Relationships', PhosphorIcons.network(), [
+      if (_referredCustomers.isNotEmpty) ...[
+        _buildRelationshipSubsection(
+          'Referred Customers',
+          PhosphorIcons.userPlus(),
+          _referredCustomers,
+        ),
+        if (_familyMembers.isNotEmpty)
+          const SizedBox(height: InventoryDesignConfig.spacingL),
+      ],
+      if (_familyMembers.isNotEmpty)
+        _buildRelationshipSubsection(
+          'Family Members',
+          PhosphorIcons.users(),
+          _familyMembers,
+        ),
+    ]);
+  }
+
+  Widget _buildRelationshipSubsection(
+    String title,
+    IconData icon,
+    List<Customer> customers,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: InventoryDesignConfig.primaryColor),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Text(
+              '$title (${customers.length})',
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 150),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: customers.length,
+            separatorBuilder:
+                (context, index) =>
+                    const SizedBox(height: InventoryDesignConfig.spacingS),
+            itemBuilder: (context, index) {
+              final customer = customers[index];
+              return Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.surfaceLight,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusS,
+                  ),
+                  border: Border.all(
+                    color: InventoryDesignConfig.borderPrimary,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 12,
+                      backgroundColor: InventoryDesignConfig.primaryColor
+                          .withOpacity(0.1),
+                      child: Text(
+                        customer.name[0].toUpperCase(),
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: InventoryDesignConfig.spacingM),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            customer.name,
+                            style: InventoryDesignConfig.bodySmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '#${customer.billNumber}',
+                            style: InventoryDesignConfig.bodySmall.copyWith(
+                              color: InventoryDesignConfig.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (customer.familyRelation != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: InventoryDesignConfig.spacingS,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: InventoryDesignConfig.successColor.withOpacity(
+                            0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            InventoryDesignConfig.radiusS,
+                          ),
+                        ),
+                        child: Text(
+                          customer.familyRelation!.name.toUpperCase(),
+                          style: InventoryDesignConfig.bodySmall.copyWith(
+                            color: InventoryDesignConfig.successColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _selectReferringCustomer() async {
+    try {
+      final customers = await _supabaseService.getAllCustomers();
+      if (!mounted) return;
+
+      final customer = await CustomerSelectorDialog.show(context, customers);
+      if (customer != null) {
+        setState(() => _referredBy = customer);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading customers: ${e.toString()}'),
+            backgroundColor: InventoryDesignConfig.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectFamilyMember() async {
+    try {
+      final customers = await _supabaseService.getAllCustomers();
+      if (!mounted) return;
+
+      final customer = await CustomerSelectorDialog.show(context, customers);
+      if (customer != null) {
+        setState(() {
+          _familyMember = customer;
+          _familyRelation = FamilyRelation.other; // Default relation
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading customers: ${e.toString()}'),
+            backgroundColor: InventoryDesignConfig.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }

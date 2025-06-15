@@ -81,7 +81,6 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
   SearchableAddableDropdownItem? _selectedBrand;
   SearchableAddableDropdownItem? _selectedCategory;
   String _selectedUnitType = 'meter';
-  bool _isLoading = false;
   bool _isSaving = false;
 
   // Keyboard state
