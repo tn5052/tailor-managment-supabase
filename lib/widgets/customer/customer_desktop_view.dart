@@ -104,12 +104,25 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
 
       var filteredCustomers =
           customers.where((customer) {
-            // Search query filter
+            // Enhanced search query filter - search by name, phone, and bill number
             if (_searchQuery.isNotEmpty) {
-              final query = _searchQuery.toLowerCase();
-              if (!customer.name.toLowerCase().contains(query) &&
-                  !customer.phone.contains(query) &&
-                  !customer.billNumber.toLowerCase().contains(query)) {
+              final query = _searchQuery.toLowerCase().trim();
+              final nameMatch = customer.name.toLowerCase().contains(query);
+              final phoneMatch = customer.phone
+                  .replaceAll(RegExp(r'[^\d+]'), '')
+                  .contains(query.replaceAll(RegExp(r'[^\d+]'), ''));
+              final billNumberMatch = customer.billNumber
+                  .toLowerCase()
+                  .contains(query);
+              final addressMatch = customer.address.toLowerCase().contains(
+                query,
+              );
+
+              // If none of the fields match, filter out this customer
+              if (!nameMatch &&
+                  !phoneMatch &&
+                  !billNumberMatch &&
+                  !addressMatch) {
                 return false;
               }
             }
@@ -121,11 +134,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             }
 
             // Date range filter
-            // Ensure customer.createdAt is not null before using it
             if (_currentFilter.dateRange != null) {
-              final customerDate = DateUtils.dateOnly(
-                customer.createdAt,
-              ); // Safe use of !
+              final customerDate = DateUtils.dateOnly(customer.createdAt);
               final startDate = DateUtils.dateOnly(
                 _currentFilter.dateRange!.start,
               );
@@ -138,7 +148,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             } else if (_currentFilter.dateRange != null &&
                 // ignore: unnecessary_null_comparison
                 customer.createdAt == null) {
-              // If a date range is set but customer has no creation date, filter out.
               return false;
             }
 
@@ -155,7 +164,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
 
             // isReferrer filter (customer has referred others)
             if (_currentFilter.isReferrer && (customer.referralCount <= 0)) {
-              // Safe use of !
               return false;
             }
 
@@ -549,7 +557,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   Widget _buildSearchField() {
     return Container(
       width: 280,
-      height: 40, // Match button height
+      height: 40,
       decoration: BoxDecoration(
         color: InventoryDesignConfig.surfaceColor,
         border: Border.all(color: InventoryDesignConfig.borderPrimary),
@@ -562,7 +570,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           color: InventoryDesignConfig.textPrimary,
         ),
         decoration: InputDecoration(
-          hintText: 'Search customers...',
+          hintText: 'Search by name, phone, or bill number...',
           hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
             color: InventoryDesignConfig.textSecondary,
             fontSize: 14,
@@ -988,7 +996,11 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         color: InventoryDesignConfig.surfaceAccent,
         borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
       ),
-      child: Text(billNumber, style: InventoryDesignConfig.code),
+      child: _buildHighlightedText(
+        text: billNumber,
+        style: InventoryDesignConfig.code,
+        searchQuery: _searchQuery,
+      ),
     );
   }
 
@@ -1019,10 +1031,10 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         ),
         const SizedBox(width: InventoryDesignConfig.spacingM),
         Expanded(
-          child: Text(
-            name,
+          child: _buildHighlightedText(
+            text: name,
             style: InventoryDesignConfig.titleMedium,
-            overflow: TextOverflow.ellipsis,
+            searchQuery: _searchQuery,
           ),
         ),
       ],
@@ -1043,7 +1055,13 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               color: InventoryDesignConfig.textSecondary,
             ),
             const SizedBox(width: InventoryDesignConfig.spacingXS),
-            Text(phone, style: InventoryDesignConfig.bodyLarge),
+            Flexible(
+              child: _buildHighlightedText(
+                text: phone,
+                style: InventoryDesignConfig.bodyLarge,
+                searchQuery: _searchQuery,
+              ),
+            ),
           ],
         ),
         if (whatsapp != null && whatsapp.isNotEmpty) ...[
@@ -1072,11 +1090,11 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 
   Widget _buildAddressCell(String address) {
-    return Text(
-      address,
+    return _buildHighlightedText(
+      text: address,
       style: InventoryDesignConfig.bodyLarge,
+      searchQuery: _searchQuery,
       maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -1164,6 +1182,69 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHighlightedText({
+    required String text,
+    required TextStyle style,
+    required String searchQuery,
+    int? maxLines,
+  }) {
+    if (searchQuery.isEmpty) {
+      return Text(
+        text,
+        style: style,
+        maxLines: maxLines,
+        overflow: maxLines != null ? TextOverflow.ellipsis : null,
+      );
+    }
+
+    final query = searchQuery.toLowerCase().trim();
+    final textLower = text.toLowerCase();
+    final spans = <TextSpan>[];
+
+    int currentIndex = 0;
+    while (currentIndex < text.length) {
+      final matchIndex = textLower.indexOf(query, currentIndex);
+
+      if (matchIndex == -1) {
+        // No more matches, add the rest of the text
+        spans.add(TextSpan(text: text.substring(currentIndex), style: style));
+        break;
+      }
+
+      // Add text before the match
+      if (matchIndex > currentIndex) {
+        spans.add(
+          TextSpan(
+            text: text.substring(currentIndex, matchIndex),
+            style: style,
+          ),
+        );
+      }
+
+      // Add the highlighted match
+      spans.add(
+        TextSpan(
+          text: text.substring(matchIndex, matchIndex + query.length),
+          style: style.copyWith(
+            backgroundColor: InventoryDesignConfig.warningColor.withOpacity(
+              0.3,
+            ),
+            fontWeight: FontWeight.w700,
+            color: InventoryDesignConfig.warningColor,
+          ),
+        ),
+      );
+
+      currentIndex = matchIndex + query.length;
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+      maxLines: maxLines,
+      overflow: maxLines != null ? TextOverflow.ellipsis : TextOverflow.clip,
     );
   }
 }

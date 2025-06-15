@@ -1033,19 +1033,80 @@ class _CustomerDetailDialogDesktopState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Simple overview cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildSimpleInfoCard(
+                  title: 'Referral Status',
+                  value:
+                      _referredBy != null
+                          ? 'Referred Customer'
+                          : 'Direct Customer',
+                  subtitle:
+                      _referredBy != null
+                          ? 'Referred by ${_referredBy!.name}'
+                          : 'Joined directly',
+                  icon: PhosphorIcons.userPlus(),
+                  color:
+                      _referredBy != null
+                          ? InventoryDesignConfig.infoColor
+                          : InventoryDesignConfig.primaryColor,
+                ),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingL),
+              Expanded(
+                child: _buildSimpleInfoCard(
+                  title: 'Referrals Made',
+                  value: '${_referrals.length} Customers',
+                  subtitle:
+                      _referrals.isEmpty
+                          ? 'No referrals yet'
+                          : 'Has referred customers',
+                  icon: PhosphorIcons.users(),
+                  color:
+                      _referrals.isNotEmpty
+                          ? InventoryDesignConfig.successColor
+                          : InventoryDesignConfig.textSecondary,
+                ),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingL),
+              Expanded(
+                child: _buildSimpleInfoCard(
+                  title: 'Family Network',
+                  value:
+                      '${_familyMembers.length + (_familyHead != null ? 1 : 0)} Members',
+                  subtitle:
+                      _familyMembers.isEmpty && _familyHead == null
+                          ? 'No family links'
+                          : 'Connected family',
+                  icon: PhosphorIcons.houseLine(),
+                  color:
+                      (_familyMembers.isNotEmpty || _familyHead != null)
+                          ? InventoryDesignConfig.warningColor
+                          : InventoryDesignConfig.textSecondary,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Who referred this customer
           if (_referredBy != null) ...[
-            _buildSection(
-              title: 'Referred By',
-              icon: PhosphorIcons.userPlus(),
-              child: _buildCustomerCard(_referredBy!),
+            _buildSimpleSection(
+              title: 'Who Referred This Customer',
+              icon: PhosphorIcons.arrowDown(),
+              child: _buildSimpleCustomerCard(_referredBy!, 'Referrer'),
             ),
             const SizedBox(height: InventoryDesignConfig.spacingXXL),
           ],
 
+          // Customers this person referred
           if (_referrals.isNotEmpty) ...[
-            _buildSection(
-              title: 'Customers Referred (${_referrals.length})',
-              icon: PhosphorIcons.users(),
+            _buildSimpleSection(
+              title: 'Customers They Referred (${_referrals.length})',
+              icon: PhosphorIcons.arrowUp(),
               child: Column(
                 children:
                     _referrals
@@ -1054,7 +1115,10 @@ class _CustomerDetailDialogDesktopState
                             padding: const EdgeInsets.only(
                               bottom: InventoryDesignConfig.spacingM,
                             ),
-                            child: _buildCustomerCard(customer),
+                            child: _buildSimpleCustomerCard(
+                              customer,
+                              'Referred',
+                            ),
                           ),
                         )
                         .toList(),
@@ -1063,53 +1127,168 @@ class _CustomerDetailDialogDesktopState
             const SizedBox(height: InventoryDesignConfig.spacingXXL),
           ],
 
-          if (_familyHead != null) ...[
-            _buildSection(
-              title: 'Family Head',
-              icon: PhosphorIcons.crown(),
-              child: _buildCustomerCard(_familyHead!),
-            ),
-            const SizedBox(height: InventoryDesignConfig.spacingXXL),
-          ],
-
-          if (_familyMembers.isNotEmpty) ...[
-            _buildSection(
-              title: 'Family Members (${_familyMembers.length})',
+          // Family connections
+          if (_familyHead != null || _familyMembers.isNotEmpty) ...[
+            _buildSimpleSection(
+              title: 'Family Connections',
               icon: PhosphorIcons.houseLine(),
               child: Column(
-                children:
-                    _familyMembers
-                        .map(
-                          (customer) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: InventoryDesignConfig.spacingM,
-                            ),
-                            child: _buildCustomerCard(customer),
+                children: [
+                  if (_familyHead != null)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: InventoryDesignConfig.spacingM,
+                      ),
+                      child: _buildSimpleCustomerCard(
+                        _familyHead!,
+                        'Family Head',
+                      ),
+                    ),
+                  ..._familyMembers
+                      .map(
+                        (customer) => Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: InventoryDesignConfig.spacingM,
                           ),
-                        )
-                        .toList(),
+                          child: _buildSimpleCustomerCard(
+                            customer,
+                            customer.familyRelation?.toString().toUpperCase() ??
+                                'FAMILY MEMBER',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ],
               ),
             ),
           ],
 
+          // Empty state
           if (_referredBy == null &&
               _referrals.isEmpty &&
               _familyHead == null &&
               _familyMembers.isEmpty)
-            _buildEmptyState(
-              icon: PhosphorIcons.users(),
-              title: 'No Relationships',
-              description:
-                  'This customer has no family or referral connections.',
-            ),
+            _buildEmptyConnectionsState(),
         ],
       ),
     );
   }
 
-  Widget _buildCustomerCard(Customer customer) {
+  Widget _buildSimpleInfoCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusL),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusS,
+                  ),
+                ),
+                child: Icon(icon, size: 18, color: color),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Expanded(
+                child: Text(
+                  title,
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingM),
+          Text(
+            value,
+            style: InventoryDesignConfig.titleLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingXS),
+          Text(
+            subtitle,
+            style: InventoryDesignConfig.bodySmall.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleSection({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: InventoryDesignConfig.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(InventoryDesignConfig.radiusL),
+                topRight: Radius.circular(InventoryDesignConfig.radiusL),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: InventoryDesignConfig.primaryAccent,
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Text(
+                  title,
+                  style: InventoryDesignConfig.titleMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleCustomerCard(Customer customer, String relationship) {
+    final genderColor =
+        customer.gender == Gender.male
+            ? InventoryDesignConfig.infoColor
+            : InventoryDesignConfig.successColor;
+
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
       decoration: BoxDecoration(
         color: InventoryDesignConfig.surfaceLight,
         borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
@@ -1117,32 +1296,30 @@ class _CustomerDetailDialogDesktopState
       ),
       child: Row(
         children: [
+          // Avatar
           Container(
-            width: 40,
-            height: 40,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color:
-                  customer.gender == Gender.male
-                      ? InventoryDesignConfig.infoColor.withOpacity(0.1)
-                      : InventoryDesignConfig.successColor.withOpacity(0.1),
+              color: genderColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusS,
+                InventoryDesignConfig.radiusM,
               ),
+              border: Border.all(color: genderColor, width: 2),
             ),
             child: Center(
               child: Text(
                 customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
-                style: InventoryDesignConfig.titleMedium.copyWith(
-                  color:
-                      customer.gender == Gender.male
-                          ? InventoryDesignConfig.infoColor
-                          : InventoryDesignConfig.successColor,
+                style: InventoryDesignConfig.titleLarge.copyWith(
+                  color: genderColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: InventoryDesignConfig.spacingM),
+          const SizedBox(width: InventoryDesignConfig.spacingL),
+
+          // Customer info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1153,203 +1330,138 @@ class _CustomerDetailDialogDesktopState
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: InventoryDesignConfig.spacingXS),
                 Text(
                   '#${customer.billNumber} • ${customer.phone}',
-                  style: InventoryDesignConfig.bodySmall.copyWith(
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
                     color: InventoryDesignConfig.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: InventoryDesignConfig.spacingS),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: InventoryDesignConfig.spacingM,
+                    vertical: InventoryDesignConfig.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusS,
+                    ),
+                  ),
+                  child: Text(
+                    relationship,
+                    style: InventoryDesignConfig.bodySmall.copyWith(
+                      color: InventoryDesignConfig.primaryAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildComplaintsTab() {
-    if (_complaints.isEmpty) {
-      return _buildEmptyState(
-        icon: PhosphorIcons.warning(),
-        title: 'No Complaints',
-        description: 'This customer has no complaints.',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      itemCount: _complaints.length,
-      separatorBuilder:
-          (context, index) =>
-              const SizedBox(height: InventoryDesignConfig.spacingL),
-      itemBuilder: (context, index) => _buildComplaintCard(_complaints[index]),
-    );
-  }
-
-  Widget _buildComplaintCard(Complaint complaint) {
-    return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: InventoryDesignConfig.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          // Actions
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-                decoration: BoxDecoration(
-                  color: InventoryDesignConfig.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
-                  ),
-                ),
-                child: Icon(
-                  PhosphorIcons.warning(),
-                  size: 16,
-                  color: InventoryDesignConfig.errorColor,
-                ),
+              _buildSimpleActionButton(
+                icon: PhosphorIcons.eye(),
+                tooltip: 'View Details',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  CustomerDetailDialogDesktop.show(
+                    context,
+                    customer: customer,
+                    onCustomerUpdated: widget.onCustomerUpdated,
+                  );
+                },
               ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      complaint.title,
-                      style: InventoryDesignConfig.titleMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      DateFormat.yMMMd().format(complaint.createdAt),
-                      style: InventoryDesignConfig.bodySmall.copyWith(
-                        color: InventoryDesignConfig.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildStatusChip(
-                complaint.status.toString().split('.').last.toUpperCase(),
-                _getComplaintStatusColor(
-                  complaint.status.toString().split('.').last,
-                ),
+              const SizedBox(width: InventoryDesignConfig.spacingS),
+              _buildSimpleActionButton(
+                icon: PhosphorIcons.phone(),
+                tooltip: 'Call Customer',
+                onPressed: () async {
+                  final phoneNumber = 'tel:${customer.phone}';
+                  if (await canLaunch(phoneNumber)) {
+                    await launch(phoneNumber);
+                  }
+                },
               ),
             ],
           ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-
-          Text(complaint.description, style: InventoryDesignConfig.bodyMedium),
-
-          if (complaint.assignedTo.isNotEmpty) ...[
-            const SizedBox(height: InventoryDesignConfig.spacingM),
-            Text(
-              'Assigned to: ${complaint.assignedTo}',
-              style: InventoryDesignConfig.bodySmall.copyWith(
-                color: InventoryDesignConfig.textSecondary,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatusChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: InventoryDesignConfig.spacingS,
-        vertical: InventoryDesignConfig.spacingXS,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+  Widget _buildSimpleActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+      child: InkWell(
+        onTap: onPressed,
         borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: InventoryDesignConfig.bodySmall.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
+        child: Container(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.primaryAccent.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+          ),
+          child: Tooltip(
+            message: tooltip,
+            child: Icon(
+              icon,
+              size: 16,
+              color: InventoryDesignConfig.primaryAccent,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String description,
-    String? actionLabel,
-    VoidCallback? onAction,
-  }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXXL),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-              decoration: BoxDecoration(
-                color: InventoryDesignConfig.surfaceAccent,
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusL,
-                ),
-              ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: InventoryDesignConfig.textTertiary,
+  Widget _buildEmptyConnectionsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+      decoration: InventoryDesignConfig.cardDecoration,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
               ),
             ),
-            const SizedBox(height: InventoryDesignConfig.spacingXXL),
-            Text(
-              title,
-              style: InventoryDesignConfig.headlineMedium.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            child: Icon(
+              PhosphorIcons.users(),
+              size: 48,
+              color: InventoryDesignConfig.textTertiary,
             ),
-            const SizedBox(height: InventoryDesignConfig.spacingM),
-            Text(
-              description,
-              style: InventoryDesignConfig.bodyMedium.copyWith(
-                color: InventoryDesignConfig.textSecondary,
-              ),
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingL),
+          Text(
+            'No Connections Yet',
+            style: InventoryDesignConfig.titleLarge.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: InventoryDesignConfig.spacingXXL),
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                child: InkWell(
-                  onTap: onAction,
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusM,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: InventoryDesignConfig.spacingL,
-                      vertical: InventoryDesignConfig.spacingM,
-                    ),
-                    decoration: InventoryDesignConfig.buttonPrimaryDecoration,
-                    child: Text(
-                      actionLabel,
-                      style: InventoryDesignConfig.bodyMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          Text(
+            'This customer has no family or referral connections.',
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -1439,6 +1551,226 @@ class _CustomerDetailDialogDesktopState
     final whatsappUrl = 'https://wa.me/$whatsappNumber';
     if (await canLaunch(whatsappUrl)) {
       await launch(whatsappUrl);
+    }
+  }
+
+  Widget _buildComplaintsTab() {
+    if (_complaints.isEmpty) {
+      return _buildEmptyState(
+        icon: PhosphorIcons.warning(),
+        title: 'No Complaints',
+        description: 'This customer has not filed any complaints.',
+        actionLabel: 'Add Complaint',
+        onAction: _addComplaint,
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+      itemCount: _complaints.length,
+      separatorBuilder:
+          (context, index) =>
+              const SizedBox(height: InventoryDesignConfig.spacingL),
+      itemBuilder: (context, index) => _buildComplaintCard(_complaints[index]),
+    );
+  }
+
+  Widget _buildComplaintCard(Complaint complaint) {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: InventoryDesignConfig.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusS,
+                  ),
+                ),
+                child: Icon(
+                  PhosphorIcons.warning(),
+                  size: 16,
+                  color: InventoryDesignConfig.errorColor,
+                ),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      complaint.title,
+                      style: InventoryDesignConfig.titleMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      DateFormat.yMMMd().format(complaint.createdAt),
+                      style: InventoryDesignConfig.bodySmall.copyWith(
+                        color: InventoryDesignConfig.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildStatusChip(
+                complaint.status.toString().split('.').last.toUpperCase(),
+                _getComplaintStatusColor(
+                  complaint.status.toString().split('.').last,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingM),
+
+          Text(
+            complaint.description,
+            style: InventoryDesignConfig.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingM),
+
+          Row(
+            children: [
+              Text(
+                'Priority: ',
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: InventoryDesignConfig.textSecondary,
+                ),
+              ),
+              _buildStatusChip(
+                complaint.priority.toString().split('.').last.toUpperCase(),
+                _getPriorityColor(
+                  complaint.priority.toString().split('.').last,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Assigned to: ${complaint.assignedTo}',
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: InventoryDesignConfig.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: InventoryDesignConfig.spacingM,
+        vertical: InventoryDesignConfig.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: InventoryDesignConfig.bodySmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String description,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceAccent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 48,
+              color: InventoryDesignConfig.textTertiary,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingXL),
+          Text(
+            title,
+            style: InventoryDesignConfig.titleLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingM),
+          Text(
+            description,
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: InventoryDesignConfig.spacingXL),
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: InkWell(
+                onTap: onAction,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: InventoryDesignConfig.spacingXL,
+                    vertical: InventoryDesignConfig.spacingM,
+                  ),
+                  decoration: InventoryDesignConfig.buttonPrimaryDecoration,
+                  child: Text(
+                    actionLabel,
+                    style: InventoryDesignConfig.bodyMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _getPriorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return InventoryDesignConfig.errorColor;
+      case 'medium':
+        return InventoryDesignConfig.warningColor;
+      case 'low':
+      default:
+        return InventoryDesignConfig.successColor;
     }
   }
 

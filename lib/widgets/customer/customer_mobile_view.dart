@@ -3,9 +3,9 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
 import '../../services/customer_service.dart';
-import '../inventory/inventory_design_config.dart'; // Using InventoryDesignConfig
+import '../inventory/inventory_design_config.dart';
 import 'add_customer_mobile_sheet.dart';
-import 'customer_detail_dialog.dart';
+import 'customer_detail_screen_mobile.dart';
 import 'customer_filter_sheet.dart'; // For filter sheet
 
 class CustomerMobileView extends StatefulWidget {
@@ -99,12 +99,35 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
 
       List<Customer> filteredCustomers =
           allCustomers.where((customer) {
-            final searchLower = _searchQuery.toLowerCase();
-            bool matchesSearch =
-                _searchQuery.isEmpty ||
-                customer.name.toLowerCase().contains(searchLower) ||
-                customer.phone.contains(searchLower) ||
-                customer.billNumber.contains(searchLower);
+            // Enhanced search functionality - search by name, phone, bill number, and address
+            bool matchesSearch = true;
+            if (_searchQuery.isNotEmpty) {
+              final searchLower = _searchQuery.toLowerCase().trim();
+              final nameMatch = customer.name.toLowerCase().contains(
+                searchLower,
+              );
+              final phoneMatch = customer.phone
+                  .replaceAll(RegExp(r'[^\d+]'), '')
+                  .contains(searchLower.replaceAll(RegExp(r'[^\d+]'), ''));
+              final billNumberMatch = customer.billNumber
+                  .toLowerCase()
+                  .contains(searchLower);
+              final addressMatch = customer.address.toLowerCase().contains(
+                searchLower,
+              );
+              final whatsappMatch =
+                  customer.whatsapp.isNotEmpty &&
+                  customer.whatsapp
+                      .replaceAll(RegExp(r'[^\d+]'), '')
+                      .contains(searchLower.replaceAll(RegExp(r'[^\d+]'), ''));
+
+              matchesSearch =
+                  nameMatch ||
+                  phoneMatch ||
+                  billNumberMatch ||
+                  addressMatch ||
+                  whatsappMatch;
+            }
 
             bool matchesDate = true;
             if (_currentFilter.dateRange != null) {
@@ -308,7 +331,7 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                       autofocus: true,
                       style: InventoryDesignConfig.bodyLarge,
                       decoration: InputDecoration(
-                        hintText: 'Search customers...',
+                        hintText: 'Search by name, phone, bill number...',
                         hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
                           color: InventoryDesignConfig.textTertiary,
                         ),
@@ -325,7 +348,7 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
                           vertical: InventoryDesignConfig.spacingM - 1,
-                        ), // Adjust to center text
+                        ),
                       ),
                       onChanged: _onSearchChanged,
                     ),
@@ -654,13 +677,13 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            customer.name,
+                          _buildHighlightedText(
+                            text: customer.name,
                             style: InventoryDesignConfig.titleMedium.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
+                            searchQuery: _searchQuery,
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(
                             height: InventoryDesignConfig.spacingXS,
@@ -678,11 +701,12 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                                     InventoryDesignConfig.radiusS,
                                   ),
                                 ),
-                                child: Text(
-                                  customer.billNumber,
+                                child: _buildHighlightedText(
+                                  text: customer.billNumber,
                                   style: InventoryDesignConfig.code.copyWith(
                                     fontSize: 10,
                                   ),
+                                  searchQuery: _searchQuery,
                                 ),
                               ),
                               const SizedBox(
@@ -697,14 +721,15 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                                 width: InventoryDesignConfig.spacingXS,
                               ),
                               Expanded(
-                                child: Text(
-                                  customer.phone,
+                                child: _buildHighlightedText(
+                                  text: customer.phone,
                                   style: InventoryDesignConfig.bodySmall
                                       .copyWith(
                                         color:
                                             InventoryDesignConfig.textSecondary,
                                       ),
-                                  overflow: TextOverflow.ellipsis,
+                                  searchQuery: _searchQuery,
+                                  maxLines: 1,
                                 ),
                               ),
                             ],
@@ -752,13 +777,13 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                     ),
                     const SizedBox(width: InventoryDesignConfig.spacingS),
                     Expanded(
-                      child: Text(
-                        customer.address,
+                      child: _buildHighlightedText(
+                        text: customer.address,
                         style: InventoryDesignConfig.bodySmall.copyWith(
                           color: InventoryDesignConfig.textSecondary,
                         ),
+                        searchQuery: _searchQuery,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -771,27 +796,66 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
     );
   }
 
-  Widget _buildCardActionButton(IconData icon, VoidCallback onPressed) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-        child: Container(
-          padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-          decoration: BoxDecoration(
-            color: InventoryDesignConfig.surfaceLight,
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-            border: Border.all(color: InventoryDesignConfig.borderPrimary),
+  Widget _buildHighlightedText({
+    required String text,
+    required TextStyle style,
+    required String searchQuery,
+    int? maxLines,
+  }) {
+    if (searchQuery.isEmpty) {
+      return Text(
+        text,
+        style: style,
+        maxLines: maxLines,
+        overflow: maxLines != null ? TextOverflow.ellipsis : null,
+      );
+    }
+
+    final query = searchQuery.toLowerCase().trim();
+    final textLower = text.toLowerCase();
+    final spans = <TextSpan>[];
+
+    int currentIndex = 0;
+    while (currentIndex < text.length) {
+      final matchIndex = textLower.indexOf(query, currentIndex);
+
+      if (matchIndex == -1) {
+        // No more matches, add the rest of the text
+        spans.add(TextSpan(text: text.substring(currentIndex), style: style));
+        break;
+      }
+
+      // Add text before the match
+      if (matchIndex > currentIndex) {
+        spans.add(
+          TextSpan(
+            text: text.substring(currentIndex, matchIndex),
+            style: style,
           ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: InventoryDesignConfig.textSecondary,
+        );
+      }
+
+      // Add the highlighted match
+      spans.add(
+        TextSpan(
+          text: text.substring(matchIndex, matchIndex + query.length),
+          style: style.copyWith(
+            backgroundColor: InventoryDesignConfig.primaryAccent.withOpacity(
+              0.2,
+            ),
+            fontWeight: FontWeight.w700,
+            color: InventoryDesignConfig.primaryAccent,
           ),
         ),
-      ),
+      );
+
+      currentIndex = matchIndex + query.length;
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+      maxLines: maxLines,
+      overflow: maxLines != null ? TextOverflow.ellipsis : TextOverflow.clip,
     );
   }
 
@@ -901,6 +965,31 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardActionButton(IconData icon, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.surfaceAccent,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+            border: Border.all(color: InventoryDesignConfig.borderPrimary),
+          ),
+          child: Icon(
+            icon,
+            size: 14,
+            color: InventoryDesignConfig.textSecondary,
           ),
         ),
       ),
@@ -1093,9 +1182,10 @@ class _CustomerMobileViewState extends State<CustomerMobileView>
     BuildContext context,
     Customer customer,
   ) {
-    return showDialog(
-      context: context,
-      builder: (context) => CustomerDetailDialog(customer: customer),
+    return CustomerDetailScreenMobile.show(
+      context,
+      customer: customer,
+      onCustomerUpdated: _loadCustomers,
     );
   }
 }

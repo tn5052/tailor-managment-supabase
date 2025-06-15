@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
-import 'package:intl/intl.dart';
+import '../inventory/inventory_design_config.dart';
 
 class CustomerFilterSheet extends StatefulWidget {
-  final CustomerFilter filter;
+  final CustomerFilter initialFilter;
   final Function(CustomerFilter) onFilterChanged;
 
   const CustomerFilterSheet({
     super.key,
-    required this.filter,
+    required this.initialFilter,
     required this.onFilterChanged,
   });
 
-  static void show(BuildContext context, CustomerFilter filter, Function(CustomerFilter) onFilterChanged) {
+  static void show(
+    BuildContext context,
+    CustomerFilter currentFilter,
+    Function(CustomerFilter) onFilterChanged,
+  ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => CustomerFilterSheet(
-        filter: filter,
-        onFilterChanged: onFilterChanged,
-      ),
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      useSafeArea: true,
+      builder:
+          (context) => CustomerFilterSheet(
+            initialFilter: currentFilter,
+            onFilterChanged: onFilterChanged,
+          ),
     );
   }
 
@@ -28,157 +38,448 @@ class CustomerFilterSheet extends StatefulWidget {
   State<CustomerFilterSheet> createState() => _CustomerFilterSheetState();
 }
 
-class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
-  late CustomerFilter _filter;
+class _CustomerFilterSheetState extends State<CustomerFilterSheet>
+    with TickerProviderStateMixin {
+  late TextEditingController _searchController;
+
+  late AnimationController _animationController;
+  late Animation<double> _sheetAnimation;
+
+  // Local state for filters
+  CustomerFilter _localFilter = const CustomerFilter();
+
+  final List<String> _quickFilterOptions = [
+    'All',
+    'Recently Added',
+    'Has WhatsApp',
+    'Is Referrer',
+    'Has Family',
+  ];
+
+  final List<String> _genderOptions = ['All Genders', 'Male', 'Female'];
+
+  final List<String> _sortOptions = [
+    'Newest First',
+    'Oldest First',
+    'Name (A-Z)',
+    'Name (Z-A)',
+    'Bill Number (Low-High)',
+    'Bill Number (High-Low)',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _filter = widget.filter;
+
+    // Initialize controllers
+    _searchController = TextEditingController(
+      text: widget.initialFilter.searchQuery,
+    );
+
+    // Initialize local state
+    _localFilter = widget.initialFilter;
+
+    // Initialize animations
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _sheetAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _applyFilters() {
+    widget.onFilterChanged(_localFilter);
+    Navigator.of(context).pop();
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _localFilter = const CustomerFilter();
+      _searchController.clear();
+    });
+    widget.onFilterChanged(const CustomerFilter());
+    Navigator.of(context).pop();
+  }
+
+  String _getQuickFilterSelection() {
+    if (_localFilter.onlyRecentlyAdded) return 'Recently Added';
+    if (_localFilter.hasWhatsapp) return 'Has WhatsApp';
+    if (_localFilter.isReferrer) return 'Is Referrer';
+    if (_localFilter.hasFamilyMembers) return 'Has Family';
+    return 'All';
+  }
+
+  String _getGenderSelection() {
+    if (_localFilter.selectedGenders.isEmpty) return 'All Genders';
+    if (_localFilter.selectedGenders.contains(Gender.male) &&
+        _localFilter.selectedGenders.contains(Gender.female))
+      return 'All Genders';
+    if (_localFilter.selectedGenders.contains(Gender.male)) return 'Male';
+    if (_localFilter.selectedGenders.contains(Gender.female)) return 'Female';
+    return 'All Genders';
+  }
+
+  String _getSortSelection() {
+    switch (_localFilter.sortBy) {
+      case CustomerSortBy.nameAZ:
+        return 'Name (A-Z)';
+      case CustomerSortBy.nameZA:
+        return 'Name (Z-A)';
+      case CustomerSortBy.billNumberAsc:
+        return 'Bill Number (Low-High)';
+      case CustomerSortBy.billNumberDesc:
+        return 'Bill Number (High-Low)';
+      case CustomerSortBy.oldest:
+        return 'Oldest First';
+      case CustomerSortBy.newest:
+      return 'Newest First';
+    }
+  }
+
+  void _updateQuickFilter(String selection) {
+    setState(() {
+      switch (selection) {
+        case 'Recently Added':
+          _localFilter = _localFilter.copyWith(
+            onlyRecentlyAdded: true,
+            hasWhatsapp: false,
+            isReferrer: false,
+            hasFamilyMembers: false,
+          );
+          break;
+        case 'Has WhatsApp':
+          _localFilter = _localFilter.copyWith(
+            hasWhatsapp: true,
+            onlyRecentlyAdded: false,
+            isReferrer: false,
+            hasFamilyMembers: false,
+          );
+          break;
+        case 'Is Referrer':
+          _localFilter = _localFilter.copyWith(
+            isReferrer: true,
+            onlyRecentlyAdded: false,
+            hasWhatsapp: false,
+            hasFamilyMembers: false,
+          );
+          break;
+        case 'Has Family':
+          _localFilter = _localFilter.copyWith(
+            hasFamilyMembers: true,
+            onlyRecentlyAdded: false,
+            hasWhatsapp: false,
+            isReferrer: false,
+          );
+          break;
+        case 'All':
+        default:
+          _localFilter = _localFilter.copyWith(
+            onlyRecentlyAdded: false,
+            hasWhatsapp: false,
+            isReferrer: false,
+            hasFamilyMembers: false,
+          );
+          break;
+      }
+    });
+  }
+
+  void _updateGenderFilter(String selection) {
+    setState(() {
+      Set<Gender> genders = {};
+      switch (selection) {
+        case 'Male':
+          genders.add(Gender.male);
+          break;
+        case 'Female':
+          genders.add(Gender.female);
+          break;
+        case 'All Genders':
+        default:
+          genders = {};
+          break;
+      }
+      _localFilter = _localFilter.copyWith(selectedGenders: genders);
+    });
+  }
+
+  void _updateSortFilter(String selection) {
+    setState(() {
+      CustomerSortBy sortBy;
+      switch (selection) {
+        case 'Name (A-Z)':
+          sortBy = CustomerSortBy.nameAZ;
+          break;
+        case 'Name (Z-A)':
+          sortBy = CustomerSortBy.nameZA;
+          break;
+        case 'Bill Number (Low-High)':
+          sortBy = CustomerSortBy.billNumberAsc;
+          break;
+        case 'Bill Number (High-Low)':
+          sortBy = CustomerSortBy.billNumberDesc;
+          break;
+        case 'Oldest First':
+          sortBy = CustomerSortBy.oldest;
+          break;
+        case 'Newest First':
+        default:
+          sortBy = CustomerSortBy.newest;
+          break;
+      }
+      _localFilter = _localFilter.copyWith(sortBy: sortBy);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    return AnimatedBuilder(
+      animation: _sheetAnimation,
+      builder: (context, child) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(InventoryDesignConfig.radiusXL),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(child: _buildContent()),
+              _buildActionButtons(),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
+  Widget _buildHeader() {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: const BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(InventoryDesignConfig.radiusXL),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Handle and header
+          // Handle
           Container(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: Column(
-              children: [
-                Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.outline.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.filter_list, color: colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Filter Customers',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _filter.hasActiveFilters
-                          ? () {
-                              setState(() {
-                                _filter = const CustomerFilter();
-                              });
-                              widget.onFilterChanged(_filter);
-                            }
-                          : null,
-                      child: const Text('Reset'),
-                    ),
-                  ],
-                ),
-              ],
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.borderPrimary,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
 
-          // Quick filters
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          // Header content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              InventoryDesignConfig.spacingXL,
+              InventoryDesignConfig.spacingS,
+              InventoryDesignConfig.spacingL,
+              InventoryDesignConfig.spacingL,
+            ),
             child: Row(
               children: [
-                _FilterChip(
-                  label: 'Today',
-                  icon: Icons.today,
-                  selected: _isToday(),
-                  onSelected: (_) => _setQuickDateRange(0),
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                  ),
+                  child: Icon(
+                    PhosphorIcons.funnel(),
+                    size: 20,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
                 ),
-                _FilterChip(
-                  label: 'Yesterday',
-                  icon: Icons.history,
-                  selected: _isYesterday(),
-                  onSelected: (_) => _setQuickDateRange(1),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Filter & Sort',
+                        style: InventoryDesignConfig.headlineMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Refine your customer view',
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: InventoryDesignConfig.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                _FilterChip(
-                  label: 'Last 7 Days',
-                  icon: Icons.date_range,
-                  selected: _isLast7Days(),
-                  onSelected: (_) => _setQuickDateRange(7),
-                ),
-                _FilterChip(
-                  label: 'This Month',
-                  icon: Icons.calendar_month,
-                  selected: _isThisMonth(),
-                  onSelected: (_) => _setThisMonth(),
-                ),
-                _FilterChip(
-                  label: 'With WhatsApp',
-                  icon: Icons.message,
-                  selected: _filter.hasWhatsapp,
-                  onSelected: (value) {
-                    setState(() {
-                      _filter = _filter.copyWith(hasWhatsapp: value);
-                    });
-                  },
-                ),
-                _FilterChip(
-                  label: 'Has Referrals',
-                  icon: Icons.people_outline,
-                  selected: _filter.isReferrer,
-                  onSelected: (value) {
-                    setState(() {
-                      _filter = _filter.copyWith(isReferrer: value);
-                    });
-                  },
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: InventoryDesignConfig.surfaceLight,
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusM,
+                        ),
+                      ),
+                      child: Icon(
+                        PhosphorIcons.x(),
+                        size: 18,
+                        color: InventoryDesignConfig.textSecondary,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Main filters
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              children: [
-                _buildDateSection(theme),
-                const SizedBox(height: 24),
+          Container(height: 1, color: InventoryDesignConfig.borderSecondary),
+        ],
+      ),
+    );
+  }
 
-                _buildSortingSection(theme),
-                const SizedBox(height: 24),
-                _buildGroupingSection(theme),
-                const SizedBox(height: 24),
-                _buildAdditionalFilters(theme),
-              ],
-            ),
-          ),
-
-          // Apply button
-          Padding(
-            padding: const EdgeInsets.all(24).copyWith(top: 0),
-            child: FilledButton(
-              onPressed: () {
-                widget.onFilterChanged(_filter);
-                Navigator.pop(context);
-              },
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXL),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search Section
+          _buildSection(
+            title: 'Search',
+            icon: PhosphorIcons.magnifyingGlass(),
+            child: Container(
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.surfaceLight,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
                 ),
+                border: Border.all(color: InventoryDesignConfig.borderPrimary),
               ),
-              child: const Text('Apply Filters'),
+              child: TextField(
+                controller: _searchController,
+                style: InventoryDesignConfig.bodyLarge,
+                decoration: InputDecoration(
+                  hintText: 'Search by name, phone, bill number...',
+                  hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+                    color: InventoryDesignConfig.textTertiary,
+                  ),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(
+                      InventoryDesignConfig.spacingM,
+                    ),
+                    child: Icon(
+                      PhosphorIcons.magnifyingGlass(),
+                      size: 18,
+                      color: InventoryDesignConfig.textSecondary,
+                    ),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: InventoryDesignConfig.spacingM,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _localFilter = _localFilter.copyWith(searchQuery: value);
+                  });
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Quick Filters
+          _buildSection(
+            title: 'Quick Filters',
+            icon: PhosphorIcons.lightning(),
+            child: _buildChipGroup(
+              options: _quickFilterOptions,
+              selectedOption: _getQuickFilterSelection(),
+              onSelectionChanged: _updateQuickFilter,
+            ),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Gender Filter
+          _buildSection(
+            title: 'Gender',
+            icon: PhosphorIcons.users(),
+            child: _buildChipGroup(
+              options: _genderOptions,
+              selectedOption: _getGenderSelection(),
+              onSelectionChanged: _updateGenderFilter,
+            ),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Date Range Section
+          _buildSection(
+            title: 'Date Range',
+            icon: PhosphorIcons.calendar(),
+            child: _buildDateRangeSelector(),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Advanced Filters
+          _buildSection(
+            title: 'Advanced Filters',
+            icon: PhosphorIcons.gear(),
+            child: _buildAdvancedFilters(),
+          ),
+
+          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+
+          // Sort Options
+          _buildSection(
+            title: 'Sort By',
+            icon: PhosphorIcons.sortAscending(),
+            child: _buildChipGroup(
+              options: _sortOptions,
+              selectedOption: _getSortSelection(),
+              onSelectionChanged: _updateSortFilter,
             ),
           ),
         ],
@@ -186,369 +487,450 @@ class _CustomerFilterSheetState extends State<CustomerFilterSheet> {
     );
   }
 
-  Widget _buildDateSection(ThemeData theme) {
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Date Range',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(
-              child: _DateButton(
-                label: 'From',
-                date: _filter.dateRange?.start,
-                onTap: () => _selectDate(true),
+            Container(
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusS,
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: InventoryDesignConfig.primaryColor,
               ),
             ),
-            const SizedBox(width: 12),
-            const Icon(Icons.arrow_forward, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _DateButton(
-                label: 'To',
-                date: _filter.dateRange?.end,
-                onTap: () => _selectDate(false),
+            const SizedBox(width: InventoryDesignConfig.spacingM),
+            Text(
+              title,
+              style: InventoryDesignConfig.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
+        const SizedBox(height: InventoryDesignConfig.spacingL),
+        child,
       ],
     );
   }
 
+  Widget _buildChipGroup({
+    required List<String> options,
+    required String selectedOption,
+    required Function(String) onSelectionChanged,
+  }) {
+    return Wrap(
+      spacing: InventoryDesignConfig.spacingM,
+      runSpacing: InventoryDesignConfig.spacingM,
+      children:
+          options.map((option) {
+            final isSelected = selectedOption == option;
 
-  Widget _buildSortingSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Sort By',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: CustomerSortBy.values.map((sort) {
-            return ChoiceChip(
-              label: Text(_getSortLabel(sort)),
-              selected: _filter.sortBy == sort,
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _filter = _filter.copyWith(sortBy: sort);
-                  });
-                }
-              },
+            return Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onSelectionChanged(option);
+                },
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: InventoryDesignConfig.spacingL,
+                    vertical: InventoryDesignConfig.spacingM,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        isSelected
+                            ? InventoryDesignConfig.primaryColor
+                            : InventoryDesignConfig.surfaceLight,
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    border: Border.all(
+                      color:
+                          isSelected
+                              ? InventoryDesignConfig.primaryColor
+                              : InventoryDesignConfig.borderPrimary,
+                    ),
+                  ),
+                  child: Text(
+                    option,
+                    style: InventoryDesignConfig.bodyMedium.copyWith(
+                      color:
+                          isSelected
+                              ? InventoryDesignConfig.surfaceColor
+                              : InventoryDesignConfig.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
             );
           }).toList(),
-        ),
-      ],
     );
   }
 
-  Widget _buildGroupingSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Group By',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+  Widget _buildDateRangeSelector() {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+      child: InkWell(
+        onTap: _showDateRangePicker,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: Container(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+          decoration: BoxDecoration(
+            color:
+                _localFilter.dateRange != null
+                    ? InventoryDesignConfig.primaryColor.withOpacity(0.1)
+                    : InventoryDesignConfig.surfaceLight,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            border: Border.all(
+              color:
+                  _localFilter.dateRange != null
+                      ? InventoryDesignConfig.primaryColor
+                      : InventoryDesignConfig.borderPrimary,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                PhosphorIcons.calendar(),
+                size: 20,
+                color:
+                    _localFilter.dateRange != null
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.textSecondary,
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Expanded(
+                child: Text(
+                  _localFilter.dateRange != null
+                      ? '${_formatDate(_localFilter.dateRange!.start)} - ${_formatDate(_localFilter.dateRange!.end)}'
+                      : 'Select date range',
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    color:
+                        _localFilter.dateRange != null
+                            ? InventoryDesignConfig.primaryColor
+                            : InventoryDesignConfig.textSecondary,
+                    fontWeight:
+                        _localFilter.dateRange != null
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                  ),
+                ),
+              ),
+              Icon(
+                PhosphorIcons.caretRight(),
+                size: 16,
+                color:
+                    _localFilter.dateRange != null
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.textSecondary,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: CustomerGroupBy.values.map((group) {
-            return ChoiceChip(
-              label: Text(_getGroupLabel(group)),
-              selected: _filter.groupBy == group,
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _filter = _filter.copyWith(groupBy: group);
-                  });
-                }
-              },
-            );
-          }).toList(),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildAdditionalFilters(ThemeData theme) {
+  Widget _buildAdvancedFilters() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Additional Filters',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-         _buildFilterSwitch(
-          title: 'Top Referrers',
-          subtitle: 'Show customers who brought in the most referrals',
-          value: _filter.showTopReferrers,
+        _buildAdvancedFilterToggle(
+          title: 'Has Address',
+          subtitle: 'Customers with complete address',
+          icon: PhosphorIcons.mapPin(),
+          value: _localFilter.hasAddress,
           onChanged: (value) {
             setState(() {
-              _filter = _filter.copyWith(showTopReferrers: value);
+              _localFilter = _localFilter.copyWith(hasAddress: value);
             });
           },
-          icon: Icons.star_outline,
         ),
-        _buildFilterSwitch(
-          title: 'Has Family Members',
-          subtitle: 'Show customers who are part of a family group',
-          value: _filter.hasFamilyMembers,
+        const SizedBox(height: InventoryDesignConfig.spacingM),
+        _buildAdvancedFilterToggle(
+          title: 'With Family Network',
+          subtitle: 'Customers with family connections',
+          icon: PhosphorIcons.houseLine(),
+          value: _localFilter.onlyWithFamily,
           onChanged: (value) {
             setState(() {
-              _filter = _filter.copyWith(hasFamilyMembers: value);
+              _localFilter = _localFilter.copyWith(onlyWithFamily: value);
             });
           },
-          icon: Icons.family_restroom,
         ),
-        _buildFilterSwitch(
-          title: 'Has Referrals',
-          subtitle: 'Show customers who have referred others',
-          value: _filter.isReferrer,
+        const SizedBox(height: InventoryDesignConfig.spacingM),
+        _buildAdvancedFilterToggle(
+          title: 'With Referrals',
+          subtitle: 'Customers who were referred by others',
+          icon: PhosphorIcons.arrowDown(),
+          value: _localFilter.onlyWithReferrals,
           onChanged: (value) {
             setState(() {
-              _filter = _filter.copyWith(isReferrer: value);
+              _localFilter = _localFilter.copyWith(onlyWithReferrals: value);
             });
           },
-          icon: Icons.people,
         ),
-
       ],
     );
   }
 
-  Widget _buildFilterSwitch({
+  Widget _buildAdvancedFilterToggle({
     required String title,
     required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
     required IconData icon,
+    required bool value,
+    required Function(bool) onChanged,
   }) {
-    return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      value: value,
-      onChanged: onChanged,
-      secondary: Icon(icon),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: Container(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+          decoration: BoxDecoration(
+            color:
+                value
+                    ? InventoryDesignConfig.primaryColor.withOpacity(0.1)
+                    : InventoryDesignConfig.surfaceLight,
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            border: Border.all(
+              color:
+                  value
+                      ? InventoryDesignConfig.primaryColor
+                      : InventoryDesignConfig.borderPrimary,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                decoration: BoxDecoration(
+                  color:
+                      value
+                          ? InventoryDesignConfig.primaryColor.withOpacity(0.2)
+                          : InventoryDesignConfig.textSecondary.withOpacity(
+                            0.1,
+                          ),
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusS,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color:
+                      value
+                          ? InventoryDesignConfig.primaryColor
+                          : InventoryDesignConfig.textSecondary,
+                ),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: InventoryDesignConfig.bodyMedium.copyWith(
+                        color:
+                            value
+                                ? InventoryDesignConfig.primaryColor
+                                : InventoryDesignConfig.textPrimary,
+                        fontWeight: value ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: InventoryDesignConfig.bodySmall.copyWith(
+                        color: InventoryDesignConfig.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                activeColor: InventoryDesignConfig.primaryColor,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // Helper methods for date filters
-  void _setQuickDateRange(int days) {
-    final end = DateTime.now();
-    final start = end.subtract(Duration(days: days));
-    setState(() {
-      _filter = _filter.copyWith(
-        dateRange: DateTimeRange(start: start, end: end),
-      );
-    });
+  Widget _buildActionButtons() {
+    final hasActiveFilters = _localFilter.hasActiveFilters;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        InventoryDesignConfig.spacingXL,
+        InventoryDesignConfig.spacingL,
+        InventoryDesignConfig.spacingXL,
+        InventoryDesignConfig.spacingL + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        border: Border(
+          top: BorderSide(
+            color: InventoryDesignConfig.borderSecondary,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (hasActiveFilters) ...[
+            Expanded(
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                child: InkWell(
+                  onTap: _clearAllFilters,
+                  borderRadius: BorderRadius.circular(
+                    InventoryDesignConfig.radiusM,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: InventoryDesignConfig.spacingL,
+                    ),
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.surfaceLight,
+                      borderRadius: BorderRadius.circular(
+                        InventoryDesignConfig.radiusM,
+                      ),
+                      border: Border.all(
+                        color: InventoryDesignConfig.borderPrimary,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          PhosphorIcons.arrowClockwise(),
+                          size: 18,
+                          color: InventoryDesignConfig.textSecondary,
+                        ),
+                        const SizedBox(width: InventoryDesignConfig.spacingS),
+                        Text(
+                          'Clear All',
+                          style: InventoryDesignConfig.bodyMedium.copyWith(
+                            color: InventoryDesignConfig.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingM),
+          ],
+          Expanded(
+            flex: hasActiveFilters ? 2 : 1,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              child: InkWell(
+                onTap: _applyFilters,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: InventoryDesignConfig.spacingL,
+                  ),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor,
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        PhosphorIcons.check(),
+                        size: 18,
+                        color: InventoryDesignConfig.surfaceColor,
+                      ),
+                      const SizedBox(width: InventoryDesignConfig.spacingS),
+                      Text(
+                        hasActiveFilters
+                            ? 'Apply Filters'
+                            : 'Show All Customers',
+                        style: InventoryDesignConfig.bodyMedium.copyWith(
+                          color: InventoryDesignConfig.surfaceColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _setThisMonth() {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, 1);
-    setState(() {
-      _filter = _filter.copyWith(
-        dateRange: DateTimeRange(start: start, end: now),
-      );
-    });
-  }
-
-  bool _isToday() {
-    if (_filter.dateRange == null) return false;
-    final now = DateTime.now();
-    final start = _filter.dateRange!.start;
-    return start.year == now.year &&
-           start.month == now.month &&
-           start.day == now.day;
-  }
-
-  bool _isYesterday() {
-    if (_filter.dateRange == null) return false;
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    final start = _filter.dateRange!.start;
-    return start.year == yesterday.year &&
-           start.month == yesterday.month &&
-           start.day == yesterday.day;
-  }
-
-  bool _isLast7Days() {
-    if (_filter.dateRange == null) return false;
-    final now = DateTime.now();
-    final sevenDaysAgo = now.subtract(const Duration(days: 7));
-    final start = _filter.dateRange!.start;
-    return start.isAtSameMomentAs(sevenDaysAgo);
-  }
-
-  bool _isThisMonth() {
-    if (_filter.dateRange == null) return false;
-    final now = DateTime.now();
-    final start = _filter.dateRange!.start;
-    return start.year == now.year &&
-           start.month == now.month &&
-           start.day == 1;
-  }
-
-  Future<void> _selectDate(bool isStart) async {
-    final initialDate = _filter.dateRange?.start ?? DateTime.now();
-    final date = await showDatePicker(
+  Future<void> _showDateRangePicker() async {
+    final DateTimeRange? picked = await showDateRangePicker(
       context: context,
-      initialDate: initialDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      initialDateRange: _localFilter.dateRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: InventoryDesignConfig.primaryColor),
+          ),
+          child: child!,
+        );
+      },
     );
 
-    if (date != null) {
+    if (picked != null) {
       setState(() {
-        if (isStart) {
-          _filter = _filter.copyWith(
-            dateRange: DateTimeRange(
-              start: date,
-              end: _filter.dateRange?.end ?? DateTime.now(),
-            ),
-          );
-        } else {
-          _filter = _filter.copyWith(
-            dateRange: DateTimeRange(
-              start: _filter.dateRange?.start ?? date,
-              end: date,
-            ),
-          );
-        }
+        _localFilter = _localFilter.copyWith(dateRange: picked);
       });
     }
   }
 
-  String _getSortLabel(CustomerSortBy sort) {
-    switch (sort) {
-      case CustomerSortBy.newest:
-        return 'Newest First';
-      case CustomerSortBy.oldest:
-        return 'Oldest First';
-      case CustomerSortBy.nameAZ:
-        return 'Name (A-Z)';
-      case CustomerSortBy.nameZA:
-        return 'Name (Z-A)';
-      case CustomerSortBy.billNumberAsc:
-        return 'Bill # (Asc)';
-      case CustomerSortBy.billNumberDesc:
-        return 'Bill # (Desc)';
-    }
-  }
-
-  String _getGroupLabel(CustomerGroupBy group) {
-    switch (group) {
-      case CustomerGroupBy.none:
-        return 'No Grouping';
-      case CustomerGroupBy.gender:
-        return 'By Gender';
-      case CustomerGroupBy.family:
-        return 'By Family';
-      case CustomerGroupBy.referrals:
-        return 'By Referrals';
-      case CustomerGroupBy.dateAdded:
-        return 'By Date Added';
-    }
-  }
-}
-
-// Helper widgets
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final ValueChanged<bool> onSelected;
-
-  const _FilterChip({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 6),
-            Text(label),
-          ],
-        ),
-        selected: selected,
-        onSelected: onSelected,
-      ),
-    );
-  }
-}
-
-class _DateButton extends StatelessWidget {
-  final String label;
-  final DateTime? date;
-  final VoidCallback onTap;
-
-  const _DateButton({
-    required this.label,
-    required this.date,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              date != null ? DateFormat('MMM d, y').format(date!) : 'Select Date',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: date != null
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.outline,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
