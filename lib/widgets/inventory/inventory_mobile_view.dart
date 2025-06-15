@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'add_inventory_mobile_sheet.dart';
-import 'edit_inventory_mobile_sheet.dart';
-import 'inventory_design_config.dart';
-import 'inventory_detail_dialog_mobile.dart';
+import 'mobile/add_inventory_mobile_sheet.dart';
+import 'mobile/edit_inventory_mobile_sheet.dart';
+import '../../theme/inventory_design_config.dart';
+import 'mobile/inventory_detail_dialog_mobile.dart';
 
 class InventoryMobileView extends StatefulWidget {
   final String inventoryType; // 'fabric' or 'accessory'

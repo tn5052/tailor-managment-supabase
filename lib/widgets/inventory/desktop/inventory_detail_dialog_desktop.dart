@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'inventory_design_config.dart';
+import '../../../theme/inventory_design_config.dart';
 import 'edit_inventory_desktop_dialog.dart';
-import '../../../theme/app_theme.dart';
+import '../../../../theme/app_theme.dart';
 
 class InventoryDetailDialogDesktop extends StatefulWidget {
   final Map<String, dynamic> item;

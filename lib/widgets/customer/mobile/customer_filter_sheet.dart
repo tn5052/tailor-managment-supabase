@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../models/customer.dart';
-import '../../models/customer_filter.dart';
-import '../inventory/inventory_design_config.dart';
+import '../../../models/customer.dart';
+import '../../../models/customer_filter.dart';
+import '../../../theme/inventory_design_config.dart';
 
 class CustomerFilterSheet extends StatefulWidget {
   final CustomerFilter initialFilter;

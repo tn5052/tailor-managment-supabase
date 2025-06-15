@@ -6,7 +6,7 @@ import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/customer.dart';
 import '../../services/customer_service.dart';
-import '../customer/customer_detail_dialog.dart';
+import '../customer/desktop/customer_detail_dialog.dart';
 
 class DashboardSearch extends StatefulWidget {
   final VoidCallback? onClose;

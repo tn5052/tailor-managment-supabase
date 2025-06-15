@@ -4,10 +4,10 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
 import '../../services/customer_service.dart';
-import '../inventory/inventory_design_config.dart';
-import 'add_customer_dialog.dart';
-import 'customer_detail_dialog_desktop.dart';
-import 'customer_filter_dialog.dart';
+import '../../theme/inventory_design_config.dart';
+import 'desktop/add_customer_dialog.dart';
+import 'desktop/customer_detail_dialog_desktop.dart';
+import 'desktop/customer_filter_dialog.dart';
 
 class CustomerDesktopView extends StatefulWidget {
   final CustomerFilter filter;

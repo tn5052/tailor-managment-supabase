@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'add_inventory_desktop_dialog.dart';
+import 'desktop/add_inventory_desktop_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'inventory_detail_dialog_desktop.dart';
-import 'edit_inventory_desktop_dialog.dart';
-import 'inventory_design_config.dart';
+import 'desktop/inventory_detail_dialog_desktop.dart';
+import 'desktop/edit_inventory_desktop_dialog.dart';
+import '../../theme/inventory_design_config.dart';
 
 class InventoryDesktopView extends StatefulWidget {
   final String inventoryType; // 'fabric' or 'accessory'

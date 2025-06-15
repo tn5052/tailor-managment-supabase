@@ -1,75 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'inventory_design_config.dart';
+import '../../../theme/inventory_design_config.dart';
 
-class BrandSelectorDialog extends StatefulWidget {
-  final String? selectedBrandId;
-  final Function(String brandId, String brandName) onBrandSelected;
+class CategorySelectorDialog extends StatefulWidget {
+  final String inventoryType; // 'fabric' or 'accessory'
+  final String? selectedCategoryId;
+  final Function(String categoryId, String categoryName) onCategorySelected;
 
-  const BrandSelectorDialog({
+  const CategorySelectorDialog({
     super.key,
-    this.selectedBrandId,
-    required this.onBrandSelected,
+    required this.inventoryType,
+    this.selectedCategoryId,
+    required this.onCategorySelected,
   });
 
   static Future<void> show(
     BuildContext context, {
-    String? selectedBrandId,
-    required Function(String brandId, String brandName) onBrandSelected,
+    required String inventoryType,
+    String? selectedCategoryId,
+    required Function(String categoryId, String categoryName)
+    onCategorySelected,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => BrandSelectorDialog(
-            selectedBrandId: selectedBrandId,
-            onBrandSelected: onBrandSelected,
+          (context) => CategorySelectorDialog(
+            inventoryType: inventoryType,
+            selectedCategoryId: selectedCategoryId,
+            onCategorySelected: onCategorySelected,
           ),
     );
   }
 
   @override
-  State<BrandSelectorDialog> createState() => _BrandSelectorDialogState();
+  State<CategorySelectorDialog> createState() => _CategorySelectorDialogState();
 }
 
-class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
+class _CategorySelectorDialogState extends State<CategorySelectorDialog> {
   final _supabase = Supabase.instance.client;
   final _searchController = TextEditingController();
-  final _newBrandController = TextEditingController();
+  final _newCategoryController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
-  List<Map<String, dynamic>> _brands = [];
-  List<Map<String, dynamic>> _filteredBrands = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _filteredCategories = [];
   bool _isLoading = false;
   bool _isAddingNew = false;
-  String? _selectedBrandId;
+  String? _selectedCategoryId;
+
+  // Predefined categories for each type - simplified list
 
   @override
   void initState() {
     super.initState();
-    _selectedBrandId = widget.selectedBrandId;
-    _loadBrands();
+    _selectedCategoryId = widget.selectedCategoryId;
+    _loadCategories();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _newBrandController.dispose();
+    _newCategoryController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadBrands() async {
+  Future<void> _loadCategories() async {
     setState(() => _isLoading = true);
 
     try {
       final response = await _supabase
-          .from('brands')
-          .select('id, name, brand_type')
-          .order('name');
+          .from('inventory_categories')
+          .select('id, category_name, description, category_type, is_active')
+          .eq('category_type', widget.inventoryType)
+          .eq('is_active', true)
+          .order('category_name');
 
       setState(() {
-        _brands = List<Map<String, dynamic>>.from(response);
-        _filteredBrands = _brands;
+        _categories = List<Map<String, dynamic>>.from(response);
+        _filteredCategories = _categories;
         _isLoading = false;
       });
     } catch (e) {
@@ -77,7 +88,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading brands: ${e.toString()}'),
+            content: Text('Error loading categories: ${e.toString()}'),
             backgroundColor: InventoryDesignConfig.errorColor,
           ),
         );
@@ -85,48 +96,58 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
     }
   }
 
-  void _filterBrands(String query) {
+  void _filterCategories(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredBrands = _brands;
+        _filteredCategories = _categories;
       } else {
-        _filteredBrands =
-            _brands
+        _filteredCategories =
+            _categories
                 .where(
-                  (brand) =>
-                      brand['name'].toLowerCase().contains(query.toLowerCase()),
+                  (category) => category['category_name']
+                      .toLowerCase()
+                      .contains(query.toLowerCase()),
                 )
                 .toList();
       }
     });
   }
 
-  Future<void> _addNewBrand() async {
-    if (_newBrandController.text.trim().isEmpty) return;
+  Future<void> _addNewCategory() async {
+    if (_newCategoryController.text.trim().isEmpty) return;
 
     setState(() => _isAddingNew = true);
 
     try {
       final response =
           await _supabase
-              .from('brands')
+              .from('inventory_categories')
               .insert({
-                'name': _newBrandController.text.trim(),
-                'brand_type': 'general',
+                'category_name': _newCategoryController.text.trim(),
+                'description':
+                    _descriptionController.text.trim().isEmpty
+                        ? null
+                        : _descriptionController.text.trim(),
+                'category_type': widget.inventoryType,
+                'is_active': true,
                 'tenant_id': _supabase.auth.currentUser?.id,
                 'created_at': DateTime.now().toIso8601String(),
-                'updated_at': DateTime.now().toIso8601String(),
               })
               .select()
               .single();
 
       if (mounted) {
         Navigator.of(context).pop();
-        widget.onBrandSelected(response['id'].toString(), response['name']);
+        widget.onCategorySelected(
+          response['id'].toString(),
+          response['category_name'],
+        );
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Brand "${response['name']}" added successfully'),
+            content: Text(
+              'Category "${response['category_name']}" added successfully',
+            ),
             backgroundColor: InventoryDesignConfig.successColor,
           ),
         );
@@ -136,7 +157,54 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error adding brand: ${e.toString()}'),
+            content: Text('Error adding category: ${e.toString()}'),
+            backgroundColor: InventoryDesignConfig.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addPredefinedCategory(String categoryName) async {
+    setState(() => _isAddingNew = true);
+
+    try {
+      final response =
+          await _supabase
+              .from('inventory_categories')
+              .insert({
+                'category_name': categoryName,
+                'description': null,
+                'category_type': widget.inventoryType,
+                'is_active': true,
+                'tenant_id': _supabase.auth.currentUser?.id,
+                'created_at': DateTime.now().toIso8601String(),
+              })
+              .select()
+              .single();
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onCategorySelected(
+          response['id'].toString(),
+          response['category_name'],
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Category "${response['category_name']}" added successfully',
+            ),
+            backgroundColor: InventoryDesignConfig.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isAddingNew = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding category: ${e.toString()}'),
             backgroundColor: InventoryDesignConfig.errorColor,
           ),
         );
@@ -153,8 +221,8 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: 450,
-          maxHeight: screenSize.height * 0.75,
+          maxWidth: 480,
+          maxHeight: screenSize.height * 0.8,
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -206,7 +274,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
               ),
             ),
             child: Icon(
-              PhosphorIcons.tag(),
+              PhosphorIcons.folder(),
               size: 18,
               color: InventoryDesignConfig.primaryColor,
             ),
@@ -214,7 +282,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
           const SizedBox(width: InventoryDesignConfig.spacingL),
           Expanded(
             child: Text(
-              'Select Brand',
+              'Select ${widget.inventoryType == 'fabric' ? 'Fabric' : 'Accessory'} Category',
               style: InventoryDesignConfig.headlineMedium,
             ),
           ),
@@ -244,7 +312,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
   Widget _buildContent() {
     return Column(
       children: [
-        // Search and Add section combined
+        // Search and Add section
         Container(
           padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
           child: Column(
@@ -256,7 +324,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                   controller: _searchController,
                   style: InventoryDesignConfig.bodyLarge,
                   decoration: InputDecoration(
-                    hintText: 'Search brands...',
+                    hintText: 'Search categories...',
                     hintStyle: InventoryDesignConfig.bodyMedium,
                     prefixIcon: Padding(
                       padding: const EdgeInsets.all(
@@ -274,7 +342,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                       vertical: InventoryDesignConfig.spacingM,
                     ),
                   ),
-                  onChanged: _filterBrands,
+                  onChanged: _filterCategories,
                 ),
               ),
 
@@ -287,10 +355,10 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                     child: Container(
                       decoration: InventoryDesignConfig.inputDecoration,
                       child: TextField(
-                        controller: _newBrandController,
+                        controller: _newCategoryController,
                         style: InventoryDesignConfig.bodyLarge,
                         decoration: InputDecoration(
-                          hintText: 'Add new brand...',
+                          hintText: 'Add new category...',
                           hintStyle: InventoryDesignConfig.bodyMedium,
                           prefixIcon: Padding(
                             padding: const EdgeInsets.all(
@@ -318,7 +386,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                       InventoryDesignConfig.radiusM,
                     ),
                     child: InkWell(
-                      onTap: _isAddingNew ? null : _addNewBrand,
+                      onTap: _isAddingNew ? null : _addNewCategory,
                       borderRadius: BorderRadius.circular(
                         InventoryDesignConfig.radiusM,
                       ),
@@ -353,7 +421,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
           ),
         ),
 
-        // Brands list with improved layout
+        // Categories list
         Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(
@@ -366,9 +434,9 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                         color: InventoryDesignConfig.primaryAccent,
                       ),
                     )
-                    : _filteredBrands.isEmpty
+                    : _filteredCategories.isEmpty
                     ? _buildEmptyState()
-                    : _buildBrandsList(),
+                    : _buildCategoriesList(),
           ),
         ),
 
@@ -391,18 +459,18 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
               ),
             ),
             child: Icon(
-              PhosphorIcons.tag(),
+              PhosphorIcons.folder(),
               size: 32,
               color: InventoryDesignConfig.textTertiary,
             ),
           ),
           const SizedBox(height: InventoryDesignConfig.spacingL),
-          Text('No brands found', style: InventoryDesignConfig.titleMedium),
+          Text('No categories found', style: InventoryDesignConfig.titleMedium),
           const SizedBox(height: InventoryDesignConfig.spacingS),
           Text(
             _searchController.text.isNotEmpty
-                ? 'Try a different search or add a new brand above'
-                : 'Add your first brand above to get started',
+                ? 'Try a different search or add a new category above'
+                : 'Add your first category above to get started',
             style: InventoryDesignConfig.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -411,16 +479,16 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
     );
   }
 
-  Widget _buildBrandsList() {
+  Widget _buildCategoriesList() {
     return ListView.separated(
       padding: EdgeInsets.zero,
-      itemCount: _filteredBrands.length,
+      itemCount: _filteredCategories.length,
       separatorBuilder:
           (context, index) =>
               const SizedBox(height: InventoryDesignConfig.spacingXS),
       itemBuilder: (context, index) {
-        final brand = _filteredBrands[index];
-        final isSelected = brand['id'].toString() == _selectedBrandId;
+        final category = _filteredCategories[index];
+        final isSelected = category['id'].toString() == _selectedCategoryId;
 
         return Material(
           color: Colors.transparent,
@@ -429,7 +497,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
             onTap: () {
               setState(() {
-                _selectedBrandId = brand['id'].toString();
+                _selectedCategoryId = category['id'].toString();
               });
             },
             child: Container(
@@ -474,7 +542,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                       ),
                     ),
                     child: Icon(
-                      PhosphorIcons.tag(),
+                      PhosphorIcons.folder(),
                       size: 16,
                       color:
                           isSelected
@@ -485,7 +553,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                   const SizedBox(width: InventoryDesignConfig.spacingM),
                   Expanded(
                     child: Text(
-                      brand['name'],
+                      category['category_name'],
                       style: InventoryDesignConfig.titleMedium.copyWith(
                         color:
                             isSelected
@@ -564,15 +632,16 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
             child: InkWell(
               onTap:
-                  _selectedBrandId != null
+                  _selectedCategoryId != null
                       ? () {
-                        final selectedBrand = _filteredBrands.firstWhere(
-                          (brand) => brand['id'].toString() == _selectedBrandId,
+                        final selectedCategory = _filteredCategories.firstWhere(
+                          (category) =>
+                              category['id'].toString() == _selectedCategoryId,
                         );
                         Navigator.of(context).pop();
-                        widget.onBrandSelected(
-                          selectedBrand['id'].toString(),
-                          selectedBrand['name'],
+                        widget.onCategorySelected(
+                          selectedCategory['id'].toString(),
+                          selectedCategory['category_name'],
                         );
                       }
                       : null,
@@ -591,7 +660,7 @@ class _BrandSelectorDialogState extends State<BrandSelectorDialog> {
                     Icon(PhosphorIcons.check(), size: 16, color: Colors.white),
                     const SizedBox(width: InventoryDesignConfig.spacingS),
                     Text(
-                      'Select Brand',
+                      'Select Category',
                       style: InventoryDesignConfig.bodyMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,

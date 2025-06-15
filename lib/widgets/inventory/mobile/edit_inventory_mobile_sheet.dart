@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'inventory_design_config.dart';
+import '../../../theme/inventory_design_config.dart';
 
 class EditInventoryMobileSheet extends StatefulWidget {
   final Map<String, dynamic> item;

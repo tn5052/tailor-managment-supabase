@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'fabric_color_picker.dart';
 import 'brand_selector_dialog.dart';
 import 'category_selector_dialog.dart';
-import 'inventory_design_config.dart';
+import '../../../theme/inventory_design_config.dart';
 
 class EditInventoryDesktopDialog extends StatefulWidget {
   final Map<String, dynamic> item;

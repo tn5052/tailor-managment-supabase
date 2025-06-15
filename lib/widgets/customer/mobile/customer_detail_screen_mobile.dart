@@ -3,20 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/customer.dart';
-import '../../models/invoice.dart';
-import '../../models/measurement.dart';
-import '../../models/complaint.dart';
-import '../../services/customer_service.dart';
-import '../../services/invoice_service.dart';
-import '../../services/measurement_service.dart';
-import '../../services/complaint_service.dart';
-import '../../utils/number_formatter.dart';
-import '../inventory/inventory_design_config.dart';
+import '../../../models/customer.dart';
+import '../../../models/invoice.dart';
+import '../../../models/measurement.dart';
+import '../../../models/complaint.dart';
+import '../../../services/customer_service.dart';
+import '../../../services/invoice_service.dart';
+import '../../../services/measurement_service.dart';
+import '../../../services/complaint_service.dart';
+import '../../../utils/number_formatter.dart';
+import '../../../theme/inventory_design_config.dart';
 import 'add_customer_mobile_sheet.dart';
-import '../measurement/add_measurement_dialog.dart';
-import '../invoice/add_invoice_dailog.dart';
-import '../complaint/complaint_dialog.dart';
+import '../../measurement/add_measurement_dialog.dart';
+import '../../invoice/add_invoice_dailog.dart';
+import '../../complaint/complaint_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerDetailScreenMobile extends StatefulWidget {
@@ -704,6 +704,41 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
     );
   }
 
+  // Updated _buildInfoRow to improve label colors in the Overview tab
+  Widget _buildInfoRow(String label, String value, IconData icon, {Color? customColor, VoidCallback? onTap}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: InventoryDesignConfig.spacingXS),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: customColor ?? InventoryDesignConfig.primaryColor),
+          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    color: InventoryDesignConfig.primaryColor, // brighter label color
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: InventoryDesignConfig.spacingXS),
+                Text(
+                  value,
+                  style: InventoryDesignConfig.bodyLarge.copyWith(
+                    color: InventoryDesignConfig.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSection({
     required String title,
     required IconData icon,
@@ -745,68 +780,6 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
         ],
       ),
     );
-  }
-
-  Widget _buildInfoRow(
-    String label,
-    String value,
-    IconData icon, {
-    Color? customColor,
-    VoidCallback? onTap,
-  }) {
-    final rowColor = customColor ?? InventoryDesignConfig.textSecondary;
-
-    Widget row = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: rowColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: rowColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: InventoryDesignConfig.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: onTap != null ? rowColor : null,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (onTap != null)
-          Icon(PhosphorIcons.arrowRight(), size: 16, color: rowColor),
-      ],
-    );
-
-    if (onTap != null) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: row,
-        ),
-      );
-    }
-
-    return Padding(padding: const EdgeInsets.only(bottom: 12), child: row);
   }
 
   Widget _buildComplaintItem(Complaint complaint) {
@@ -1620,8 +1593,7 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
       padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
       itemCount: _complaints.length,
       separatorBuilder:
-          (context, index) =>
-              const SizedBox(height: InventoryDesignConfig.spacingM),
+          (context, index) => const SizedBox(height: InventoryDesignConfig.spacingM),
       itemBuilder: (context, index) => _buildComplaintCard(_complaints[index]),
     );
   }

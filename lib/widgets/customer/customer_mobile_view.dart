@@ -3,10 +3,10 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../models/customer.dart';
 import '../../models/customer_filter.dart';
 import '../../services/customer_service.dart';
-import '../inventory/inventory_design_config.dart';
-import 'add_customer_mobile_sheet.dart';
-import 'customer_detail_screen_mobile.dart';
-import 'customer_filter_sheet.dart'; // For filter sheet
+import '../../theme/inventory_design_config.dart';
+import 'mobile/add_customer_mobile_sheet.dart';
+import 'mobile/customer_detail_screen_mobile.dart';
+import 'mobile/customer_filter_sheet.dart'; // For filter sheet
 
 class CustomerMobileView extends StatefulWidget {
   final CustomerFilter filter;

@@ -3,10 +3,10 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/customer.dart';
-import '../../services/customer_service.dart';
+import '../../../models/customer.dart';
+import '../../../services/customer_service.dart';
 import 'customer_selector_dialog.dart';
-import '../inventory/inventory_design_config.dart';
+import '../../../theme/inventory_design_config.dart';
 
 class AddCustomerDialog extends StatefulWidget {
   final Customer? customer;

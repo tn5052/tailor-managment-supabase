@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../models/customer.dart';
+import '../../../models/customer.dart';
 
 class CustomerSelectorDialog extends StatefulWidget {
   final List<Customer> customers;

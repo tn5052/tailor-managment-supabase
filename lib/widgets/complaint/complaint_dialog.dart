@@ -8,7 +8,7 @@ import '../../models/invoice.dart';
 import '../../services/complaint_service.dart';
 import '../../services/customer_service_for_dashboard.dart';
 import '../../services/invoice_service.dart';
-import '../customer/customer_selector_dialog.dart';
+import '../customer/desktop/customer_selector_dialog.dart';
 import '../invoice/invoice_selector_dialog.dart';
 
 class ComplaintDialog extends StatefulWidget {

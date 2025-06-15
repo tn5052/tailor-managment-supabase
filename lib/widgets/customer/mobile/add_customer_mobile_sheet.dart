@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../../models/customer.dart';
-import '../../services/customer_service.dart';
-import '../inventory/inventory_design_config.dart';
+import '../../../models/customer.dart';
+import '../../../services/customer_service.dart';
+import '../../../theme/inventory_design_config.dart';
 
 class AddCustomerMobileSheet extends StatefulWidget {
   final Customer? customer;
