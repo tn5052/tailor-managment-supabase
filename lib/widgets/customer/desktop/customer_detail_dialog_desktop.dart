@@ -14,7 +14,7 @@ import '../../../services/complaint_service.dart';
 import '../../../utils/number_formatter.dart';
 import '../../../theme/inventory_design_config.dart';
 import 'add_customer_dialog.dart';
-import '../../measurement/add_measurement_dialog.dart';
+import '../../measurement/desktop/add_measurement_dialog.dart';
 import '../../invoice/add_invoice_dailog.dart';
 import '../../complaint/complaint_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

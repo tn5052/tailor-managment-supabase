@@ -7,7 +7,7 @@ import '../../../services/measurement_service.dart';
 import '../../../services/customer_service.dart';
 import '../../../utils/fraction_helper.dart';
 import '../../../theme/inventory_design_config.dart';
-import '../customer/desktop/customer_selector_dialog.dart';
+import '../../customer/desktop/customer_selector_dialog.dart';
 
 class AddMeasurementDialog extends StatefulWidget {
   final Measurement? measurement;

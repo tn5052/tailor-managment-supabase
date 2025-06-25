@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'customer/desktop/add_customer_dialog.dart';
-import '../widgets/measurement/add_measurement_dialog.dart'; // added import for measurement dialog
+import 'measurement/desktop/add_measurement_dialog.dart'; // added import for measurement dialog
 import '../widgets/invoice/add_invoice_dailog.dart'; // added import for invoice dialog
 import '../widgets/complaint/complaint_dialog.dart'; // added import for complaint dialog
 import 'package:supabase_flutter/supabase_flutter.dart';

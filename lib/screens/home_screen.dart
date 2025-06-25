@@ -21,8 +21,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // const DashboardScreen(),
     const InventoryScreen(),
     const CustomerListScreen(),
-    const MeasurementListScreen(),
-    InvoiceListScreen(),
+    const MeasurementScreen(),
+    InvoiceScreen(),
     const ComplaintsScreen(),
     const InventoryScreen(), // Add inventory screen
     const SettingsScreen(),

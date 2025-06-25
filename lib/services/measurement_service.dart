@@ -15,7 +15,7 @@ class MeasurementService {
   Timer? _pollingTimer;
   bool _isConnected = false;
   bool _usePolling = false;
-  
+
   // Configure timeouts and polling intervals
   final Duration _reconnectionDelay = const Duration(seconds: 5);
   final Duration _pollingInterval = const Duration(seconds: 8);
@@ -53,25 +53,27 @@ class MeasurementService {
   // Get measurement
   Future<Measurement?> getMeasurement(String measurementId) async {
     final String tenantId = TenantManager.getCurrentTenantId();
-    final response = await _client
-        .from('measurements')
-        .select()
-        .eq('id', measurementId)
-        .eq('tenant_id', tenantId)
-        .single();
-    
+    final response =
+        await _client
+            .from('measurements')
+            .select()
+            .eq('id', measurementId)
+            .eq('tenant_id', tenantId)
+            .single();
+
     return Measurement.fromMap(response);
   }
 
   Future<Measurement?> getMeasurementByBillNumber(String billNumber) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     try {
-      final response = await _client
-          .from('measurements')
-          .select()
-          .eq('bill_number', billNumber)
-          .eq('tenant_id', tenantId)
-          .maybeSingle();
+      final response =
+          await _client
+              .from('measurements')
+              .select()
+              .eq('bill_number', billNumber)
+              .eq('tenant_id', tenantId)
+              .maybeSingle();
       return response != null ? Measurement.fromMap(response) : null;
     } catch (e) {
       debugPrint('Error in getMeasurementByBillNumber: $e');
@@ -79,7 +81,10 @@ class MeasurementService {
     }
   }
 
-  Future<void> updateMeasurementByBillNumber(String billNumber, Map<String, dynamic> measurementData) async {
+  Future<void> updateMeasurementByBillNumber(
+    String billNumber,
+    Map<String, dynamic> measurementData,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     await _client
         .from('measurements')
@@ -88,10 +93,13 @@ class MeasurementService {
         .eq('tenant_id', tenantId);
   }
 
-  Future<void> addMeasurementWithoutId(Map<String, dynamic> measurementData) async {
+  Future<void> addMeasurementWithoutId(
+    Map<String, dynamic> measurementData,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     // Remove id so Supabase auto-generates it.
-    final dataToInsert = Map<String, dynamic>.from(measurementData)..remove('id');
+    final dataToInsert = Map<String, dynamic>.from(measurementData)
+      ..remove('id');
     dataToInsert['tenant_id'] = tenantId;
     await _client.from('measurements').insert(dataToInsert);
   }
@@ -123,11 +131,13 @@ class MeasurementService {
   Future<void> _reconnectToStream() async {
     if (_isConnected || _usePolling) return;
     final String tenantId = TenantManager.getCurrentTenantId();
-    
+
     try {
       _subscription?.cancel();
-      debugPrint('Attempting to establish realtime connection for measurements...');
-      
+      debugPrint(
+        'Attempting to establish realtime connection for measurements...',
+      );
+
       _subscription = _client
           .from('measurements')
           .stream(primaryKey: ['id'])
@@ -147,10 +157,12 @@ class MeasurementService {
             onError: (error) {
               debugPrint('Error in measurements stream: $error');
               _isConnected = false;
-              
+
               // Check if we should switch to polling
               if (++_reconnectAttempts >= _maxReconnectAttempts) {
-                debugPrint('Max reconnection attempts reached. Switching to polling.');
+                debugPrint(
+                  'Max reconnection attempts reached. Switching to polling.',
+                );
                 _switchToPolling();
               } else {
                 _scheduleReconnection();
@@ -161,7 +173,7 @@ class MeasurementService {
     } catch (e) {
       debugPrint('Error establishing stream connection: $e');
       _isConnected = false;
-      
+
       if (++_reconnectAttempts >= _maxReconnectAttempts) {
         _switchToPolling();
       } else {
@@ -172,9 +184,13 @@ class MeasurementService {
 
   void _scheduleReconnection() {
     _reconnectionTimer?.cancel();
-    debugPrint('Scheduling realtime reconnection attempt ${_reconnectAttempts+1}/$_maxReconnectAttempts...');
+    debugPrint(
+      'Scheduling realtime reconnection attempt ${_reconnectAttempts + 1}/$_maxReconnectAttempts...',
+    );
     _reconnectionTimer = Timer(_reconnectionDelay, () {
-      if (!_isConnected && !_usePolling && !(_measurementsController?.isClosed ?? true)) {
+      if (!_isConnected &&
+          !_usePolling &&
+          !(_measurementsController?.isClosed ?? true)) {
         _reconnectToStream();
       }
     });
@@ -185,10 +201,10 @@ class MeasurementService {
     _subscription?.cancel();
     _reconnectionTimer?.cancel();
     debugPrint('Switching to polling for measurements data');
-    
+
     // Start polling immediately
     _pollMeasurements();
-    
+
     // Then set up regular polling interval
     _pollingTimer = Timer.periodic(_pollingInterval, (_) {
       _pollMeasurements();
@@ -200,9 +216,9 @@ class MeasurementService {
       _pollingTimer?.cancel();
       return;
     }
-    
+
     final String tenantId = TenantManager.getCurrentTenantId();
-    
+
     try {
       debugPrint('Polling measurements data...');
       final response = await _client
@@ -210,9 +226,10 @@ class MeasurementService {
           .select()
           .eq('tenant_id', tenantId)
           .order('date', ascending: false);
-      
-      final measurements = (response as List).map((map) => Measurement.fromMap(map)).toList();
-      
+
+      final measurements =
+          (response as List).map((map) => Measurement.fromMap(map)).toList();
+
       if (!(_measurementsController?.isClosed ?? true)) {
         _measurementsController?.add(measurements);
       }
@@ -230,11 +247,10 @@ class MeasurementService {
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes);
-      
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'Measurement Details',
-      );
+
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], subject: 'Measurement Details');
     } catch (e) {
       print('Error sharing PDF: $e');
       rethrow;
@@ -250,7 +266,9 @@ class MeasurementService {
     return (response as List).map((map) => Measurement.fromMap(map)).toList();
   }
 
-  Future<List<Measurement>> getMeasurementsByBillNumber(String billNumber) async {
+  Future<List<Measurement>> getMeasurementsByBillNumber(
+    String billNumber,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     final response = await _client
         .from('measurements')
@@ -260,7 +278,9 @@ class MeasurementService {
     return (response as List).map((map) => Measurement.fromMap(map)).toList();
   }
 
-  Future<List<Measurement>> getMeasurementsByCustomerId(String customerId) async {
+  Future<List<Measurement>> getMeasurementsByCustomerId(
+    String customerId,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     final response = await _client
         .from('measurements')
@@ -273,13 +293,14 @@ class MeasurementService {
 
   Future<bool> customerHasMeasurements(String customerId) async {
     final String tenantId = TenantManager.getCurrentTenantId();
-    final response = await _client
-        .from('measurements')
-        .select('id')
-        .eq('customer_id', customerId)
-        .eq('tenant_id', tenantId)
-        .limit(1)
-        .maybeSingle();
+    final response =
+        await _client
+            .from('measurements')
+            .select('id')
+            .eq('customer_id', customerId)
+            .eq('tenant_id', tenantId)
+            .limit(1)
+            .maybeSingle();
     return response != null;
   }
 
@@ -289,7 +310,7 @@ class MeasurementService {
           .from('measurements')
           .select('id')
           .eq('customer_id', customerId);
-      
+
       return response.length;
     } catch (e) {
       debugPrint('Error getting measurement count: $e');

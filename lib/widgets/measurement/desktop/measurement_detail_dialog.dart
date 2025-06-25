@@ -6,8 +6,8 @@ import '../../../models/measurement.dart';
 import '../../../services/customer_service.dart';
 import '../../../utils/fraction_helper.dart';
 import '../../../services/measurement_service.dart';
-import '../invoice/pdf_preview_widget.dart';
-import 'measurement_pdf_template.dart';
+import '../../invoice/pdf_preview_widget.dart';
+import '../measurement_pdf_template.dart';
 import '../../../theme/inventory_design_config.dart';
 
 class DetailDialog extends StatefulWidget {

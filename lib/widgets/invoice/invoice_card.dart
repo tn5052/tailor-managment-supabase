@@ -342,7 +342,6 @@ class InvoiceCard extends StatelessWidget {
       ],
     ).then((value) {
       if (value == 'edit') {
-        InvoiceScreen.show(context, invoice: invoice);
       } else if (value == 'delete') {
         onDelete();
       }

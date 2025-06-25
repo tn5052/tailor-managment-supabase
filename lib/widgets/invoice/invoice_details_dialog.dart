@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/invoice.dart';
 import '../../services/invoice_service.dart';
 import 'pdf_preview_widget.dart';
-import '../measurement/measurement_detail_dialog.dart';
+import '../measurement/desktop/measurement_detail_dialog.dart';
 import '../../services/measurement_service.dart';
 
 class InvoiceDetailsDialog extends StatefulWidget {
