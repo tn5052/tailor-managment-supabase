@@ -45,8 +45,6 @@ class InventoryDesignConfig {
   static const double radiusL = 12.0;
   static const double radiusXL = 16.0;
 
-  static var headlineSmall;
-
   // Typography Styles
   static TextStyle get headlineLarge => GoogleFonts.inter(
     fontSize: 24,
@@ -61,6 +59,12 @@ class InventoryDesignConfig {
     fontWeight: FontWeight.w600,
     color: textPrimary,
     letterSpacing: -0.2,
+  );
+
+  static TextStyle get headlineSmall => GoogleFonts.inter(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: textPrimary,
   );
 
   static TextStyle get titleLarge => GoogleFonts.inter(

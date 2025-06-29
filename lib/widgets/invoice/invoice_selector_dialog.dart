@@ -72,8 +72,7 @@ class _InvoiceSelectorDialogState extends State<InvoiceSelectorDialog> {
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
       _filteredInvoices = widget.invoices.where((invoice) {
-        return invoice.displayNumber.toLowerCase().contains(_searchQuery) ||
-            invoice.customerName.toLowerCase().contains(_searchQuery);
+        return invoice.customerName.toLowerCase().contains(_searchQuery);
       }).toList();
     });
   }

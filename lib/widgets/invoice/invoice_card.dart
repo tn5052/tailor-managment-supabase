@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/invoice.dart';
 import 'invoice_status_badge.dart';
-import 'add_invoice_dailog.dart';
 
 class InvoiceCard extends StatelessWidget {
   final Invoice invoice;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
   final bool isGridView;
   
   static final _currencyFormat = NumberFormat.currency(symbol: '');
@@ -18,6 +18,7 @@ class InvoiceCard extends StatelessWidget {
     required this.invoice,
     required this.onTap,
     required this.onDelete,
+    required this.onEdit,
     this.isGridView = false,
   });
 
@@ -42,7 +43,7 @@ class InvoiceCard extends StatelessWidget {
             if (!isGridView) ...[
               _buildExpandedBody(context),
             ] else ...[
-              Expanded(child: _buildCompactBody(context)),
+              _buildCompactBody(context),
             ],
           ],
         ),
@@ -274,7 +275,7 @@ class InvoiceCard extends StatelessWidget {
 
     final theme = Theme.of(context);
     
-    showMenu<String>(  // Add type parameter
+    showMenu<String>(
       context: context,
       position: position,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -282,8 +283,8 @@ class InvoiceCard extends StatelessWidget {
       color: theme.colorScheme.surface,
       shadowColor: theme.colorScheme.shadow.withOpacity(0.2),
       items: [
-        PopupMenuItem<String>(  // Add type parameter
-          value: 'edit',  // Add value
+        PopupMenuItem<String>(
+          value: 'edit',
           height: 48,
           child: Row(
             children: [
@@ -311,8 +312,8 @@ class InvoiceCard extends StatelessWidget {
           ),
         ),
         const PopupMenuDivider(height: 0.5),
-        PopupMenuItem<String>(  // Add type parameter
-          value: 'delete',  // Add value
+        PopupMenuItem<String>(
+          value: 'delete',
           height: 48,
           child: Row(
             children: [
@@ -342,6 +343,7 @@ class InvoiceCard extends StatelessWidget {
       ],
     ).then((value) {
       if (value == 'edit') {
+        onEdit();
       } else if (value == 'delete') {
         onDelete();
       }

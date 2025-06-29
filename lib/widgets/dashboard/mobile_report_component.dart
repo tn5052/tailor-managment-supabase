@@ -7,7 +7,6 @@ import '../../models/invoice.dart';
 import '../../models/measurement.dart';
 import '../../models/complaint.dart';
 import '../../utils/number_formatter.dart';
-import '../invoice/invoice_details_dialog.dart';
 import '../complaint/complaint_detail_dialog.dart';
 import '../measurement/desktop/measurement_detail_dialog.dart'; // Add this import for the measurement detail dialog
 
@@ -1482,10 +1481,7 @@ class _CustomerFullReportScreenState extends State<CustomerFullReportScreen>
 
 
   void _showInvoiceDetails(BuildContext context, Invoice invoice) {
-    showDialog(
-      context: context,
-      builder: (context) => InvoiceDetailsDialog(invoice: invoice),
-    );
+
   }
 
   void _showMeasurementDetails(BuildContext context, Measurement measurement) {

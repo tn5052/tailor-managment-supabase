@@ -4,8 +4,9 @@ import 'package:intl/intl.dart';
 import '../../models/invoice.dart';
 import '../../services/invoice_service.dart';
 import '../../theme/inventory_design_config.dart';
-import 'invoice_details_dialog.dart';
 import 'desktop/add_invoice_desktop_dialog.dart';
+import 'desktop/invoice_details_dialog_desktop.dart';
+import 'invoice_card.dart';
 
 enum ViewType { grid, table }
 
@@ -24,6 +25,7 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
   List<Invoice> _invoices = [];
   String _sortColumn = 'date';
   bool _sortAscending = false;
+  ViewType _viewType = ViewType.table;
 
   @override
   void dispose() {
@@ -39,24 +41,36 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
 
   Future<void> _loadInvoices() async {
     setState(() => _isLoading = true);
-    try {
-      final invoicesStream = _invoiceService.getInvoicesStream();
-      final invoices = await invoicesStream.first;
 
+    try {
+      // If using stream
+      final invoices = await _invoiceService.getInvoicesStream().first;
+
+      // Alternative if using regular method
+      // final invoices = await _invoiceService.getAllInvoices();
+
+      // Apply filters if search query exists
+      final filtered = _filterInvoices(invoices);
+
+      // Safely check if mounted before setting state
+      if (!mounted) return;
       setState(() {
-        _invoices = _filterInvoices(invoices);
+        _invoices = filtered;
         _isLoading = false;
       });
     } catch (e) {
+      // Safety check before setting state
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading invoices: $e'),
-            backgroundColor: InventoryDesignConfig.errorColor,
-          ),
-        );
-      }
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading invoices: $e'),
+          backgroundColor: InventoryDesignConfig.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -139,6 +153,8 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
                     // Right side controls
                     Row(
                       children: [
+                        _buildViewSwitcher(),
+                        const SizedBox(width: 12),
                         _buildSearchField(),
                         const SizedBox(width: 12),
                         _buildModernSecondaryButton(
@@ -192,7 +208,12 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
                     ),
                   ],
                 ),
-                child: _isLoading ? _buildLoadingState() : _buildInvoiceTable(),
+                child:
+                    _isLoading
+                        ? _buildLoadingState()
+                        : _viewType == ViewType.table
+                        ? _buildInvoiceTable()
+                        : _buildInvoiceGrid(),
               ),
             ),
           ),
@@ -203,7 +224,7 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
 
   Widget _buildSearchField() {
     return Container(
-      width: 280,
+      width: 320, // Increased width for better usability
       height: 40,
       decoration: BoxDecoration(
         color: InventoryDesignConfig.surfaceColor,
@@ -217,7 +238,7 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
           color: InventoryDesignConfig.textPrimary,
         ),
         decoration: InputDecoration(
-          hintText: 'Search invoices...',
+          hintText: 'Search by invoice #, customer, phone, bill #...',
           hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
             color: InventoryDesignConfig.textSecondary,
             fontSize: 14,
@@ -241,20 +262,23 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
                     ),
                     onPressed: () {
                       _searchController.clear();
-                      setState(() => _searchQuery = '');
-                      _loadInvoices();
+                      _onSearchChanged('');
                     },
                   )
                   : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
         ),
-        onChanged: (value) {
-          setState(() => _searchQuery = value);
-          _loadInvoices();
-        },
+        onChanged: _onSearchChanged,
       ),
     );
+  }
+
+  void _onSearchChanged(String text) {
+    setState(() {
+      _searchQuery = text;
+    });
+    _loadInvoices();
   }
 
   Widget _buildModernPrimaryButton({
@@ -440,6 +464,48 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildInvoiceGrid() {
+    if (_invoices.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        int crossAxisCount = 4;
+        if (width < 1200) {
+          crossAxisCount = 3;
+        }
+        if (width < 900) {
+          crossAxisCount = 2;
+        }
+        if (width < 600) {
+          crossAxisCount = 1;
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 1.2,
+            mainAxisSpacing: InventoryDesignConfig.spacingL,
+            crossAxisSpacing: InventoryDesignConfig.spacingL,
+          ),
+          itemCount: _invoices.length,
+          itemBuilder: (context, index) {
+            final invoice = _invoices[index];
+            return InvoiceCard(
+              invoice: invoice,
+              onTap: () => _showInvoiceDetails(invoice),
+              onEdit: () => _handleEditInvoice(invoice),
+              onDelete: () => _handleDeleteInvoice(invoice),
+              isGridView: true,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -715,7 +781,6 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
             decoration: BoxDecoration(
               color: InventoryDesignConfig.surfaceAccent,
               borderRadius: BorderRadius.circular(
@@ -788,22 +853,66 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
     var filtered = invoices;
 
     if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase().trim();
       filtered =
-          filtered
-              .where(
-                (invoice) =>
-                    invoice.customerName.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ||
-                    invoice.invoiceNumber.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ||
-                    invoice.customerBillNumber.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ),
-              )
-              .toList();
+          filtered.where((invoice) {
+            // Search by invoice number
+            if (invoice.invoiceNumber.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            // Search by customer name
+            if (invoice.customerName.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            // Search by customer phone
+            if (invoice.customerPhone.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            // Search by customer bill number
+            if (invoice.customerBillNumber.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            // Search by measurement name (if exists)
+            if (invoice.measurementName != null &&
+                invoice.measurementName!.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            // Search by delivery status
+            if (invoice.deliveryStatus
+                .toString()
+                .split('.')
+                .last
+                .toLowerCase()
+                .contains(query)) {
+              return true;
+            }
+
+            // Search by payment status
+            if (invoice.paymentStatus
+                .toString()
+                .split('.')
+                .last
+                .toLowerCase()
+                .contains(query)) {
+              return true;
+            }
+
+            // Search by details (if exists)
+            if (invoice.details.toLowerCase().contains(query)) {
+              return true;
+            }
+
+            return false;
+          }).toList();
     }
+
+    // Apply other filters here (status, date range, etc.)
+    // ...existing filter logic...
 
     return filtered;
   }
@@ -832,22 +941,134 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
   }
 
   void _showInvoiceDetails(Invoice invoice) {
-    InvoiceDetailsDialog.show(context, invoice);
-  }
-
-  void _handleEditInvoice(Invoice invoice) {
-    // TODO: Implement edit invoice
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit invoice functionality coming soon!')),
+    InvoiceDetailsDialogDesktop.show(
+      context,
+      invoice,
+      onUpdated: _loadInvoices,
     );
   }
 
-  void _handleDeleteInvoice(Invoice invoice) {
-    // TODO: Implement delete invoice with confirmation dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Delete invoice functionality coming soon!'),
-      ),
+  void _handleEditInvoice(Invoice invoice) {
+    AddInvoiceDesktopDialog.show(
+      context,
+      invoice: invoice,
+      onInvoiceAdded: _loadInvoices,
+    );
+  }
+
+  void _handleDeleteInvoice(Invoice invoice) async {
+    final confirm = await _showDeleteConfirmationDialog(invoice);
+    if (confirm != true) return;
+
+    try {
+      await _invoiceService.deleteInvoice(invoice.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Invoice #${invoice.invoiceNumber} deleted successfully',
+          ),
+          backgroundColor: InventoryDesignConfig.successColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadInvoices();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting invoice: ${e.toString()}'),
+          backgroundColor: InventoryDesignConfig.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmationDialog(Invoice invoice) {
+    return showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusL,
+              ),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  PhosphorIcons.warning(PhosphorIconsStyle.fill),
+                  color: InventoryDesignConfig.errorColor,
+                  size: 24,
+                ),
+                const SizedBox(width: InventoryDesignConfig.spacingM),
+                Text(
+                  'Confirm Deletion',
+                  style: InventoryDesignConfig.titleLarge,
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to delete this invoice?',
+                  style: InventoryDesignConfig.bodyLarge,
+                ),
+                const SizedBox(height: InventoryDesignConfig.spacingM),
+                Container(
+                  padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.errorColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    border: Border.all(
+                      color: InventoryDesignConfig.errorColor.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        PhosphorIcons.receipt(),
+                        color: InventoryDesignConfig.errorColor,
+                        size: 16,
+                      ),
+                      const SizedBox(width: InventoryDesignConfig.spacingS),
+                      Expanded(
+                        child: Text(
+                          '#${invoice.invoiceNumber}',
+                          style: InventoryDesignConfig.titleMedium.copyWith(
+                            color: InventoryDesignConfig.errorColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: InventoryDesignConfig.spacingM),
+                Text(
+                  'This action cannot be undone.',
+                  style: InventoryDesignConfig.bodyMedium,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancel', style: InventoryDesignConfig.bodyMedium),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: Icon(PhosphorIcons.trash()),
+                label: const Text('Delete'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: InventoryDesignConfig.errorColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
     );
   }
 
@@ -855,6 +1076,82 @@ class _InvoiceDesktopViewState extends State<InvoiceDesktopView> {
     // TODO: Implement filter dialog
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filter functionality coming soon!')),
+    );
+  }
+
+  Widget _buildViewSwitcher() {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: InventoryDesignConfig.borderPrimary.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildViewButton(ViewType.table, PhosphorIcons.table(), 'Table'),
+          _buildViewButton(ViewType.grid, PhosphorIcons.gridFour(), 'Grid'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewButton(ViewType viewType, IconData icon, String label) {
+    final isSelected = _viewType == viewType;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _viewType = viewType),
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isSelected
+                    ? InventoryDesignConfig.surfaceColor
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color:
+                    isSelected
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: InventoryDesignConfig.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isSelected
+                          ? InventoryDesignConfig.textPrimary
+                          : InventoryDesignConfig.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

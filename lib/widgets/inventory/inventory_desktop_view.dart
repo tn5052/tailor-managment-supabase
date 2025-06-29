@@ -122,11 +122,13 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
             return processedItem;
           }).toList();
 
+      if (!mounted) return;
       setState(() {
         _inventoryItems = processedItems;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -134,17 +134,19 @@ class InvoiceService {
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/invoice_${invoice.invoiceNumber}.pdf');
       await file.writeAsBytes(pdfBytes);
-      
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Invoice #${invoice.invoiceNumber}',
-      );
+
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'Invoice #${invoice.invoiceNumber}');
     } catch (e) {
       throw Exception('Failed to generate invoice: $e');
     }
   }
 
-  Future<List<Invoice>> getInvoicesByDateRange(DateTime start, DateTime end) async {
+  Future<List<Invoice>> getInvoicesByDateRange(
+    DateTime start,
+    DateTime end,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     try {
       final response = await _supabase
@@ -154,7 +156,7 @@ class InvoiceService {
           .lte('date', end.toIso8601String())
           .eq('tenant_id', tenantId)
           .order('date');
-      
+
       return (response as List).map((map) => Invoice.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Error fetching invoices by date range: $e');
@@ -174,9 +176,10 @@ class InvoiceService {
       double totalRevenue = 0;
       double pendingPayments = 0;
       int pendingDeliveries = 0;
-      
-      final invoices = (response as List).map((map) => Invoice.fromMap(map)).toList();
-      
+
+      final invoices =
+          (response as List).map((map) => Invoice.fromMap(map)).toList();
+
       for (var invoice in invoices) {
         totalRevenue += invoice.amountIncludingVat;
         if (invoice.paymentStatus != PaymentStatus.paid) {
@@ -209,7 +212,7 @@ class InvoiceService {
     try {
       final now = DateTime.now();
       final startDate = now.subtract(const Duration(days: 30));
-      
+
       final response = await _supabase
           .from('invoices')
           .select('date, amount_including_vat')
@@ -219,17 +222,17 @@ class InvoiceService {
           .order('date');
 
       final Map<String, double> dailyRevenue = {};
-      
+
       for (var row in response) {
         final date = DateTime.parse(row['date']).toString().split(' ')[0];
-        dailyRevenue[date] = (dailyRevenue[date] ?? 0) + 
+        dailyRevenue[date] =
+            (dailyRevenue[date] ?? 0) +
             (row['amount_including_vat'] as num).toDouble();
       }
 
-      return dailyRevenue.entries.map((e) => {
-        'date': e.key,
-        'amount': e.value,
-      }).toList();
+      return dailyRevenue.entries
+          .map((e) => {'date': e.key, 'amount': e.value})
+          .toList();
     } catch (e) {
       debugPrint('Error fetching revenue data: $e');
       return [];
@@ -250,20 +253,25 @@ class InvoiceService {
 
   Future<Invoice> getInvoiceById(String invoiceId) async {
     final String tenantId = TenantManager.getCurrentTenantId();
-    final response = await _supabase
-        .from('invoices')
-        .select()
-        .eq('id', invoiceId)
-        .eq('tenant_id', tenantId)
-        .single();
-        
+    final response =
+        await _supabase
+            .from('invoices')
+            .select()
+            .eq('id', invoiceId)
+            .eq('tenant_id', tenantId)
+            .single();
+
     return Invoice.fromMap(response);
   }
 
-  Future<void> processRefund(String invoiceId, double amount, String reason) async {
+  Future<void> processRefund(
+    String invoiceId,
+    double amount,
+    String reason,
+  ) async {
     final String tenantId = TenantManager.getCurrentTenantId();
     final invoice = await getInvoiceById(invoiceId);
-    
+
     if (invoice.isRefunded) {
       throw Exception('Invoice is already refunded');
     }
@@ -278,7 +286,7 @@ class InvoiceService {
 
     invoice.processRefund(amount, reason);
     await updateInvoice(invoice);
-    
+
     // Log the refund in invoice_modifications
     await _supabase.from('invoice_modifications').insert({
       'invoice_id': invoiceId,
@@ -310,5 +318,15 @@ class InvoiceService {
     } catch (e) {
       throw Exception('Failed to fetch invoices: $e');
     }
+  }
+
+  Future<List<Invoice>> getAllInvoices() async {
+    final String tenantId = TenantManager.getCurrentTenantId();
+    final response = await _supabase
+        .from('invoices')
+        .select()
+        .eq('tenant_id', tenantId)
+        .order('date', ascending: false);
+    return (response as List).map((data) => Invoice.fromMap(data)).toList();
   }
 }

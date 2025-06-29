@@ -223,11 +223,7 @@ services files :
  - lib/services/invoice_service.dart
  - lib/services/complaint_service.dart
 
- All Screens Detail Dailogs
- - lib/widgets/customer/customer_detail_dialog.dart
- - lib/widgets/measurement/detail_dialog.dart
- - lib/widgets/invoice/invoice_details_dialog.dart
- - lib/widgets/complaint/complaint_detail_dialog.dart
+
 
  All Screens
  - lib/screens/

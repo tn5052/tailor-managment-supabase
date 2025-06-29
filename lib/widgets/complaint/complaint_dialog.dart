@@ -13,10 +13,10 @@ import '../invoice/invoice_selector_dialog.dart';
 
 class ComplaintDialog extends StatefulWidget {
   final Complaint? complaint;
-  final String? customerId;  // Optional: Pre-select customer
+  final String? customerId; // Optional: Pre-select customer
 
   const ComplaintDialog({
-    super.key, 
+    super.key,
     this.complaint,
     this.customerId,
     this.customerName,
@@ -32,10 +32,11 @@ class ComplaintDialog extends StatefulWidget {
   }) {
     return showDialog(
       context: context,
-      builder: (context) => ComplaintDialog(
-        customerId: customerId,
-        customerName: customerName,
-      ),
+      builder:
+          (context) => ComplaintDialog(
+            customerId: customerId,
+            customerName: customerName,
+          ),
     );
   }
 
@@ -133,12 +134,9 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
     if (isDesktop) {
       // Return existing desktop dialog
       return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        backgroundColor: isDark
-            ? theme.colorScheme.surface
-            : theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor:
+            isDark ? theme.colorScheme.surface : theme.colorScheme.surface,
         child: Container(
           width: 600,
           padding: const EdgeInsets.all(24),
@@ -151,9 +149,10 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                 Text(
                   widget.complaint == null ? 'New Complaint' : 'Edit Complaint',
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: isDark
-                        ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurface,
+                    color:
+                        isDark
+                            ? theme.colorScheme.onSurface
+                            : theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -175,11 +174,12 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                       ),
                       trailing: IconButton(
                         icon: PhosphorIcon(PhosphorIcons.x()),
-                        onPressed: () => setState(() {
-                          _selectedCustomer = null;
-                          _selectedInvoice = null;
-                          _customerInvoices = null;
-                        }),
+                        onPressed:
+                            () => setState(() {
+                              _selectedCustomer = null;
+                              _selectedInvoice = null;
+                              _customerInvoices = null;
+                            }),
                       ),
                     ),
                   ),
@@ -215,15 +215,17 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                                   if (_selectedInvoice != null) ...[
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Invoice #${_selectedInvoice!.invoiceNumber}',
                                             style: theme.textTheme.titleMedium,
                                           ),
                                           Text(
-                                            DateFormat('MMM dd, yyyy')
-                                                .format(_selectedInvoice!.date),
+                                            DateFormat(
+                                              'MMM dd, yyyy',
+                                            ).format(_selectedInvoice!.date),
                                             style: theme.textTheme.bodySmall,
                                           ),
                                         ],
@@ -231,9 +233,10 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                                     ),
                                     IconButton(
                                       icon: PhosphorIcon(PhosphorIcons.x()),
-                                      onPressed: () => setState(
-                                        () => _selectedInvoice = null,
-                                      ),
+                                      onPressed:
+                                          () => setState(
+                                            () => _selectedInvoice = null,
+                                          ),
                                     ),
                                   ] else ...[
                                     PhosphorIcon(PhosphorIcons.receipt()),
@@ -266,9 +269,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                       color: theme.colorScheme.onSurface.withOpacity(0.5),
                     ),
                   ),
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a title';
@@ -292,9 +293,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                       ),
                     ),
                   ),
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a description';
@@ -312,23 +311,23 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                       color: theme.colorScheme.onSurface.withOpacity(0.5),
                     ),
                   ),
-                  dropdownColor: isDark
-                      ? theme.colorScheme.surfaceContainerHighest
-                      : theme.colorScheme.surfaceContainerHighest,
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  items: ComplaintPriority.values.map((priority) {
-                    return DropdownMenuItem(
-                      value: priority,
-                      child: Text(
-                        priority.toString().split('.').last,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  dropdownColor:
+                      isDark
+                          ? theme.colorScheme.surfaceContainerHighest
+                          : theme.colorScheme.surfaceContainerHighest,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                  items:
+                      ComplaintPriority.values.map((priority) {
+                        return DropdownMenuItem(
+                          value: priority,
+                          child: Text(
+                            priority.toString().split('.').last,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        );
+                      }).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() => _priority = value);
@@ -348,19 +347,25 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.pop(context),
+                      onPressed:
+                          _isLoading ? null : () => Navigator.pop(context),
                       child: const Text('Cancel'),
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton(
                       onPressed: _isLoading ? null : _submitForm,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(widget.complaint == null ? 'Create' : 'Update'),
+                      child:
+                          _isLoading
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Text(
+                                widget.complaint == null ? 'Create' : 'Update',
+                              ),
                     ),
                   ],
                 ),
@@ -391,10 +396,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
               ),
             )
           else
-            TextButton(
-              onPressed: _submitForm,
-              child: const Text('SAVE'),
-            ),
+            TextButton(onPressed: _submitForm, child: const Text('SAVE')),
         ],
       ),
       body: SafeArea(
@@ -479,10 +481,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      'Select Customer',
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    Text('Select Customer', style: theme.textTheme.titleMedium),
                     const Spacer(),
                     Icon(
                       Icons.arrow_forward_ios,
@@ -506,9 +505,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                         backgroundColor: theme.colorScheme.primary,
                         child: Text(
                           _selectedCustomer!.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimary,
-                          ),
+                          style: TextStyle(color: theme.colorScheme.onPrimary),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -583,17 +580,22 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                     ? 'Invoice #${_selectedInvoice!.invoiceNumber}'
                     : 'Select Invoice',
               ),
-              subtitle: _selectedInvoice != null
-                  ? Text(
-                      DateFormat('MMM dd, yyyy').format(_selectedInvoice!.date))
-                  : null,
-              trailing: _selectedInvoice != null
-                  ? IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () =>
-                          setState(() => _selectedInvoice = null),
-                    )
-                  : const Icon(Icons.arrow_forward_ios, size: 16),
+              subtitle:
+                  _selectedInvoice != null
+                      ? Text(
+                        DateFormat(
+                          'MMM dd, yyyy',
+                        ).format(_selectedInvoice!.date),
+                      )
+                      : null,
+              trailing:
+                  _selectedInvoice != null
+                      ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed:
+                            () => setState(() => _selectedInvoice = null),
+                      )
+                      : const Icon(Icons.arrow_forward_ios, size: 16),
             ),
           ),
       ],
@@ -629,12 +631,10 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
           decoration: InputDecoration(
             labelText: 'Title',
             filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          validator: (value) =>
-              value?.isEmpty ?? true ? 'Title is required' : null,
+          validator:
+              (value) => value?.isEmpty ?? true ? 'Title is required' : null,
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -643,12 +643,11 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
           decoration: InputDecoration(
             labelText: 'Description',
             filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          validator: (value) =>
-              value?.isEmpty ?? true ? 'Description is required' : null,
+          validator:
+              (value) =>
+                  value?.isEmpty ?? true ? 'Description is required' : null,
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<ComplaintPriority>(
@@ -656,29 +655,28 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
           decoration: InputDecoration(
             labelText: 'Priority',
             filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          items: ComplaintPriority.values.map((priority) {
-            return DropdownMenuItem(
-              value: priority,
-              child: Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: _getPriorityColor(priority),
-                      shape: BoxShape.circle,
-                    ),
+          items:
+              ComplaintPriority.values.map((priority) {
+                return DropdownMenuItem(
+                  value: priority,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _getPriorityColor(priority),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(priority.toString().split('.').last),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(priority.toString().split('.').last),
-                ],
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
           onChanged: (value) {
             if (value != null) setState(() => _priority = value);
           },
