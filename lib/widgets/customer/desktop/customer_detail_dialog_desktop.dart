@@ -15,7 +15,7 @@ import '../../../utils/number_formatter.dart';
 import '../../../theme/inventory_design_config.dart';
 import 'add_customer_dialog.dart';
 import '../../measurement/desktop/add_measurement_dialog.dart';
-import '../../invoice/add_invoice_dailog.dart';
+import '../../invoice/desktop/add_edit_invoice_desktop_dialog.dart';
 import '../../complaint/complaint_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1522,7 +1522,7 @@ class _CustomerDetailDialogDesktopState
   }
 
   Future<void> _addInvoice() async {
-    await InvoiceScreen.show(context, customer: widget.customer);
+    await AddEditInvoiceDesktopDialog.show(context, customer: widget.customer);
     await _loadCustomerActivity();
     _calculateFinancialSummary();
   }

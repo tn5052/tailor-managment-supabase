@@ -46,7 +46,7 @@ class InvoiceService {
               )
               .toList(),
       'is_delivered': invoice.isDelivered,
-      'products': invoice.products.map((p) => p.toMap()).toList(),
+      'products': invoice.products.map((p) => p.toJson()).toList(),
       'tenant_id': tenantId,
     });
   }
@@ -72,7 +72,7 @@ class InvoiceService {
                   )
                   .toList(),
           'is_delivered': invoice.isDelivered,
-          'products': invoice.products.map((p) => p.toMap()).toList(),
+          'products': invoice.products.map((p) => p.toJson()).toList(),
           'amount': invoice.amount,
           'vat': invoice.vat,
           'amount_including_vat': invoice.amountIncludingVat,

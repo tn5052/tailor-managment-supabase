@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
-import '../widgets/invoice/invoice_desktop_view.dart';
-
+import '../widgets/invoice/invoice_desktop_view.dart'; // Import the new desktop view
+import '../widgets/invoice/invoice_mobile_view.dart';
 class InvoiceScreen extends StatelessWidget {
   const InvoiceScreen({super.key});
 
@@ -9,17 +9,12 @@ class InvoiceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Responsive.isDesktop(context)
-          ? const InvoiceDesktopView()
+          ? const InvoiceDesktopView() // Use the new desktop view
           : _buildMobileView(),
     );
   }
 
   Widget _buildMobileView() {
-    return const Center(
-      child: Text(
-        'Mobile view under development',
-        style: TextStyle(fontSize: 16),
-      ),
-    );
+    return const InvoiceMobileView();
   }
 }

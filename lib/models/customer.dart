@@ -38,11 +38,11 @@ class Customer {
   factory Customer.fromMap(Map<String, dynamic> map) {
     return Customer(
       id: map['id'],
-      billNumber: map['bill_number'],
-      name: map['name'],
-      phone: map['phone'],
+      billNumber: map['bill_number'] ?? '',
+      name: map['name'] ?? '',
+      phone: map['phone'] ?? '',
       whatsapp: map['whatsapp'] ?? '',
-      address: map['address'],
+      address: map['address'] ?? '',
       gender: map['gender'] == 'female' ? Gender.female : Gender.male,
       createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
       referredBy: map['referred_by'], // Retrieve referred_by from map

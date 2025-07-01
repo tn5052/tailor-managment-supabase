@@ -408,8 +408,31 @@ class _InventoryDetailDialogDesktopState
     final totalValue =
         _toDouble(widget.item['quantity_available']) * costPerUnit;
 
+    final isFabric = widget.inventoryType == 'fabric';
+
+    // Get kandora pricing data if it's fabric - Enhanced debugging
+    final fullKandoraPrice =
+        isFabric ? _toDouble(widget.item['full_kandora_price'] ?? 0.0) : 0.0;
+    final adultKandoraPrice =
+        isFabric ? _toDouble(widget.item['adult_kandora_price'] ?? 0.0) : 0.0;
+    final fullKandoraYards =
+        isFabric ? _toDouble(widget.item['full_kandora_yards'] ?? 3.5) : 3.5;
+    final adultKandoraYards =
+        isFabric ? _toDouble(widget.item['adult_kandora_yards'] ?? 2.5) : 2.5;
+
+    // Debug print to console
+    if (isFabric) {
+      print('=== KANDORA PRICING DEBUG ===');
+      print('Full Kandora Price: $fullKandoraPrice');
+      print('Adult Kandora Price: $adultKandoraPrice');
+      print('Full Kandora Yards: $fullKandoraYards');
+      print('Adult Kandora Yards: $adultKandoraYards');
+      print('Item data: ${widget.item}');
+      print('============================');
+    }
+
     return _buildCard(
-      title: 'Pricing & Value',
+      title: isFabric ? 'Pricing & Kandora Values' : 'Pricing & Value',
       icon: PhosphorIcons.currencyDollar(),
       color: theme.colorScheme.primary,
       theme: theme,
@@ -419,8 +442,8 @@ class _InventoryDetailDialogDesktopState
             children: [
               Expanded(
                 child: _buildInfoBox(
-                  'Cost per Unit',
-                  NumberFormat.currency(symbol: '\$').format(costPerUnit),
+                  isFabric ? 'Cost per Yard' : 'Cost per Unit',
+                  NumberFormat.currency(symbol: 'AED ').format(costPerUnit),
                   icon: PhosphorIcons.arrowDown(),
                   color: theme.colorScheme.tertiary,
                   theme: theme,
@@ -429,8 +452,8 @@ class _InventoryDetailDialogDesktopState
               const SizedBox(width: 16),
               Expanded(
                 child: _buildInfoBox(
-                  'Selling Price',
-                  NumberFormat.currency(symbol: '\$').format(sellingPrice),
+                  isFabric ? 'Price per Yard' : 'Selling Price',
+                  NumberFormat.currency(symbol: 'AED ').format(sellingPrice),
                   icon: PhosphorIcons.arrowUp(),
                   color: AppTheme.successColor,
                   theme: theme,
@@ -439,14 +462,154 @@ class _InventoryDetailDialogDesktopState
             ],
           ),
 
+          // Enhanced kandora pricing display for fabrics - Force show even with 0 values for debugging
+          if (isFabric) ...[
+            const SizedBox(height: 16),
+
+            // Always show kandora section for fabrics to debug
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.warningColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: InventoryDesignConfig.warningColor.withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        PhosphorIcons.shirtFolded(),
+                        size: 16,
+                        color: InventoryDesignConfig.warningColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Kandora Pricing Details',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: InventoryDesignConfig.warningColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (fullKandoraPrice > 0 || adultKandoraPrice > 0) ...[
+                    Row(
+                      children: [
+                        if (fullKandoraPrice > 0)
+                          Expanded(
+                            child: _buildKandoraInfoBox(
+                              'Full Kandora',
+                              fullKandoraPrice,
+                              fullKandoraYards,
+                              PhosphorIcons.user(),
+                              AppTheme.primaryColor,
+                              theme,
+                            ),
+                          ),
+                        if (fullKandoraPrice > 0 && adultKandoraPrice > 0)
+                          const SizedBox(width: 16),
+                        if (adultKandoraPrice > 0)
+                          Expanded(
+                            child: _buildKandoraInfoBox(
+                              'Adult Kandora',
+                              adultKandoraPrice,
+                              adultKandoraYards,
+                              PhosphorIcons.baby(),
+                              InventoryDesignConfig.warningColor,
+                              theme,
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    // Show calculation info
+                    if (fullKandoraPrice > 0 && adultKandoraPrice > 0) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              PhosphorIcons.calculator(),
+                              size: 14,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Price per yard = Average of (${NumberFormat.currency(symbol: 'AED ', decimalDigits: 0).format(fullKandoraPrice / fullKandoraYards)} + ${NumberFormat.currency(symbol: 'AED ', decimalDigits: 0).format(adultKandoraPrice / adultKandoraYards)}) ÷ 2',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ] else ...[
+                    // Show when no kandora pricing is set
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(
+                          0.5,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            PhosphorIcons.info(),
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'No kandora pricing set for this fabric. Edit to add kandora prices.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 16),
 
           Row(
             children: [
               Expanded(
                 child: _buildInfoBox(
-                  'Profit per Unit',
-                  NumberFormat.currency(symbol: '\$').format(profit),
+                  isFabric ? 'Profit per Yard' : 'Profit per Unit',
+                  NumberFormat.currency(symbol: 'AED ').format(profit),
                   icon: PhosphorIcons.trendUp(),
                   color:
                       profit >= 0 ? AppTheme.successColor : AppTheme.errorColor,
@@ -495,13 +658,68 @@ class _InventoryDetailDialogDesktopState
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  NumberFormat.currency(symbol: '\$').format(totalValue),
+                  NumberFormat.currency(symbol: 'AED ').format(totalValue),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // New widget for kandora pricing display
+  Widget _buildKandoraInfoBox(
+    String label,
+    double price,
+    double yards,
+    IconData icon,
+    Color color,
+    ThemeData theme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.1), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: color.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            NumberFormat.currency(
+              symbol: 'AED ',
+              decimalDigits: 0,
+            ).format(price),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          Text(
+            '(${yards.toString()} yards)',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: color.withOpacity(0.7),
+              fontSize: 10,
             ),
           ),
         ],

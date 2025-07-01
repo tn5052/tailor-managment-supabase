@@ -66,6 +66,7 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
   final _minimumStockFocusNode = FocusNode();
   final _costFocusNode = FocusNode();
   final _priceFocusNode = FocusNode();
+  final _notesFocusNode = FocusNode();
 
   // Form controllers
   final _itemNameController = TextEditingController();
@@ -76,11 +77,16 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
   final _minimumStockController = TextEditingController();
   final _costController = TextEditingController();
   final _priceController = TextEditingController();
+  final _notesController = TextEditingController();
+
+  // Add new controllers for kandora pricing
+  late final TextEditingController _fullKandoraPriceController;
+  late final TextEditingController _adultKandoraPriceController;
 
   // Form state
   SearchableAddableDropdownItem? _selectedBrand;
   SearchableAddableDropdownItem? _selectedCategory;
-  String _selectedUnitType = 'meter';
+  String? _selectedUnitType;
   bool _isSaving = false;
 
   // Keyboard state
@@ -88,7 +94,11 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
   bool _isKeyboardVisible = false;
 
   // Unit type options
-  final List<String> _unitTypes = ['meter', 'yard', 'piece', 'kg', 'gram'];
+  final List<String> _unitTypes = ['Meter', 'Yard', 'Piece', 'Set'];
+
+  // Kandora yard requirements
+  static const double fullKandoraYards = 3.5;
+  static const double adultKandoraYards = 2.5;
 
   @override
   void initState() {
@@ -98,13 +108,21 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
     _setupFormListeners();
 
     // Set default unit type based on inventory type
-    _selectedUnitType = widget.inventoryType == 'fabric' ? 'meter' : 'piece';
+    _selectedUnitType = widget.inventoryType == 'fabric' ? 'Meter' : 'Piece';
 
     // Request focus for accessibility
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _sheetFocusNode.requestFocus();
       _startEntryAnimation();
     });
+
+    // Initialize new kandora price controllers
+    _fullKandoraPriceController = TextEditingController();
+    _adultKandoraPriceController = TextEditingController();
+
+    // Add listeners to auto-calculate selling price per unit
+    _fullKandoraPriceController.addListener(_calculateSellingPricePerUnit);
+    _adultKandoraPriceController.addListener(_calculateSellingPricePerUnit);
   }
 
   void _initializeAnimations() {
@@ -191,6 +209,7 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
     _minimumStockFocusNode.dispose();
     _costFocusNode.dispose();
     _priceFocusNode.dispose();
+    _notesFocusNode.dispose();
 
     // Dispose controllers
     _itemNameController.dispose();
@@ -201,6 +220,9 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
     _minimumStockController.dispose();
     _costController.dispose();
     _priceController.dispose();
+    _notesController.dispose();
+    _fullKandoraPriceController.dispose();
+    _adultKandoraPriceController.dispose();
 
     super.dispose();
   }
@@ -218,6 +240,52 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
 
     if (mounted) {
       Navigator.of(context).pop();
+    }
+  }
+
+  void _calculateSellingPricePerUnit() {
+    if (widget.inventoryType != 'fabric') return;
+
+    final fullPrice = double.tryParse(_fullKandoraPriceController.text) ?? 0.0;
+    final adultPrice =
+        double.tryParse(_adultKandoraPriceController.text) ?? 0.0;
+
+    if (fullPrice > 0 && adultPrice > 0) {
+      // Calculate price per yard for both kandora types
+      final fullPricePerYard = fullPrice / fullKandoraYards;
+      final adultPricePerYard = adultPrice / adultKandoraYards;
+
+      // Use average price per yard
+      final avgPricePerYard = (fullPricePerYard + adultPricePerYard) / 2;
+
+      if (mounted) {
+        setState(() {
+          _priceController.text = avgPricePerYard.toStringAsFixed(2);
+        });
+      }
+    } else if (fullPrice > 0) {
+      // Only full kandora price entered
+      final fullPricePerYard = fullPrice / fullKandoraYards;
+      if (mounted) {
+        setState(() {
+          _priceController.text = fullPricePerYard.toStringAsFixed(2);
+        });
+      }
+    } else if (adultPrice > 0) {
+      // Only adult kandora price entered
+      final adultPricePerYard = adultPrice / adultKandoraYards;
+      if (mounted) {
+        setState(() {
+          _priceController.text = adultPricePerYard.toStringAsFixed(2);
+        });
+      }
+    } else {
+      // Clear selling price if no kandora prices
+      if (mounted) {
+        setState(() {
+          _priceController.text = '0.00';
+        });
+      }
     }
   }
 
@@ -614,62 +682,138 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
 
               const SizedBox(height: InventoryDesignConfig.spacingXXL),
 
-              // Pricing Information Section
+              // Pricing & Stock Section
               _buildFormSection(
-                title: 'Pricing Information',
-                icon: PhosphorIcons.currencyDollar(),
+                title: 'Pricing & Stock',
+                icon: PhosphorIcons.stack(),
                 children: [
-                  _buildTextFormField(
-                    label: 'Cost per Unit',
-                    controller: _costController,
-                    focusNode: _costFocusNode,
-                    nextFocusNode: _priceFocusNode,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Cost is required';
-                      final num? parsed = num.tryParse(value!);
-                      if (parsed == null || parsed < 0)
-                        return 'Enter valid cost';
-                      return null;
-                    },
-                    textInputAction: TextInputAction.next,
-                    prefixIcon: PhosphorIcons.coins(),
-                    prefixText: '\$ ',
+                  if (widget.inventoryType == 'fabric') ...[
+                    _buildKandoraPricingSection(),
+                    const SizedBox(height: InventoryDesignConfig.spacingL),
+                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildTextFormField(
+                          label: 'Cost per Unit',
+                          controller: _costController,
+                          focusNode: _costFocusNode,
+                          nextFocusNode: _priceFocusNode,
+                          keyboardType: TextInputType.number,
+                          prefixText: 'AED ',
+                          validator: (value) {
+                            if (value?.isEmpty ?? true)
+                              return 'Cost is required';
+                            final num? parsed = num.tryParse(value!);
+                            if (parsed == null || parsed < 0)
+                              return 'Enter valid cost';
+                            return null;
+                          },
+                          textInputAction: TextInputAction.next,
+                          prefixIcon: PhosphorIcons.coins(),
+                        ),
+                      ),
+                      const SizedBox(width: InventoryDesignConfig.spacingM),
+                      Expanded(
+                        child: _buildTextFormField(
+                          label: 'Price per Unit',
+                          controller: _priceController,
+                          focusNode: _priceFocusNode,
+                          nextFocusNode: _notesFocusNode,
+                          keyboardType: TextInputType.number,
+                          prefixText: 'AED ',
+                          readOnly: widget.inventoryType == 'fabric',
+                          helperText:
+                              widget.inventoryType == 'fabric'
+                                  ? 'Auto-calculated'
+                                  : null,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            final num? parsed = num.tryParse(value);
+                            if (parsed == null || parsed < 0) {
+                              return 'Enter valid price';
+                            }
+                            return null;
+                          },
+                          prefixIcon: PhosphorIcons.tag(),
+                        ),
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: InventoryDesignConfig.spacingL),
-
-                  _buildTextFormField(
-                    label: 'Selling Price per Unit',
-                    controller: _priceController,
-                    focusNode: _priceFocusNode,
-                    // nextFocusNode is null here, TextInputAction.done will be handled by default
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Price is required';
-                      final num? parsed = num.tryParse(value!);
-                      if (parsed == null || parsed < 0)
-                        return 'Enter valid price';
-                      return null;
-                    },
-                    textInputAction: TextInputAction.done,
-                    // Removed explicit onFieldSubmitted, default handler will take care of it
-                    prefixIcon: PhosphorIcons.tag(),
-                    prefixText: '\$ ',
-                  ),
-
-                  const SizedBox(height: InventoryDesignConfig.spacingL),
-
-                  _buildProfitMarginIndicator(),
                 ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildKandoraPricingSection() {
+    return Container(
+      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.warningColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        border: Border.all(
+          color: InventoryDesignConfig.warningColor.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.shirtFolded(),
+                size: 16,
+                color: InventoryDesignConfig.warningColor,
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Text(
+                'Kandora Pricing',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  color: InventoryDesignConfig.warningColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingS),
+          Text(
+            'Enter Kandora prices to auto-calculate price per yard.',
+            style: InventoryDesignConfig.bodySmall.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+          ),
+          const SizedBox(height: InventoryDesignConfig.spacingL),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  label: 'Full Kandora Price',
+                  controller: _fullKandoraPriceController,
+                  keyboardType: TextInputType.number,
+                  prefixText: 'AED ',
+                  helperText: 'Uses ${fullKandoraYards}y',
+                ),
+              ),
+              const SizedBox(width: InventoryDesignConfig.spacingM),
+              Expanded(
+                child: _buildTextFormField(
+                  label: 'Adult Kandora Price',
+                  controller: _adultKandoraPriceController,
+                  keyboardType: TextInputType.number,
+                  prefixText: 'AED ',
+                  helperText: 'Uses ${adultKandoraYards}y',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -725,129 +869,128 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
     IconData? prefixIcon,
     String? prefixText,
     String? helperText,
+    bool readOnly = false,
   }) {
-    return Semantics(
-      label: label,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: InventoryDesignConfig.bodyMedium.copyWith(
-              fontWeight: FontWeight.w600,
-              color: InventoryDesignConfig.textPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: InventoryDesignConfig.bodyMedium.copyWith(
+            fontWeight: FontWeight.w600,
+            color: InventoryDesignConfig.textPrimary,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          validator: validator,
+          readOnly: readOnly,
+          style: InventoryDesignConfig.bodyLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Enter $label',
+            hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            prefixIcon:
+                prefixIcon != null
+                    ? Padding(
+                      padding: const EdgeInsets.all(
+                        InventoryDesignConfig.spacingM,
+                      ),
+                      child: Icon(
+                        prefixIcon,
+                        size: 18,
+                        color: InventoryDesignConfig.textSecondary,
+                      ),
+                    )
+                    : null,
+            prefixText: prefixText,
+            prefixStyle: InventoryDesignConfig.bodyLarge.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+            helperText: helperText,
+            helperStyle: InventoryDesignConfig.bodySmall.copyWith(
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            filled: true,
+            fillColor: InventoryDesignConfig.surfaceLight,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.primaryColor,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.errorColor,
+                width: 1,
+              ),
+            ),
+            contentPadding: const EdgeInsets.all(
+              InventoryDesignConfig.spacingL,
             ),
           ),
-          const SizedBox(height: InventoryDesignConfig.spacingS),
-          TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: keyboardType,
-            textInputAction: textInputAction,
-            validator: validator,
-            style: InventoryDesignConfig.bodyLarge.copyWith(
-              color: InventoryDesignConfig.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Enter $label',
-              hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
-                color: InventoryDesignConfig.textTertiary,
-              ),
-              prefixIcon:
-                  prefixIcon != null
-                      ? Padding(
-                        padding: const EdgeInsets.all(
-                          InventoryDesignConfig.spacingM,
-                        ),
-                        child: Icon(
-                          prefixIcon,
-                          size: 18,
-                          color: InventoryDesignConfig.textSecondary,
-                        ),
-                      )
-                      : null,
-              prefixText: prefixText,
-              prefixStyle: InventoryDesignConfig.bodyLarge.copyWith(
-                color: InventoryDesignConfig.textSecondary,
-              ),
-              helperText: helperText,
-              helperStyle: InventoryDesignConfig.bodySmall.copyWith(
-                color: InventoryDesignConfig.textTertiary,
-              ),
-              filled: true,
-              fillColor: InventoryDesignConfig.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                borderSide: BorderSide(
-                  color: InventoryDesignConfig.borderPrimary,
-                  width: 1,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                borderSide: BorderSide(
-                  color: InventoryDesignConfig.borderPrimary,
-                  width: 1,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                borderSide: BorderSide(
-                  color: InventoryDesignConfig.primaryColor,
-                  width: 2,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                borderSide: BorderSide(
-                  color: InventoryDesignConfig.errorColor,
-                  width: 1,
-                ),
-              ),
-              contentPadding: const EdgeInsets.all(
-                InventoryDesignConfig.spacingL,
-              ),
-            ),
-            onTapOutside: (_) {
-              // Added to dismiss keyboard on tap outside while field is focused
-              focusNode?.unfocus();
-            },
-            onFieldSubmitted:
-                onFieldSubmitted ??
-                (String value) {
-                  if (textInputAction == TextInputAction.next) {
-                    if (nextFocusNode != null) {
-                      FocusScope.of(context).requestFocus(nextFocusNode);
-                    } else {
-                      // If nextFocusNode is null but action is next, unfocus as a fallback
-                      focusNode?.unfocus();
-                      FocusScope.of(context).unfocus();
-                    }
-                  } else if (textInputAction == TextInputAction.done) {
+          onTapOutside: (_) {
+            // Added to dismiss keyboard on tap outside while field is focused
+            focusNode?.unfocus();
+          },
+          onFieldSubmitted:
+              onFieldSubmitted ??
+              (String value) {
+                if (textInputAction == TextInputAction.next) {
+                  if (nextFocusNode != null) {
+                    FocusScope.of(context).requestFocus(nextFocusNode);
+                  } else {
+                    // If nextFocusNode is null but action is next, unfocus as a fallback
                     focusNode?.unfocus();
                     FocusScope.of(context).unfocus();
                   }
-                },
-            onEditingComplete: () {
-              // This is sometimes more reliable for 'done' action, especially with numeric keyboards.
-              // However, onFieldSubmitted should generally handle it.
-              // If issues persist, this could be a place for more aggressive unfocusing.
-              if (textInputAction == TextInputAction.done) {
-                focusNode?.unfocus();
-                FocusScope.of(context).unfocus();
-              }
-            },
-          ),
-        ],
-      ),
+                } else if (textInputAction == TextInputAction.done) {
+                  focusNode?.unfocus();
+                  FocusScope.of(context).unfocus();
+                }
+              },
+          onEditingComplete: () {
+            // This is sometimes more reliable for 'done' action, especially with numeric keyboards.
+            // However, onFieldSubmitted should generally handle it.
+            // If issues persist, this could be a place for more aggressive unfocusing.
+            if (textInputAction == TextInputAction.done) {
+              focusNode?.unfocus();
+              FocusScope.of(context).unfocus();
+            }
+          },
+        ),
+      ],
     );
   }
 
@@ -979,7 +1122,7 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
                   const SizedBox(width: InventoryDesignConfig.spacingS),
                   Expanded(
                     child: Text(
-                      _selectedUnitType,
+                      _selectedUnitType ?? '',
                       style: InventoryDesignConfig.bodyLarge,
                     ),
                   ),
@@ -1310,7 +1453,7 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
       backgroundColor: Colors.transparent,
       builder:
           (context) => _UnitTypePickerSheet(
-            selectedUnit: _selectedUnitType,
+            selectedUnit: _selectedUnitType ?? '',
             unitTypes: _unitTypes,
             onUnitSelected: (unit) {
               setState(() => _selectedUnitType = unit);
@@ -1352,18 +1495,22 @@ class _AddInventoryMobileSheetState extends State<AddInventoryMobileSheet>
       final table = isFabric ? 'fabric_inventory' : 'accessories_inventory';
 
       final data = {
-        if (isFabric)
-          'fabric_item_name': _itemNameController.text.trim()
-        else
+        if (widget.inventoryType == 'fabric') ...{
+          'fabric_item_name': _itemNameController.text.trim(),
+          'fabric_code': _itemCodeController.text.trim(),
+          'shade_color': _colorController.text.trim(),
+          'full_kandora_price': double.tryParse(
+            _fullKandoraPriceController.text,
+          ),
+          'adult_kandora_price': double.tryParse(
+            _adultKandoraPriceController.text,
+          ),
+          'full_kandora_yards': fullKandoraYards,
+          'adult_kandora_yards': adultKandoraYards,
+        } else ...{
           'accessory_item_name': _itemNameController.text.trim(),
-        if (isFabric)
-          'fabric_code': _itemCodeController.text.trim()
-        else
           'accessory_code': _itemCodeController.text.trim(),
-        if (isFabric)
-          'shade_color': _colorController.text.trim()
-        else
-          'color': _colorController.text.trim(),
+        },
         'color_code': _colorCodeController.text.trim(),
         'quantity_available': int.parse(_quantityController.text),
         'minimum_stock_level': int.parse(_minimumStockController.text),

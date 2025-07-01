@@ -53,6 +53,10 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
   late final TextEditingController _priceController;
   late final TextEditingController _notesController;
 
+  // Add new controllers for kandora pricing
+  late final TextEditingController _fullKandoraPriceController;
+  late final TextEditingController _adultKandoraPriceController;
+
   String? _selectedBrand;
   String? _selectedCategory;
   String? _selectedUnitType;
@@ -71,6 +75,10 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
 
   Color? _selectedColor;
 
+  // Kandora yard requirements
+  static const double fullKandoraYards = 3.5;
+  static const double adultKandoraYards = 2.5;
+
   @override
   void initState() {
     super.initState();
@@ -87,20 +95,50 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     _costController = TextEditingController();
     _priceController = TextEditingController();
     _notesController = TextEditingController();
+
+    // Initialize new kandora price controllers
+    _fullKandoraPriceController = TextEditingController();
+    _adultKandoraPriceController = TextEditingController();
+
+    // Add listeners to auto-calculate selling price per unit
+    _fullKandoraPriceController.addListener(_calculateSellingPricePerUnit);
+    _adultKandoraPriceController.addListener(_calculateSellingPricePerUnit);
   }
 
-  Future<void> _openColorPicker() async {
-    final result = await FabricColorPicker.show(
-      context,
-      initialColor: _selectedColor,
-      initialColorName: _colorController.text,
-    );
+  void _calculateSellingPricePerUnit() {
+    if (widget.inventoryType != 'fabric') return;
 
-    if (result != null) {
+    final fullPrice = double.tryParse(_fullKandoraPriceController.text) ?? 0.0;
+    final adultPrice =
+        double.tryParse(_adultKandoraPriceController.text) ?? 0.0;
+
+    if (fullPrice > 0 && adultPrice > 0) {
+      // Calculate price per yard for both kandora types
+      final fullPricePerYard = fullPrice / fullKandoraYards;
+      final adultPricePerYard = adultPrice / adultKandoraYards;
+
+      // Use average price per yard
+      final avgPricePerYard = (fullPricePerYard + adultPricePerYard) / 2;
+
       setState(() {
-        _selectedColor = result.color;
-        _colorController.text = result.colorName;
-        _colorCodeController.text = result.hexCode;
+        _priceController.text = avgPricePerYard.toStringAsFixed(2);
+      });
+    } else if (fullPrice > 0) {
+      // Only full kandora price entered
+      final fullPricePerYard = fullPrice / fullKandoraYards;
+      setState(() {
+        _priceController.text = fullPricePerYard.toStringAsFixed(2);
+      });
+    } else if (adultPrice > 0) {
+      // Only adult kandora price entered
+      final adultPricePerYard = adultPrice / adultKandoraYards;
+      setState(() {
+        _priceController.text = adultPricePerYard.toStringAsFixed(2);
+      });
+    } else {
+      // Clear selling price if no kandora prices
+      setState(() {
+        _priceController.text = '0.00';
       });
     }
   }
@@ -116,6 +154,8 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     _costController.dispose();
     _priceController.dispose();
     _notesController.dispose();
+    _fullKandoraPriceController.dispose();
+    _adultKandoraPriceController.dispose();
     super.dispose();
   }
 
@@ -135,6 +175,13 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
           'fabric_item_name': _itemNameController.text.trim(),
           'fabric_code': _itemCodeController.text.trim(),
           'shade_color': _colorController.text.trim(),
+          // Add kandora pricing fields for fabric
+          'full_kandora_price':
+              double.tryParse(_fullKandoraPriceController.text) ?? 0.0,
+          'adult_kandora_price':
+              double.tryParse(_adultKandoraPriceController.text) ?? 0.0,
+          'full_kandora_yards': fullKandoraYards,
+          'adult_kandora_yards': adultKandoraYards,
         } else ...{
           'accessory_item_name': _itemNameController.text.trim(),
           'accessory_code': _itemCodeController.text.trim(),
@@ -154,6 +201,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
         'category_id': _selectedCategory,
         'is_active': true,
         'created_at': DateTime.now().toIso8601String(),
+        'tenant_id': _supabase.auth.currentUser!.id,
       };
 
       await _supabase.from(table).insert(data);
@@ -183,6 +231,22 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _openColorPicker() async {
+    final result = await FabricColorPicker.show(
+      context,
+      initialColor: _selectedColor,
+      initialColorName: _colorController.text,
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedColor = result.color;
+        _colorController.text = result.colorName;
+        _colorCodeController.text = result.hexCode;
+      });
     }
   }
 
@@ -498,58 +562,11 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
 
             const SizedBox(height: InventoryDesignConfig.spacingXXL),
 
-            // Pricing Information Section
-            _buildSection(
-              'Pricing Information',
-              PhosphorIcons.currencyDollar(),
-              [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _costController,
-                        label: 'Cost per Unit',
-                        hint: '0.00',
-                        icon: PhosphorIcons.arrowDown(),
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter cost';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter valid amount';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: InventoryDesignConfig.spacingL),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _priceController,
-                        label: 'Selling Price per Unit',
-                        hint: '0.00',
-                        icon: PhosphorIcons.arrowUp(),
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter selling price';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter valid amount';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            // Modified Pricing Information Section for Fabric
+            if (isFabric)
+              _buildFabricPricingSection()
+            else
+              _buildAccessoryPricingSection(),
 
             const SizedBox(height: InventoryDesignConfig.spacingXXL),
 
@@ -730,6 +747,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     int maxLines = 1,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -747,6 +765,7 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
           validator: validator,
           keyboardType: keyboardType,
           maxLines: maxLines,
+          readOnly: readOnly,
           style: InventoryDesignConfig.bodyLarge.copyWith(
             color: InventoryDesignConfig.textPrimary,
           ),
@@ -1091,6 +1110,258 @@ class _AddInventoryDesktopDialogState extends State<AddInventoryDesktopDialog> {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  // New fabric pricing section with kandora pricing
+  Widget _buildFabricPricingSection() {
+    return _buildSection(
+      'Pricing Information (Fabric)',
+      PhosphorIcons.currencyDollar(),
+      [
+        // Cost per yard (existing)
+        _buildTextField(
+          controller: _costController,
+          label: 'Cost per Yard',
+          hint: '0.00',
+          icon: PhosphorIcons.arrowDown(),
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter cost per yard';
+            }
+            if (double.tryParse(value) == null) {
+              return 'Please enter valid amount';
+            }
+            return null;
+          },
+        ),
+
+        const SizedBox(height: InventoryDesignConfig.spacingL),
+
+        // Kandora pricing section
+        Container(
+          padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.warningColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+            border: Border.all(
+              color: InventoryDesignConfig.warningColor.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    PhosphorIcons.shirtFolded(),
+                    size: 18,
+                    color: InventoryDesignConfig.warningColor,
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingM),
+                  Text(
+                    'Kandora Pricing',
+                    style: InventoryDesignConfig.titleMedium.copyWith(
+                      color: InventoryDesignConfig.warningColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: InventoryDesignConfig.spacingM),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildKandoraPriceField(
+                      controller: _fullKandoraPriceController,
+                      label: 'Full Kandora Price',
+                      hint: '0.00',
+                      yards: fullKandoraYards,
+                      icon: PhosphorIcons.user(),
+                    ),
+                  ),
+                  const SizedBox(width: InventoryDesignConfig.spacingL),
+                  Expanded(
+                    child: _buildKandoraPriceField(
+                      controller: _adultKandoraPriceController,
+                      label: 'Adult Kandora Price',
+                      hint: '0.00',
+                      yards: adultKandoraYards,
+                      icon: PhosphorIcons.baby(),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: InventoryDesignConfig.spacingM),
+
+              // Auto-calculated selling price per yard (read-only)
+              _buildTextField(
+                controller: _priceController,
+                label: 'Calculated Selling Price per Yard',
+                hint: 'Auto-calculated from kandora prices',
+                icon: PhosphorIcons.calculator(),
+                readOnly: true,
+                validator: (value) {
+                  if (value == null ||
+                      value.trim().isEmpty ||
+                      double.tryParse(value) == 0) {
+                    return 'Please set kandora prices to calculate selling price';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Regular pricing section for accessories (unchanged)
+  Widget _buildAccessoryPricingSection() {
+    return _buildSection(
+      'Pricing Information',
+      PhosphorIcons.currencyDollar(),
+      [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField(
+                controller: _costController,
+                label: 'Cost per Unit',
+                hint: '0.00',
+                icon: PhosphorIcons.arrowDown(),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter cost';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter valid amount';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingL),
+            Expanded(
+              child: _buildTextField(
+                controller: _priceController,
+                label: 'Selling Price per Unit',
+                hint: '0.00',
+                icon: PhosphorIcons.arrowUp(),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter selling price';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter valid amount';
+                  }
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Helper widget for kandora price fields
+  Widget _buildKandoraPriceField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required double yards,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: InventoryDesignConfig.labelLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '(${yards.toString()} yards)',
+          style: InventoryDesignConfig.bodySmall.copyWith(
+            color: InventoryDesignConfig.warningColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          onChanged: (value) {
+            // Auto-calculate immediately when user types
+            _calculateSellingPricePerUnit();
+          },
+          style: InventoryDesignConfig.bodyLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            prefixIcon: Icon(
+              icon,
+              size: 18,
+              color: InventoryDesignConfig.warningColor,
+            ),
+            prefixText: 'AED ',
+            filled: true,
+            fillColor: InventoryDesignConfig.surfaceLight,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.warningColor.withOpacity(0.3),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.warningColor,
+                width: 2.0,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: InventoryDesignConfig.spacingL,
+              vertical: InventoryDesignConfig.spacingM,
+            ),
+          ),
+          validator: (value) {
+            // Optional validation - you can make it required if needed
+            if (value != null && value.isNotEmpty) {
+              if (double.tryParse(value) == null || double.parse(value) < 0) {
+                return 'Enter valid price';
+              }
+            }
+            return null;
+          },
         ),
       ],
     );

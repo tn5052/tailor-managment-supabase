@@ -182,7 +182,7 @@ class Invoice {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'invoice_number': invoiceNumber,
@@ -206,9 +206,9 @@ class Invoice {
       'delivered_at': deliveredAt?.toIso8601String(),
       'paid_at': paidAt?.toIso8601String(),
       'notes': notes,
-      'payments': payments.map((p) => p.toMap()).toList(),
+      'payments': payments.map((p) => p.toJson()).toList(), // Changed to p.toJson()
       'is_delivered': isDelivered,
-      'products': products.map((p) => p.toMap()).toList(),
+      'products': products.map((p) => p.toJson()).toList(), // Changed to p.toJson()
       'refund_amount': refundAmount,
       'refunded_at': refundedAt?.toIso8601String(),
       'refund_reason': refundReason,
@@ -288,7 +288,7 @@ class Payment {
 
   Payment({required this.amount, required this.date, required this.note});
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {'amount': amount, 'date': date.toIso8601String(), 'note': note};
   }
 }
@@ -303,7 +303,7 @@ class Product {
     return Product(name: name ?? this.name, price: price ?? this.price);
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {'name': name, 'price': price};
   }
 

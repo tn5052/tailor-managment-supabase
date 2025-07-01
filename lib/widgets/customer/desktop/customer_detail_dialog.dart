@@ -15,8 +15,8 @@ import 'add_customer_dialog.dart';
 import 'customer_report_dialog.dart';
 import '../../measurement/desktop/measurement_detail_dialog.dart';
 import '../../measurement/desktop/add_measurement_dialog.dart';
-import '../../invoice/invoice_details_dialog.dart';
-import '../../invoice/add_invoice_dailog.dart';
+import '../../invoice/desktop/invoice_detail_dialog_desktop.dart';
+import '../../invoice/desktop/add_edit_invoice_desktop_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../complaint/complaint_dialog.dart';
 class CustomerDetailDialog extends StatefulWidget {
@@ -226,7 +226,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
   }
 
   Future<void> _addInvoice() async {
-    await InvoiceScreen.show(
+    await AddEditInvoiceDesktopDialog.show(
       context,
       customer: widget.customer,
     );
@@ -246,9 +246,9 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> with Single
   }
 
   Future<void> _viewInvoice(Invoice invoice) async {
-    await InvoiceDetailsDialog.show(
+    await InvoiceDetailDialogDesktop.show(
       context,
-      invoice,
+      invoice: invoice.toJson(),
     );
     
     // Reload invoices in case any changes were made

@@ -7,8 +7,9 @@ class InvoiceProduct {
   final double unitPrice;
   double quantity;
   final String unit;
-  final String? inventoryId;
-  final String? inventoryType;
+  final String inventoryId;
+  final String inventoryType; // 'fabric' or 'accessory'
+  double? inventoryDeductionQuantity; // For Kandora yardage, etc.
 
   InvoiceProduct({
     required this.id,
@@ -17,8 +18,9 @@ class InvoiceProduct {
     required this.unitPrice,
     required this.quantity,
     required this.unit,
-    this.inventoryId,
-    this.inventoryType,
+    required this.inventoryId,
+    required this.inventoryType,
+    this.inventoryDeductionQuantity,
   });
 
   double get totalPrice => unitPrice * quantity;
@@ -33,6 +35,7 @@ class InvoiceProduct {
       'unit': unit,
       'inventoryId': inventoryId,
       'inventoryType': inventoryType,
+      'inventoryDeductionQuantity': inventoryDeductionQuantity,
       'totalPrice': totalPrice,
     };
   }
@@ -53,6 +56,8 @@ class InvoiceProduct {
       unit: json['unit'] ?? 'pcs',
       inventoryId: json['inventoryId'],
       inventoryType: json['inventoryType'],
+      inventoryDeductionQuantity:
+          (json['inventoryDeductionQuantity'] as num?)?.toDouble(),
     );
   }
 
@@ -65,6 +70,7 @@ class InvoiceProduct {
     String? unit,
     String? inventoryId,
     String? inventoryType,
+    double? inventoryDeductionQuantity,
   }) {
     return InvoiceProduct(
       id: id ?? this.id,
@@ -75,6 +81,8 @@ class InvoiceProduct {
       unit: unit ?? this.unit,
       inventoryId: inventoryId ?? this.inventoryId,
       inventoryType: inventoryType ?? this.inventoryType,
+      inventoryDeductionQuantity:
+          inventoryDeductionQuantity ?? this.inventoryDeductionQuantity,
     );
   }
 }

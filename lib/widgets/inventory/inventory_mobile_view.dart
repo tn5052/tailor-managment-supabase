@@ -158,13 +158,14 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
               ? 'fabric_inventory'
               : 'accessories_inventory';
 
-      // Define select query with proper joins
       String selectQuery;
       if (widget.inventoryType == 'fabric') {
         selectQuery = '''
           id, fabric_code, fabric_item_name, shade_color, color_code, 
           unit_type, quantity_available, minimum_stock_level, 
           cost_per_unit, selling_price_per_unit, is_active, created_at,
+          full_kandora_price, adult_kandora_price, full_kandora_yards, adult_kandora_yards,
+          notes,
           brands(id, name),
           inventory_categories(id, category_name)
         ''';
@@ -173,18 +174,14 @@ class _InventoryMobileViewState extends State<InventoryMobileView>
           id, accessory_code, accessory_item_name, color, color_code,
           unit_type, quantity_available, minimum_stock_level,
           cost_per_unit, selling_price_per_unit, is_active, created_at,
+          notes,
           brands(id, name),
           inventory_categories(id, category_name)
         ''';
       }
 
-      // Start building the query
-      var query = _supabase
-          .from(table)
-          .select(selectQuery)
-          .eq('is_active', true);
+      var query = _supabase.from(table).select(selectQuery);
 
-      // Add search filter if query exists
       if (_searchQuery.isNotEmpty) {
         if (widget.inventoryType == 'fabric') {
           query = query.or(
@@ -2057,7 +2054,10 @@ class _EnhancedFilterSheetState extends State<_EnhancedFilterSheet>
                 options:
                     widget.availableBrands
                         .map(
-                          (brand) => {'id': brand['id'].toString(), 'name': brand['name'].toString()},
+                          (brand) => {
+                            'id': brand['id'].toString(),
+                            'name': brand['name'].toString(),
+                          },
                         )
                         .toList(),
                 onChanged: (value) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'customer/desktop/add_customer_dialog.dart';
 import 'measurement/desktop/add_measurement_dialog.dart'; // added import for measurement dialog
-import '../widgets/invoice/add_invoice_dailog.dart'; // added import for invoice dialog
+import '../widgets/invoice/desktop/add_edit_invoice_desktop_dialog.dart'; // added import for invoice dialog
 import '../widgets/complaint/complaint_dialog.dart'; // added import for complaint dialog
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -604,7 +604,7 @@ class _MobileBottomNavState extends State<MobileBottomNav>
                                 } else if (option == "Add Measures") {
                                   AddMeasurementDialog.show(context);
                                 } else if (option == "Add Invoice") {
-                                  InvoiceScreen.show(context);
+                                  AddEditInvoiceDesktopDialog.show(context);
                                 } else if (option == "Add Complaint") {
                                   ComplaintDialog.show(context);
                                 } else {

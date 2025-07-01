@@ -3,22 +3,26 @@ import 'invoice.dart';
 import 'invoice_group_by.dart';
 
 class InvoiceFilter {
-  final String searchQuery;
-  final List<InvoiceStatus> deliveryStatus;
-  final List<PaymentStatus> paymentStatus;
-  final DateTimeRange? creationDateRange;
-  final DateTimeRange? dueDateRange;
-  final DateTimeRange? modifiedDateRange;
-  final RangeValues? amountRange;
-  final FilterDateType selectedDateType;
-  final bool showOverdue;
-  final InvoiceGroupBy groupBy;
-  final bool ascending;
+  String searchQuery;
+  List<InvoiceStatus> deliveryStatus;
+  List<PaymentStatus> paymentStatus;
+  DateTime? startDate;
+  DateTime? endDate;
+  DateTimeRange? creationDateRange;
+  DateTimeRange? dueDateRange;
+  DateTimeRange? modifiedDateRange;
+  RangeValues? amountRange;
+  FilterDateType selectedDateType;
+  bool showOverdue;
+  InvoiceGroupBy groupBy;
+  bool ascending;
 
-  const InvoiceFilter({
+  InvoiceFilter({
     this.searchQuery = '',
     this.deliveryStatus = const [],
     this.paymentStatus = const [],
+    this.startDate,
+    this.endDate,
     this.creationDateRange,
     this.dueDateRange,
     this.modifiedDateRange,

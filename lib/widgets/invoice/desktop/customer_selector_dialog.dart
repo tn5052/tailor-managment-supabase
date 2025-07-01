@@ -2,61 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 import '../../../theme/inventory_design_config.dart';
-import '../../../models/measurement.dart'; // Assuming a Measurement model exists
+import '../../../models/customer.dart'; // Assuming a Customer model exists
 
-class MeasurementSelectorDialog extends StatefulWidget {
-  final String customerId;
-  final String? selectedMeasurementId;
-  final Function(Measurement measurement) onMeasurementSelected;
+class CustomerSelectorDialog extends StatefulWidget {
+  final String? selectedCustomerId;
+  final Function(Customer customer) onCustomerSelected;
 
-  const MeasurementSelectorDialog({
+  const CustomerSelectorDialog({
     super.key,
-    required this.customerId,
-    this.selectedMeasurementId,
-    required this.onMeasurementSelected,
+    this.selectedCustomerId,
+    required this.onCustomerSelected,
   });
 
   static Future<void> show(
     BuildContext context, {
-    required String customerId,
-    String? selectedMeasurementId,
-    required Function(Measurement measurement) onMeasurementSelected,
+    String? selectedCustomerId,
+    required Function(Customer customer) onCustomerSelected,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => MeasurementSelectorDialog(
-        customerId: customerId,
-        selectedMeasurementId: selectedMeasurementId,
-        onMeasurementSelected: onMeasurementSelected,
+      builder: (context) => CustomerSelectorDialog(
+        selectedCustomerId: selectedCustomerId,
+        onCustomerSelected: onCustomerSelected,
       ),
     );
   }
 
   @override
-  State<MeasurementSelectorDialog> createState() =>
-      _MeasurementSelectorDialogState();
+  State<CustomerSelectorDialog> createState() => _CustomerSelectorDialogState();
 }
 
-class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
+class _CustomerSelectorDialogState extends State<CustomerSelectorDialog> {
   final _supabase = Supabase.instance.client;
   final _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final FocusNode _listFocusNode = FocusNode();
 
-  List<Measurement> _measurements = [];
-  List<Measurement> _filteredMeasurements = [];
+  List<Customer> _customers = [];
+  List<Customer> _filteredCustomers = [];
   bool _isLoading = false;
-  String? _currentSelectedMeasurementId;
+  String? _currentSelectedCustomerId;
   int _highlightedIndex = -1;
 
   @override
   void initState() {
     super.initState();
-    _currentSelectedMeasurementId = widget.selectedMeasurementId;
-    _loadMeasurements();
+    _currentSelectedCustomerId = widget.selectedCustomerId;
+    _loadCustomers();
+    // Request focus on the search field when the dialog opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_searchFocusNode);
     });
@@ -70,19 +65,18 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
     super.dispose();
   }
 
-  Future<void> _loadMeasurements() async {
+  Future<void> _loadCustomers() async {
     setState(() => _isLoading = true);
 
     try {
       final response = await _supabase
-          .from('measurements')
-          .select('*') // Select all fields for now, can be optimized later
-          .eq('customer_id', widget.customerId)
-          .order('date', ascending: false);
+          .from('customers')
+          .select('id, name, phone, bill_number, created_at, gender') // Select necessary customer fields
+          .order('name');
 
       setState(() {
-        _measurements = List<Measurement>.from(response.map((map) => Measurement.fromMap(map)));
-        _filteredMeasurements = _measurements;
+        _customers = List<Customer>.from(response.map((map) => Customer.fromMap(map)));
+        _filteredCustomers = _customers;
         _isLoading = false;
       });
     } catch (e) {
@@ -90,7 +84,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading measurements: ${e.toString()}'),
+            content: Text('Error loading customers: ${e.toString()}'),
             backgroundColor: InventoryDesignConfig.errorColor,
           ),
         );
@@ -98,15 +92,16 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
     }
   }
 
-  void _filterMeasurements(String query) {
+  void _filterCustomers(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredMeasurements = _measurements;
+        _filteredCustomers = _customers;
       } else {
-        _filteredMeasurements = _measurements
-            .where((measurement) =>
-                measurement.style.toLowerCase().contains(query.toLowerCase()) ||
-                measurement.designType.toLowerCase().contains(query.toLowerCase()))
+        _filteredCustomers = _customers
+            .where((customer) =>
+                customer.name.toLowerCase().contains(query.toLowerCase()) ||
+                customer.phone.toLowerCase().contains(query.toLowerCase()) ||
+                customer.billNumber.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -116,36 +111,32 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
     if (event is RawKeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         setState(() {
-          if (_filteredMeasurements.isNotEmpty) {
-            _highlightedIndex =
-                (_highlightedIndex + 1) % _filteredMeasurements.length;
+          if (_filteredCustomers.isNotEmpty) {
+            _highlightedIndex = (_highlightedIndex + 1) % _filteredCustomers.length;
           }
         });
       } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         setState(() {
-          if (_filteredMeasurements.isNotEmpty) {
-            _highlightedIndex =
-                (_highlightedIndex - 1 + _filteredMeasurements.length) %
-                    _filteredMeasurements.length;
+          if (_filteredCustomers.isNotEmpty) {
+            _highlightedIndex = (_highlightedIndex - 1 + _filteredCustomers.length) % _filteredCustomers.length;
           }
         });
       } else if (event.logicalKey == LogicalKeyboardKey.enter) {
-        if (_highlightedIndex != -1 &&
-            _highlightedIndex < _filteredMeasurements.length) {
-          _selectMeasurement(_filteredMeasurements[_highlightedIndex]);
-        } else if (_currentSelectedMeasurementId != null) {
-          final selectedMeasurement = _measurements.firstWhere(
-            (measurement) => measurement.id == _currentSelectedMeasurementId,
+        if (_highlightedIndex != -1 && _highlightedIndex < _filteredCustomers.length) {
+          _selectCustomer(_filteredCustomers[_highlightedIndex]);
+        } else if (_currentSelectedCustomerId != null) {
+          final selectedCustomer = _customers.firstWhere(
+            (customer) => customer.id == _currentSelectedCustomerId,
           );
-          _selectMeasurement(selectedMeasurement);
+          _selectCustomer(selectedCustomer);
         }
       }
     }
   }
 
-  void _selectMeasurement(Measurement measurement) {
+  void _selectCustomer(Customer customer) {
     Navigator.of(context).pop();
-    widget.onMeasurementSelected(measurement);
+    widget.onCustomerSelected(customer);
   }
 
   @override
@@ -214,7 +205,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
               ),
             ),
             child: Icon(
-              PhosphorIcons.ruler(),
+              PhosphorIcons.users(),
               size: 18,
               color: InventoryDesignConfig.primaryColor,
             ),
@@ -222,7 +213,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
           const SizedBox(width: InventoryDesignConfig.spacingL),
           Expanded(
             child: Text(
-              'Select Measurement',
+              'Select Customer',
               style: InventoryDesignConfig.headlineMedium,
             ),
           ),
@@ -261,7 +252,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
               focusNode: _searchFocusNode,
               style: InventoryDesignConfig.bodyLarge,
               decoration: InputDecoration(
-                hintText: 'Search measurements...',
+                hintText: 'Search customers...',
                 hintStyle: InventoryDesignConfig.bodyMedium,
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(
@@ -280,15 +271,14 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                 ),
               ),
               onChanged: (query) {
-                _filterMeasurements(query);
+                _filterCustomers(query);
                 setState(() {
-                  _highlightedIndex = _filteredMeasurements.isNotEmpty ? 0 : -1;
+                  _highlightedIndex = _filteredCustomers.isNotEmpty ? 0 : -1;
                 });
               },
               onSubmitted: (_) {
-                if (_highlightedIndex != -1 &&
-                    _highlightedIndex < _filteredMeasurements.length) {
-                  _selectMeasurement(_filteredMeasurements[_highlightedIndex]);
+                if (_highlightedIndex != -1 && _highlightedIndex < _filteredCustomers.length) {
+                  _selectCustomer(_filteredCustomers[_highlightedIndex]);
                 }
               },
             ),
@@ -305,9 +295,9 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                       color: InventoryDesignConfig.primaryAccent,
                     ),
                   )
-                : _filteredMeasurements.isEmpty
+                : _filteredCustomers.isEmpty
                     ? _buildEmptyState()
-                    : _buildMeasurementsList(),
+                    : _buildCustomersList(),
           ),
         ),
         const SizedBox(height: InventoryDesignConfig.spacingL),
@@ -329,20 +319,18 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
               ),
             ),
             child: Icon(
-              PhosphorIcons.ruler(),
+              PhosphorIcons.users(),
               size: 32,
               color: InventoryDesignConfig.textTertiary,
             ),
           ),
           const SizedBox(height: InventoryDesignConfig.spacingL),
-          Text(
-            'No measurements found for this customer',
-            style: InventoryDesignConfig.titleMedium,
-            textAlign: TextAlign.center,
-          ),
+          Text('No customers found', style: InventoryDesignConfig.titleMedium),
           const SizedBox(height: InventoryDesignConfig.spacingS),
           Text(
-            'Ensure the customer has measurements added in their profile.',
+            _searchController.text.isNotEmpty
+                ? 'Try a different search or add a new customer'
+                : 'Add customers to get started',
             style: InventoryDesignConfig.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -351,17 +339,17 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
     );
   }
 
-  Widget _buildMeasurementsList() {
+  Widget _buildCustomersList() {
     return Focus(
       focusNode: _listFocusNode,
       child: ListView.separated(
         padding: EdgeInsets.zero,
-        itemCount: _filteredMeasurements.length,
+        itemCount: _filteredCustomers.length,
         separatorBuilder: (context, index) =>
             const SizedBox(height: InventoryDesignConfig.spacingXS),
         itemBuilder: (context, index) {
-          final measurement = _filteredMeasurements[index];
-          final isSelected = measurement.id == _currentSelectedMeasurementId;
+          final customer = _filteredCustomers[index];
+          final isSelected = customer.id == _currentSelectedCustomerId;
           final isHighlighted = index == _highlightedIndex;
 
           return Material(
@@ -371,11 +359,11 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
               borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
               onTap: () {
                 setState(() {
-                  _currentSelectedMeasurementId = measurement.id;
+                  _currentSelectedCustomerId = customer.id;
                   _highlightedIndex = index;
                 });
               },
-              onDoubleTap: () => _selectMeasurement(measurement),
+              onDoubleTap: () => _selectCustomer(customer),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: InventoryDesignConfig.spacingL,
@@ -416,7 +404,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                         ),
                       ),
                       child: Icon(
-                        PhosphorIcons.ruler(),
+                        PhosphorIcons.user(), // Use generic user icon
                         size: 18,
                         color: isSelected ? Colors.white : InventoryDesignConfig.primaryColor,
                       ),
@@ -427,7 +415,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Style: ${measurement.style}',
+                            '${customer.name} (${customer.phone})',
                             style: InventoryDesignConfig.titleMedium.copyWith(
                               color: isSelected
                                   ? InventoryDesignConfig.primaryColor
@@ -436,7 +424,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                             ),
                           ),
                           Text(
-                            'Design: ${measurement.designType} • ${DateFormat.yMMMd().format(measurement.date)}',
+                            'Bill No: ${customer.billNumber}',
                             style: InventoryDesignConfig.bodySmall.copyWith(
                               color: isSelected
                                   ? InventoryDesignConfig.primaryColor.withOpacity(0.8)
@@ -515,12 +503,12 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
             child: InkWell(
-              onTap: _currentSelectedMeasurementId != null
+              onTap: _currentSelectedCustomerId != null
                   ? () {
-                      final selectedMeasurement = _measurements.firstWhere(
-                        (measurement) => measurement.id == _currentSelectedMeasurementId,
+                      final selectedCustomer = _customers.firstWhere(
+                        (customer) => customer.id == _currentSelectedCustomerId,
                       );
-                      _selectMeasurement(selectedMeasurement);
+                      _selectCustomer(selectedCustomer);
                     }
                   : null,
               borderRadius: BorderRadius.circular(
@@ -538,7 +526,7 @@ class _MeasurementSelectorDialogState extends State<MeasurementSelectorDialog> {
                     Icon(PhosphorIcons.check(), size: 16, color: Colors.white),
                     const SizedBox(width: InventoryDesignConfig.spacingS),
                     Text(
-                      'Select Measurement',
+                      'Select Customer',
                       style: InventoryDesignConfig.bodyMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,

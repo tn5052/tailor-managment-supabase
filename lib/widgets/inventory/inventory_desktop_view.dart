@@ -58,6 +58,8 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           id, fabric_code, fabric_item_name, shade_color, color_code, 
           unit_type, quantity_available, minimum_stock_level, 
           cost_per_unit, selling_price_per_unit, is_active, created_at,
+          full_kandora_price, adult_kandora_price, full_kandora_yards, adult_kandora_yards,
+          notes,
           brands(id, name),
           inventory_categories(id, category_name)
         ''';
@@ -66,6 +68,7 @@ class _InventoryDesktopViewState extends State<InventoryDesktopView> {
           id, accessory_code, accessory_item_name, color, color_code,
           unit_type, quantity_available, minimum_stock_level,
           cost_per_unit, selling_price_per_unit, is_active, created_at,
+          notes,
           brands(id, name),
           inventory_categories(id, category_name)
         ''';
