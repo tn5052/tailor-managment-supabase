@@ -14,6 +14,7 @@ import '../../../models/measurement.dart';
 import '../../../models/invoice_product.dart';
 import '../../../models/invoice.dart';
 import '../invoice_template.dart';
+import '../../../services/inventory_service.dart';
 
 import 'customer_selector_dialog.dart';
 import 'measurement_selector_dialog.dart';
@@ -475,6 +476,8 @@ class _AddEditInvoiceDesktopDialogState
       } else {
         data['id'] = const Uuid().v4(); // Generate new UUID for new invoice
         await _supabase.from('invoices').insert(data);
+        // Update inventory quantities for the selected products
+        await InventoryService.updateInventoryQuantities(_selectedProducts);
       }
 
       if (mounted) {

@@ -49,7 +49,9 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
   late final TextEditingController _chestController;
   late final TextEditingController _widthController;
   late final TextEditingController _sleeveController;
-  late final TextEditingController _collarController;
+  late final TextEditingController _collarStartController;
+  late final TextEditingController _collarCenterController;
+  late final TextEditingController _collarEndController;
   late final TextEditingController _underController;
   late final TextEditingController _backLengthController;
   late final TextEditingController _neckController;
@@ -95,7 +97,9 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
     _chestController = TextEditingController();
     _widthController = TextEditingController();
     _sleeveController = TextEditingController();
-    _collarController = TextEditingController();
+    _collarStartController = TextEditingController();
+    _collarCenterController = TextEditingController();
+    _collarEndController = TextEditingController();
     _underController = TextEditingController();
     _backLengthController = TextEditingController();
     _neckController = TextEditingController();
@@ -121,7 +125,9 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
     _chestController.dispose();
     _widthController.dispose();
     _sleeveController.dispose();
-    _collarController.dispose();
+    _collarStartController.dispose();
+    _collarCenterController.dispose();
+    _collarEndController.dispose();
     _underController.dispose();
     _backLengthController.dispose();
     _neckController.dispose();
@@ -208,7 +214,11 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
         chest: FractionHelper.parseFraction(_chestController.text),
         width: FractionHelper.parseFraction(_widthController.text),
         sleeve: FractionHelper.parseFraction(_sleeveController.text),
-        collar: FractionHelper.parseFraction(_collarController.text),
+        collar: {
+          'start': FractionHelper.parseFraction(_collarStartController.text),
+          'center': FractionHelper.parseFraction(_collarCenterController.text),
+          'end': FractionHelper.parseFraction(_collarEndController.text),
+        },
         under: FractionHelper.parseFraction(_underController.text),
         backLength: FractionHelper.parseFraction(_backLengthController.text),
         neck: FractionHelper.parseFraction(_neckController.text),
@@ -609,12 +619,7 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
                   icon: PhosphorIcons.arrowUp(),
                 ),
                 const SizedBox(height: InventoryDesignConfig.spacingM),
-                _buildMeasurementField(
-                  controller: _collarController,
-                  label: 'Neck Size',
-                  arabicLabel: 'رقبة',
-                  icon: PhosphorIcons.circle(),
-                ),
+                _buildCollarInput(),
                 const SizedBox(height: InventoryDesignConfig.spacingM),
                 _buildMeasurementField(
                   controller: _shoulderController,
@@ -951,10 +956,15 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
         _buildReviewMeasurement('Back Length', _backLengthController.text),
       );
     }
-    if (_collarController.text.isNotEmpty) {
-      measurements.add(
-        _buildReviewMeasurement('Neck Size', _collarController.text),
-      );
+    if (_collarStartController.text.isNotEmpty ||
+        _collarCenterController.text.isNotEmpty ||
+        _collarEndController.text.isNotEmpty) {
+      final parts = [
+        _collarStartController.text,
+        _collarCenterController.text,
+        _collarEndController.text,
+      ].where((s) => s.isNotEmpty).map((s) => '$s"').join(' - ');
+      measurements.add(_buildReviewMeasurement('Collar Size', parts));
     }
     if (_shoulderController.text.isNotEmpty) {
       measurements.add(
@@ -1717,7 +1727,7 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
             ),
           ),
           Text(
-            '$value"',
+            value.endsWith('"') ? value : '$value"',
             style: InventoryDesignConfig.bodyMedium.copyWith(
               fontWeight: FontWeight.w600,
               color: InventoryDesignConfig.primaryColor,
@@ -1754,6 +1764,139 @@ class _AddMeasurementMobileSheetState extends State<AddMeasurementMobileSheet> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCollarInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Collar Size',
+                style: InventoryDesignConfig.labelLarge.copyWith(
+                  color: InventoryDesignConfig.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              'رقبة',
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Row(
+          children: [
+            Expanded(
+              child: _buildCollarSubField(
+                controller: _collarStartController,
+                label: 'Start',
+                arabicLabel: 'بداية',
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingM),
+            Expanded(
+              child: _buildCollarSubField(
+                controller: _collarCenterController,
+                label: 'Center',
+                arabicLabel: 'وسط',
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingM),
+            Expanded(
+              child: _buildCollarSubField(
+                controller: _collarEndController,
+                label: 'End',
+                arabicLabel: 'نهاية',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollarSubField({
+    required TextEditingController controller,
+    required String label,
+    required String arabicLabel,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: InventoryDesignConfig.bodySmall.copyWith(
+            color: InventoryDesignConfig.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.text,
+          textAlign: TextAlign.center,
+          style: InventoryDesignConfig.bodyLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
+            hintText: arabicLabel,
+            hintStyle: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textTertiary,
+            ),
+            suffixText: '"',
+            suffixStyle: InventoryDesignConfig.bodySmall.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+            ),
+            filled: true,
+            fillColor: InventoryDesignConfig.surfaceLight,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.primaryColor,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: InventoryDesignConfig.spacingM,
+              horizontal: InventoryDesignConfig.spacingS,
+            ),
+          ),
+          onChanged: (value) {
+            if (value.contains('"')) {
+              final cleanValue = value.replaceAll('"', '');
+              controller.value = TextEditingValue(
+                text: cleanValue,
+                selection: TextSelection.collapsed(offset: cleanValue.length),
+              );
+            }
+          },
+        ),
+      ],
     );
   }
 }

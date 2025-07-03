@@ -3,7 +3,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'customer/desktop/add_customer_dialog.dart';
 import 'measurement/desktop/add_measurement_dialog.dart'; // added import for measurement dialog
 import '../widgets/invoice/desktop/add_edit_invoice_desktop_dialog.dart'; // added import for invoice dialog
-import '../widgets/complaint/complaint_dialog.dart'; // added import for complaint dialog
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ResponsiveLayout extends StatelessWidget {
@@ -605,8 +604,6 @@ class _MobileBottomNavState extends State<MobileBottomNav>
                                   AddMeasurementDialog.show(context);
                                 } else if (option == "Add Invoice") {
                                   AddEditInvoiceDesktopDialog.show(context);
-                                } else if (option == "Add Complaint") {
-                                  ComplaintDialog.show(context);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text(option)),
@@ -865,7 +862,6 @@ class _FabPopover extends StatelessWidget {
               _buildAnimatedItem("Add Customer", PhosphorIcons.userPlus(), 0),
               _buildAnimatedItem("Add Measures", PhosphorIcons.ruler(), 1),
               _buildAnimatedItem("Add Invoice", PhosphorIcons.receipt(), 2),
-              _buildAnimatedItem("Add Complaint", PhosphorIcons.warning(), 3),
               const SizedBox(height: 8),
             ],
           ),

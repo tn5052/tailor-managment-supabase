@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../models/invoice.dart';
 import '../../theme/inventory_design_config.dart';
 import '../../models/invoice_filter.dart';
 import 'mobile/add_edit_invoice_mobile_sheet.dart';

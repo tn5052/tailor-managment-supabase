@@ -800,7 +800,11 @@ class _DetailDialogState extends State<DetailDialog> {
       ),
       MeasurementItem(
         'Neck Size',
-        FractionHelper.formatFraction(widget.measurement.collar),
+        FractionHelper.formatFraction(widget.measurement.neck),
+      ),
+      MeasurementItem(
+        'Sleeve Fitting',
+        'S: ${FractionHelper.formatFraction(widget.measurement.collar['start'] ?? 0)} C: ${FractionHelper.formatFraction(widget.measurement.collar['center'] ?? 0)} E: ${FractionHelper.formatFraction(widget.measurement.collar['end'] ?? 0)}',
       ),
       MeasurementItem(
         'Shoulder',
@@ -809,10 +813,6 @@ class _DetailDialogState extends State<DetailDialog> {
       MeasurementItem(
         'Sleeve Length',
         FractionHelper.formatFraction(widget.measurement.sleeve),
-      ),
-      MeasurementItem(
-        'Sleeve Fitting',
-        FractionHelper.formatFraction(widget.measurement.neck),
       ),
       MeasurementItem(
         'Under Shoulder',

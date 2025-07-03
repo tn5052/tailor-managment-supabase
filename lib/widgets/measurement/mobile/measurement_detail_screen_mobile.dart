@@ -525,11 +525,13 @@ class _MeasurementDetailScreenMobileState
       );
     }
 
-    if (widget.measurement.collar > 0) {
+    if ((widget.measurement.collar['start'] ?? 0) > 0 ||
+        (widget.measurement.collar['center'] ?? 0) > 0 ||
+        (widget.measurement.collar['end'] ?? 0) > 0) {
       measurements.add(
         MeasurementItem(
           'Neck Size',
-          FractionHelper.formatFraction(widget.measurement.collar),
+          'S: ${FractionHelper.formatFraction(widget.measurement.collar['start'] ?? 0)} C: ${FractionHelper.formatFraction(widget.measurement.collar['center'] ?? 0)} E: ${FractionHelper.formatFraction(widget.measurement.collar['end'] ?? 0)}',
         ),
       );
     }

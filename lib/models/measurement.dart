@@ -13,7 +13,7 @@ class Measurement {
   final double chest;          // صدر
   final double width;          // عرض
   final double sleeve;         // كم
-  final double collar;         // فكم
+  final Map<String, double> collar;         // فكم
   final double under;          // تحت
   final double backLength;     // طول خلفي
   final double neck;           // رقبة (Measurement)
@@ -49,7 +49,7 @@ class Measurement {
     this.chest = 0,
     this.width = 0,
     this.sleeve = 0,
-    this.collar = 0,
+    this.collar = const {'start': 0, 'center': 0, 'end': 0},
     this.under = 0,
     this.backLength = 0,
     this.neck = 0,
@@ -84,7 +84,7 @@ class Measurement {
       chest: (map['chest'] ?? 0).toDouble(),
       width: (map['width'] ?? 0).toDouble(),
       sleeve: (map['sleeve'] ?? 0).toDouble(),
-      collar: (map['collar'] ?? 0).toDouble(),
+      collar: _parseCollarFromMap(map['collar']),
       under: (map['under'] ?? 0).toDouble(),
       backLength: (map['back_length'] ?? 0).toDouble(),
       neck: (map['neck'] ?? 0).toDouble(),
@@ -104,6 +104,27 @@ class Measurement {
       date: DateTime.parse(map['date']),
       lastUpdated: DateTime.parse(map['last_updated']),
     );
+  }
+
+  static Map<String, double> _parseCollarFromMap(dynamic collarData) {
+    if (collarData is Map) {
+      // It's already a map, just ensure the values are doubles
+      return {
+        'start': (collarData['start'] ?? 0.0).toDouble(),
+        'center': (collarData['center'] ?? 0.0).toDouble(),
+        'end': (collarData['end'] ?? 0.0).toDouble(),
+      };
+    }
+    // Handle legacy data if it's just a number
+    if (collarData is num) {
+      return {
+        'start': collarData.toDouble(),
+        'center': 0.0,
+        'end': 0.0,
+      };
+    }
+    // Default value
+    return {'start': 0.0, 'center': 0.0, 'end': 0.0};
   }
 
   Map<String, dynamic> toMap() {

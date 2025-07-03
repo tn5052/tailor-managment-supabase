@@ -251,7 +251,11 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         chest: FractionHelper.parseFraction(_chestController.text),
         width: FractionHelper.parseFraction(_widthController.text),
         sleeve: FractionHelper.parseFraction(_sleeveController.text),
-        collar: FractionHelper.parseFraction(_collarController.text),
+        collar: {
+          'start': FractionHelper.parseFraction(_collarController.text),
+          'center': 0.0,
+          'end': 0.0,
+        },
         under: FractionHelper.parseFraction(_underController.text),
         backLength: FractionHelper.parseFraction(_backLengthController.text),
         neck: FractionHelper.parseFraction(_neckController.text),

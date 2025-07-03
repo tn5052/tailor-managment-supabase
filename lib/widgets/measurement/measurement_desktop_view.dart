@@ -9,7 +9,7 @@ import '../../services/customer_service.dart';
 import '../../theme/inventory_design_config.dart';
 import 'desktop/add_measurement_dialog.dart';
 import 'desktop/measurement_detail_dialog.dart';
-import 'desktop/measurement_group_menu.dart';
+import 'desktop/measurement_filters_dailog.dart';
 
 class MeasurementDesktopView extends StatefulWidget {
   final MeasurementFilter filter;
@@ -72,30 +72,7 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
       final customers = await _customerService.getAllCustomers();
       final measurements = await _measurementService.getAllMeasurements();
 
-      // Apply filtering logic here (keep existing logic)
-      var filteredMeasurements =
-          measurements.where((measurement) {
-            // Search query filter
-            if (_searchQuery.isNotEmpty) {
-              final query = _searchQuery.toLowerCase().trim();
-              final customer = _getCustomer(measurement.customerId);
-              final customerName = customer?.name.toLowerCase() ?? '';
-              final style = measurement.style.toLowerCase();
-              final designType = measurement.designType.toLowerCase();
-              final fabricName = measurement.fabricName.toLowerCase();
-
-              if (!customerName.contains(query) &&
-                  !style.contains(query) &&
-                  !designType.contains(query) &&
-                  !fabricName.contains(query)) {
-                return false;
-              }
-            }
-
-            // Apply other existing filters from _currentFilter
-            // Keep all existing filter logic
-            return true;
-          }).toList();
+      var filteredMeasurements = _applyAllFilters(measurements, _currentFilter, _customers);
 
       // Apply sorting
       filteredMeasurements.sort((a, b) {
@@ -163,6 +140,98 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
         _sortColumn = column;
         _sortAscending = true;
       }
+    });
+    _loadData();
+  }
+
+  List<Measurement> _applyAllFilters(
+    List<Measurement> measurements,
+    MeasurementFilter filter,
+    List<Customer> customers,
+  ) {
+    return measurements.where((measurement) {
+      final customer = customers.firstWhere(
+        (c) => c.id == measurement.customerId,
+        orElse: () => Customer(
+          id: '',
+          billNumber: '',
+          name: 'Unknown',
+          phone: '',
+          address: '',
+          gender: Gender.male,
+        ),
+      );
+
+      // Text search
+      if (filter.searchQuery.isNotEmpty) {
+        final query = filter.searchQuery.toLowerCase();
+        if (!customer.name.toLowerCase().contains(query) &&
+            !measurement.style.toLowerCase().contains(query) &&
+            !measurement.designType.toLowerCase().contains(query)) {
+          return false;
+        }
+      }
+
+      // Style filter
+      if (filter.style != null && measurement.style != filter.style) {
+        return false;
+      }
+
+      // Design Type filter
+      if (filter.designType != null &&
+          measurement.designType != filter.designType) {
+        return false;
+      }
+
+      // Tarboosh Type filter
+      if (filter.tarbooshType != null &&
+          measurement.tarbooshType != filter.tarbooshType) {
+        return false;
+      }
+
+      // Date Range filter
+      if (filter.dateRange != null) {
+        final date = measurement.date;
+        if (date.isBefore(filter.dateRange!.start) ||
+            date.isAfter(filter.dateRange!.end)) {
+          return false;
+        }
+      }
+
+      // Length range filter
+      if (filter.lengthRange != null) {
+        final length = measurement.style == 'Emirati'
+            ? measurement.lengthArabi
+            : measurement.lengthKuwaiti;
+        if (length < filter.lengthRange!.start ||
+            length > filter.lengthRange!.end) {
+          return false;
+        }
+      }
+
+      // Chest range filter
+      if (filter.chestRange != null) {
+        if (measurement.chest < filter.chestRange!.start ||
+            measurement.chest > filter.chestRange!.end) {
+          return false;
+        }
+      }
+
+      // Sleeve range filter
+      if (filter.sleeveRange != null) {
+        if (measurement.sleeve < filter.sleeveRange!.start ||
+            measurement.sleeve > filter.sleeveRange!.end) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  void _applyFilters(MeasurementFilter filter) {
+    setState(() {
+      _currentFilter = filter;
     });
     _loadData();
   }

@@ -5,7 +5,8 @@ import 'measurement_screen.dart';
 import 'invoice_screen.dart';
 import 'settings_screen.dart';
 import 'complaints_screen.dart';
-import 'inventory_screen.dart'; // Add new import
+import 'inventory_screen.dart';
+import 'dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,13 +19,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   final _screens = [
-    // const DashboardScreen(),
-    const InventoryScreen(),
+    const DashboardScreen(),
     const CustomerListScreen(),
     const MeasurementScreen(),
-    InvoiceScreen(),
+    const InvoiceScreen(),
     const ComplaintsScreen(),
-    const InventoryScreen(), // Add inventory screen
+    const InventoryScreen(),
     const SettingsScreen(),
   ];
 

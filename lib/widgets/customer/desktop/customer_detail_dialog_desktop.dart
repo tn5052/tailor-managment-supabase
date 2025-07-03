@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../models/customer.dart';
-import '../../../models/invoice.dart';
-import '../../../models/measurement.dart';
-import '../../../models/complaint.dart';
-import '../../../services/customer_service.dart';
-import '../../../services/invoice_service.dart';
-import '../../../services/measurement_service.dart';
-import '../../../services/complaint_service.dart';
-import '../../../utils/number_formatter.dart';
-import '../../../theme/inventory_design_config.dart';
-import 'add_customer_dialog.dart';
-import '../../measurement/desktop/add_measurement_dialog.dart';
-import '../../invoice/desktop/add_edit_invoice_desktop_dialog.dart';
-import '../../complaint/complaint_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../theme/inventory_design_config.dart';
+import '../../../models/customer.dart';
+import '../../../models/measurement.dart';
+import '../../invoice/desktop/add_edit_invoice_desktop_dialog.dart';
+import '../../invoice/desktop/invoice_detail_dialog_desktop.dart';
+import '../../measurement/desktop/add_measurement_dialog.dart';
+import '../../measurement/desktop/measurement_detail_dialog.dart';
+import '../../complaint/desktop/complaint_detail_dialog_desktop.dart';
+import '../../../models/new_complaint_model.dart';
 
 class CustomerDetailDialogDesktop extends StatefulWidget {
   final Customer customer;
@@ -53,35 +46,118 @@ class CustomerDetailDialogDesktop extends StatefulWidget {
 class _CustomerDetailDialogDesktopState
     extends State<CustomerDetailDialogDesktop>
     with SingleTickerProviderStateMixin {
-  final SupabaseService _customerService = SupabaseService();
-  final InvoiceService _invoiceService = InvoiceService();
-  final MeasurementService _measurementService = MeasurementService();
-  final ComplaintService _complaintService = ComplaintService(
-    Supabase.instance.client,
-  );
-
+  final _supabase = Supabase.instance.client;
   late TabController _tabController;
   bool _isLoading = true;
 
-  // Data
-  List<Customer> _familyMembers = [];
-  List<Customer> _referrals = [];
+  // Data containers
+  List<Map<String, dynamic>> _invoices = [];
   List<Measurement> _measurements = [];
-  List<Invoice> _invoices = [];
-  List<Complaint> _complaints = [];
-  Customer? _referredBy;
-  Customer? _familyHead;
+  List<Map<String, dynamic>> _complaints = [];
 
-  // Financial summary
-  double _totalSpent = 0;
-  double _pendingPayments = 0;
+  // Statistics
+  double _totalSpent = 0.0;
+  double _pendingPayments = 0.0;
   int _completedOrders = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-    _loadData();
+    _tabController = TabController(length: 4, vsync: this);
+    _fetchCustomerData();
+  }
+
+  Future<void> _fetchCustomerData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Fetch all customer-related data concurrently
+      await Future.wait([
+        _fetchInvoices(),
+        _fetchMeasurements(),
+        _fetchComplaints(),
+      ]);
+
+      _calculateStats();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error fetching customer data: ${e.toString()}'),
+            backgroundColor: InventoryDesignConfig.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _fetchInvoices() async {
+    try {
+      final response = await _supabase
+          .from('invoices')
+          .select('*')
+          .eq('customer_id', widget.customer.id)
+          .order('date', ascending: false);
+
+      setState(() {
+        _invoices = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      print('Error fetching invoices: $e');
+    }
+  }
+
+  Future<void> _fetchMeasurements() async {
+    try {
+      final response = await _supabase
+          .from('measurements')
+          .select('*')
+          .eq('customer_id', widget.customer.id)
+          .order('date', ascending: false);
+
+      setState(() {
+        _measurements =
+            response.map((item) => Measurement.fromMap(item)).toList();
+      });
+    } catch (e) {
+      print('Error fetching measurements: $e');
+    }
+  }
+
+  Future<void> _fetchComplaints() async {
+    try {
+      final response = await _supabase
+          .from('complaints')
+          .select('*')
+          .eq('customer_id', widget.customer.id)
+          .order('created_at', ascending: false);
+
+      setState(() {
+        _complaints = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      print('Error fetching complaints: $e');
+    }
+  }
+
+  void _calculateStats() {
+    _totalSpent = _invoices
+        .where((inv) => inv['payment_status'] == 'Paid')
+        .fold(
+          0.0,
+          (sum, inv) => sum + (inv['amount_including_vat'] as num).toDouble(),
+        );
+
+    _pendingPayments = _invoices
+        .where((inv) => inv['payment_status'] != 'Paid')
+        .fold(0.0, (sum, inv) => sum + (inv['balance'] as num).toDouble());
+
+    _completedOrders =
+        _invoices.where((inv) => inv['delivery_status'] == 'Delivered').length;
   }
 
   @override
@@ -90,101 +166,20 @@ class _CustomerDetailDialogDesktopState
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      await Future.wait([
-        _loadFamilyData(),
-        _loadReferralData(),
-        _loadCustomerActivity(),
-      ]);
-
-      _calculateFinancialSummary();
-    } catch (e) {
-      debugPrint('Error loading customer data: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _loadFamilyData() async {
-    _familyMembers = await _customerService.getFamilyMembers(
-      widget.customer.id,
-    );
-
-    if (widget.customer.familyId != null) {
-      _familyHead = await _customerService.getCustomerById(
-        widget.customer.familyId!,
-      );
-    }
-  }
-
-  Future<void> _loadReferralData() async {
-    _referrals = await _customerService.getReferredCustomers(
-      widget.customer.id,
-    );
-
-    if (widget.customer.referredBy != null) {
-      _referredBy = await _customerService.getCustomerById(
-        widget.customer.referredBy!,
-      );
-    }
-  }
-
-  Future<void> _loadCustomerActivity() async {
-    final results = await Future.wait([
-      _measurementService.getMeasurementsByCustomerId(widget.customer.id),
-      _invoiceService.getInvoicesByCustomerId(widget.customer.id),
-      _complaintService.getComplaintsByCustomerId(widget.customer.id),
-    ]);
-
-    _measurements = results[0] as List<Measurement>;
-    _invoices = results[1] as List<Invoice>;
-    _complaints = results[2] as List<Complaint>;
-  }
-
-  void _calculateFinancialSummary() {
-    _totalSpent = 0;
-    _pendingPayments = 0;
-    _completedOrders = 0;
-
-    for (final invoice in _invoices) {
-      _totalSpent += invoice.amountIncludingVat;
-
-      if (invoice.paymentStatus == 'pending' ||
-          invoice.paymentStatus == 'partial') {
-        _pendingPayments += invoice.balance;
-      }
-
-      if (invoice.deliveryStatus == 'delivered') {
-        _completedOrders++;
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    // Reduced multipliers for overall dialog; width reduced further
-    final maxWidth = screenSize.width * 0.65;
-    final maxHeight = screenSize.height * 0.75;
+    final maxHeight = screenSize.height * 0.92;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: const EdgeInsets.all(20),
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: maxWidth > 1200 ? 1200 : maxWidth,
-          maxHeight: maxHeight,
-        ),
+        constraints: BoxConstraints(maxWidth: 1100, maxHeight: maxHeight),
         child: Container(
           decoration: BoxDecoration(
             color: InventoryDesignConfig.surfaceColor,
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusXL),
-            border: Border.all(color: InventoryDesignConfig.borderPrimary),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
@@ -197,7 +192,19 @@ class _CustomerDetailDialogDesktopState
             children: [
               _buildHeader(),
               _buildTabBar(),
-              Expanded(child: _buildContent()),
+              Expanded(
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildOverviewTab(),
+                          _buildInvoicesTab(),
+                          _buildMeasurementsTab(),
+                          _buildComplaintsTab(),
+                        ],
+                      ),
+              ),
             ],
           ),
         ),
@@ -207,333 +214,212 @@ class _CustomerDetailDialogDesktopState
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: InventoryDesignConfig.spacingXXL,
-        vertical: InventoryDesignConfig.spacingL, // reduced height
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 20, 16, 16),
       decoration: BoxDecoration(
-        color: InventoryDesignConfig.surfaceAccent,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(InventoryDesignConfig.radiusXL),
-          topRight: Radius.circular(InventoryDesignConfig.radiusXL),
-        ),
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
         border: Border(
-          bottom: BorderSide(color: InventoryDesignConfig.borderSecondary),
+          bottom: BorderSide(
+            color: InventoryDesignConfig.borderSecondary.withOpacity(0.5),
+          ),
         ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Avatar
           Container(
-            width: 48, // slightly smaller
-            height: 48,
+            height: 44,
+            width: 44,
             decoration: BoxDecoration(
-              color:
-                  widget.customer.gender == Gender.male
-                      ? InventoryDesignConfig.infoColor.withOpacity(0.08)
-                      : InventoryDesignConfig.successColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color:
-                    widget.customer.gender == Gender.male
-                        ? InventoryDesignConfig.infoColor
-                        : InventoryDesignConfig.successColor,
-                width: 2,
+              gradient: LinearGradient(
+                colors: [
+                  InventoryDesignConfig.primaryColor,
+                  InventoryDesignConfig.primaryColor.withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: InventoryDesignConfig.primaryColor.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
                 widget.customer.name.isNotEmpty
                     ? widget.customer.name[0].toUpperCase()
-                    : '?',
-                style: InventoryDesignConfig.headlineMedium.copyWith(
-                  color:
-                      widget.customer.gender == Gender.male
-                          ? InventoryDesignConfig.infoColor
-                          : InventoryDesignConfig.successColor,
+                    : 'C',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: InventoryDesignConfig.spacingL),
-
-          // Name, badge, and contact chips (compact column)
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Name + gender badge row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        widget.customer.name,
-                        style: InventoryDesignConfig.headlineLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: InventoryDesignConfig.spacingM),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: InventoryDesignConfig.spacingM,
-                        vertical: InventoryDesignConfig.spacingXS,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            widget.customer.gender == Gender.male
-                                ? InventoryDesignConfig.infoColor.withOpacity(
-                                  0.12,
-                                )
-                                : InventoryDesignConfig.successColor
-                                    .withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.customer.gender.name.toUpperCase(),
-                        style: InventoryDesignConfig.bodySmall.copyWith(
-                          color:
-                              widget.customer.gender == Gender.male
-                                  ? InventoryDesignConfig.infoColor
-                                  : InventoryDesignConfig.successColor,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  widget.customer.name,
+                  style: InventoryDesignConfig.titleLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
                 ),
-                const SizedBox(height: InventoryDesignConfig.spacingS),
-                // Contact chips row
-                Wrap(
-                  spacing: InventoryDesignConfig.spacingM,
-                  runSpacing: InventoryDesignConfig.spacingXS,
+                const SizedBox(height: 6),
+                Row(
                   children: [
-                    _buildInfoChip(
-                      icon: PhosphorIcons.receipt(),
-                      label: '#${widget.customer.billNumber}',
-                      onTap: _copyBillNumber,
+                    _buildCompactChip(
+                      '#${widget.customer.billNumber}',
+                      InventoryDesignConfig.primaryColor,
+                      PhosphorIcons.hash(PhosphorIconsStyle.bold),
                     ),
-                    _buildInfoChip(
-                      icon: PhosphorIcons.phone(),
-                      label: widget.customer.phone,
-                      onTap: _callCustomer,
+                    const SizedBox(width: 8),
+                    _buildCompactChip(
+                      widget.customer.phone,
+                      InventoryDesignConfig.textSecondary,
+                      PhosphorIcons.phone(PhosphorIconsStyle.bold),
                     ),
-                    if (widget.customer.whatsapp.isNotEmpty)
-                      _buildInfoChip(
-                        icon: PhosphorIcons.whatsappLogo(),
-                        label: 'WhatsApp',
-                        color: InventoryDesignConfig.successColor,
-                        onTap: _sendWhatsApp,
-                      ),
                   ],
                 ),
               ],
             ),
           ),
-
-          // Action buttons (horizontal, right-aligned)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeaderButton(
-                icon: PhosphorIcons.pencilSimple(),
-                label: 'Edit',
-                onPressed: _editCustomer,
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: InventoryDesignConfig.borderSecondary.withOpacity(0.5),
               ),
-              const SizedBox(width: InventoryDesignConfig.spacingS),
-              _buildHeaderButton(
-                icon: PhosphorIcons.x(),
-                label: 'Close',
-                isSecondary: true,
-                onPressed: () => Navigator.of(context).pop(),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icon(
+                PhosphorIcons.x(PhosphorIconsStyle.bold),
+                size: 16,
               ),
-            ],
+              tooltip: 'Close',
+              padding: EdgeInsets.zero,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoChip({
-    required IconData icon,
-    required String label,
-    Color? color,
-    VoidCallback? onTap,
-  }) {
-    final effectiveColor = color ?? InventoryDesignConfig.textSecondary;
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: InventoryDesignConfig.spacingM,
-            vertical: InventoryDesignConfig.spacingS,
-          ),
-          decoration: BoxDecoration(
-            color: effectiveColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: effectiveColor),
-              const SizedBox(width: InventoryDesignConfig.spacingXS),
-              Text(
-                label,
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: effectiveColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildCompactChip(String text, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color.withOpacity(0.15),
+          width: 1,
         ),
       ),
-    );
-  }
-
-  Widget _buildHeaderButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    bool isSecondary = false,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: InventoryDesignConfig.spacingL,
-            vertical: InventoryDesignConfig.spacingM,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: InventoryDesignConfig.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
           ),
-          decoration:
-              isSecondary
-                  ? InventoryDesignConfig.buttonSecondaryDecoration
-                  : InventoryDesignConfig.buttonPrimaryDecoration,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color:
-                    isSecondary
-                        ? InventoryDesignConfig.textSecondary
-                        : Colors.white,
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingXS),
-              Text(
-                label,
-                style: InventoryDesignConfig.bodyMedium.copyWith(
-                  color:
-                      isSecondary
-                          ? InventoryDesignConfig.textSecondary
-                          : Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildTabBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: InventoryDesignConfig.spacingXXL,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: InventoryDesignConfig.surfaceColor,
-        border: Border(
-          bottom: BorderSide(color: InventoryDesignConfig.borderSecondary),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: TabBar(
         controller: _tabController,
-        isScrollable: false,
-        indicatorColor: InventoryDesignConfig.primaryAccent,
-        indicatorWeight: 2,
-        labelColor: InventoryDesignConfig.primaryAccent,
-        unselectedLabelColor: InventoryDesignConfig.textSecondary,
-        labelStyle: InventoryDesignConfig.bodyMedium.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: InventoryDesignConfig.bodyMedium,
-        tabs: [
-          _buildTab(PhosphorIcons.chartPie(), 'Overview'),
-          _buildTab(PhosphorIcons.receipt(), 'Invoices', _invoices.length),
-          _buildTab(
-            PhosphorIcons.ruler(),
-            'Measurements',
-            _measurements.length,
+        labelColor: Colors.white,
+        unselectedLabelColor: const Color(0xFF64748B),
+        indicator: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              InventoryDesignConfig.primaryColor,
+              InventoryDesignConfig.primaryColor.withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          _buildTab(PhosphorIcons.users(), 'Family & Referrals'),
-          _buildTab(PhosphorIcons.warning(), 'Complaints', _complaints.length),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTab(IconData icon, String label, [int? count]) {
-    return Tab(
-      height: 48,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: InventoryDesignConfig.spacingXS),
-          Text(label),
-          if (count != null && count > 0) ...[
-            const SizedBox(width: InventoryDesignConfig.spacingXS),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: InventoryDesignConfig.primaryAccent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                count.toString(),
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                ),
-              ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+        labelStyle: InventoryDesignConfig.bodyMedium.copyWith(
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+        unselectedLabelStyle: InventoryDesignConfig.bodyMedium.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+        tabs: [
+          _buildModernTab('Overview', PhosphorIcons.user(PhosphorIconsStyle.bold)),
+          _buildModernTab('Invoices', PhosphorIcons.receipt(PhosphorIconsStyle.bold)),
+          _buildModernTab('Measurements', PhosphorIcons.ruler(PhosphorIconsStyle.bold)),
+          _buildModernTab('Complaints', PhosphorIcons.warningCircle(PhosphorIconsStyle.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildContent() {
-    if (_isLoading) {
-      return _buildLoadingState();
-    }
-
-    return TabBarView(
-      controller: _tabController,
-      children: [
-        _buildOverviewTab(),
-        _buildInvoicesTab(),
-        _buildMeasurementsTab(),
-        _buildFamilyTab(),
-        _buildComplaintsTab(),
-      ],
+  Widget _buildModernTab(String text, IconData icon) {
+    return Tab(
+      height: 48,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 8),
+            Text(text),
+          ],
+        ),
+      ),
     );
   }
 
@@ -543,23 +429,32 @@ class _CustomerDetailDialogDesktopState
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: InventoryDesignConfig.surfaceAccent,
-              borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusL,
+              color: InventoryDesignConfig.surfaceLight,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: InventoryDesignConfig.borderSecondary.withOpacity(0.5),
               ),
             ),
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                InventoryDesignConfig.primaryAccent,
+            child: SizedBox(
+              height: 32,
+              width: 32,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  InventoryDesignConfig.primaryColor,
+                ),
+                strokeWidth: 3,
               ),
             ),
           ),
-          const SizedBox(height: InventoryDesignConfig.spacingXXL),
+          const SizedBox(height: 16),
           Text(
             'Loading customer data...',
-            style: InventoryDesignConfig.titleMedium,
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              color: InventoryDesignConfig.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -568,76 +463,132 @@ class _CustomerDetailDialogDesktopState
 
   Widget _buildOverviewTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Financial Summary Cards
+          // Financial Summary Cards with enhanced design
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: InventoryDesignConfig.borderPrimary.withOpacity(0.6),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        PhosphorIcons.chartLine(PhosphorIconsStyle.bold),
+                        size: 16,
+                        color: InventoryDesignConfig.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Financial Overview',
+                      style: InventoryDesignConfig.titleMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildEnhancedStatsCard(
+                        'Total Spent',
+                        NumberFormat.currency(symbol: 'AED ').format(_totalSpent),
+                        PhosphorIcons.trendUp(PhosphorIconsStyle.bold),
+                        InventoryDesignConfig.successColor,
+                        'All completed payments',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildEnhancedStatsCard(
+                        'Pending',
+                        NumberFormat.currency(symbol: 'AED ').format(_pendingPayments),
+                        PhosphorIcons.clock(PhosphorIconsStyle.bold),
+                        InventoryDesignConfig.warningColor,
+                        'Outstanding balance',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildEnhancedStatsCard(
+                        'Orders',
+                        _completedOrders.toString(),
+                        PhosphorIcons.package(PhosphorIconsStyle.bold),
+                        InventoryDesignConfig.primaryColor,
+                        'Delivered items',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+
+          // Content Row with enhanced cards
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Personal Information
               Expanded(
-                child: _buildSummaryCard(
-                  title: 'Total Spent',
-                  value: NumberFormatter.formatCurrency(_totalSpent),
-                  icon: PhosphorIcons.currencyDollar(),
-                  color: InventoryDesignConfig.successColor,
-                ),
+                flex: 3,
+                child: _buildEnhancedInfoSection(),
               ),
-              const SizedBox(width: InventoryDesignConfig.spacingL),
+              const SizedBox(width: 16),
+              // Quick Actions
               Expanded(
-                child: _buildSummaryCard(
-                  title: 'Pending Payments',
-                  value: NumberFormatter.formatCurrency(_pendingPayments),
-                  icon: PhosphorIcons.clock(),
-                  color: InventoryDesignConfig.warningColor,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingL),
-              Expanded(
-                child: _buildSummaryCard(
-                  title: 'Completed Orders',
-                  value: _completedOrders.toString(),
-                  icon: PhosphorIcons.checkCircle(),
-                  color: InventoryDesignConfig.infoColor,
-                ),
+                flex: 2,
+                child: _buildEnhancedQuickActionsSection(),
               ),
             ],
-          ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingXXL),
-
-          // Personal Information
-          _buildSection(
-            title: 'Personal Information',
-            icon: PhosphorIcons.user(),
-            child: _buildPersonalInfo(),
-          ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingXXL),
-
-          // Quick Actions
-          _buildSection(
-            title: 'Quick Actions',
-            icon: PhosphorIcons.lightning(),
-            child: _buildQuickActions(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildEnhancedStatsCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    String subtitle,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusL),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.15),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,30 +596,44 @@ class _CustomerDetailDialogDesktopState
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
-                  ),
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 16, color: color),
               ),
               const Spacer(),
+              Icon(
+                PhosphorIcons.trendUp(PhosphorIconsStyle.bold),
+                size: 12,
+                color: color.withOpacity(0.6),
+              ),
             ],
           ),
-          const SizedBox(height: InventoryDesignConfig.spacingM),
+          const SizedBox(height: 12),
           Text(
             value,
             style: InventoryDesignConfig.headlineMedium.copyWith(
+              color: color,
               fontWeight: FontWeight.w700,
+              fontSize: 20,
             ),
           ),
-          const SizedBox(height: InventoryDesignConfig.spacingXS),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: InventoryDesignConfig.bodyMedium.copyWith(
-              color: InventoryDesignConfig.textSecondary,
+            style: InventoryDesignConfig.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: InventoryDesignConfig.bodySmall.copyWith(
+              color: color.withOpacity(0.7),
+              fontSize: 10,
             ),
           ),
         ],
@@ -676,1088 +641,1215 @@ class _CustomerDetailDialogDesktopState
     );
   }
 
-  Widget _buildSection({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
+  Widget _buildEnhancedInfoSection() {
     return Container(
-      width: double.infinity,
-      decoration: InventoryDesignConfig.cardDecoration,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: InventoryDesignConfig.borderPrimary.withOpacity(0.6),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  PhosphorIcons.info(PhosphorIconsStyle.bold),
+                  size: 16,
+                  color: InventoryDesignConfig.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Personal Information',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildEnhancedInfoRow(
+            'Address',
+            widget.customer.address,
+            PhosphorIcons.mapPin(PhosphorIconsStyle.bold),
+          ),
+          _buildEnhancedInfoRow(
+            'Phone',
+            widget.customer.phone,
+            PhosphorIcons.phone(PhosphorIconsStyle.bold),
+          ),
+          _buildEnhancedInfoRow(
+            'Gender',
+            widget.customer.gender.name.toUpperCase(),
+            PhosphorIcons.user(PhosphorIconsStyle.bold),
+          ),
+          _buildEnhancedInfoRow(
+            'Member Since',
+            DateFormat('MMMM d, yyyy').format(widget.customer.createdAt),
+            PhosphorIcons.calendar(PhosphorIconsStyle.bold),
+          ),
+          
+          // Customer stats
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: InventoryDesignConfig.surfaceAccent,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(InventoryDesignConfig.radiusL),
-                topRight: Radius.circular(InventoryDesignConfig.radiusL),
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  icon,
-                  size: 18,
-                  color: InventoryDesignConfig.primaryAccent,
+                  PhosphorIcons.star(PhosphorIconsStyle.bold),
+                  size: 14,
+                  color: InventoryDesignConfig.primaryColor,
                 ),
-                const SizedBox(width: InventoryDesignConfig.spacingM),
+                const SizedBox(width: 8),
                 Text(
-                  title,
-                  style: InventoryDesignConfig.titleMedium.copyWith(
+                  'Customer ID: #${widget.customer.billNumber}',
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.primaryColor,
                     fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-            child: child,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildPersonalInfo() {
-    return Column(
-      children: [
-        _buildInfoRow(
-          'Address',
-          widget.customer.address,
-          PhosphorIcons.mapPin(),
-        ),
-        _buildInfoRow('Phone', widget.customer.phone, PhosphorIcons.phone()),
-        if (widget.customer.whatsapp.isNotEmpty)
-          _buildInfoRow(
-            'WhatsApp',
-            widget.customer.whatsapp,
-            PhosphorIcons.whatsappLogo(),
-          ),
-        _buildInfoRow(
-          'Customer Since',
-          DateFormat.yMMMd().format(widget.customer.createdAt),
-          PhosphorIcons.calendar(),
-        ),
-        if (_referredBy != null)
-          _buildInfoRow(
-            'Referred By',
-            _referredBy!.name,
-            PhosphorIcons.userPlus(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildEnhancedInfoRow(String label, String value, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: InventoryDesignConfig.spacingS,
-      ),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: InventoryDesignConfig.textSecondary),
-          const SizedBox(width: InventoryDesignConfig.spacingM),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceLight,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              icon,
+              size: 12,
+              color: InventoryDesignConfig.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 12),
           SizedBox(
-            width: 120,
+            width: 100,
             child: Text(
               label,
-              style: InventoryDesignConfig.bodyMedium.copyWith(
+              style: InventoryDesignConfig.bodySmall.copyWith(
                 color: InventoryDesignConfig.textSecondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
               ),
             ),
           ),
-          Expanded(child: Text(value, style: InventoryDesignConfig.bodyMedium)),
+          Expanded(
+            child: Text(
+              value,
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActions() {
-    return Wrap(
-      spacing: InventoryDesignConfig.spacingM,
-      runSpacing: InventoryDesignConfig.spacingM,
-      children: [
-        _buildActionButton(
-          icon: PhosphorIcons.ruler(),
-          label: 'Add Measurement',
-          onPressed: _addMeasurement,
+  Widget _buildEnhancedQuickActionsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: InventoryDesignConfig.borderPrimary.withOpacity(0.6),
         ),
-        _buildActionButton(
-          icon: PhosphorIcons.receipt(),
-          label: 'Create Invoice',
-          onPressed: _addInvoice,
-        ),
-        _buildActionButton(
-          icon: PhosphorIcons.warning(),
-          label: 'Add Complaint',
-          color: InventoryDesignConfig.errorColor,
-          onPressed: _addComplaint,
-        ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  PhosphorIcons.lightning(PhosphorIconsStyle.bold),
+                  size: 16,
+                  color: InventoryDesignConfig.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Quick Actions',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildEnhancedActionButton(
+            'Add Measurement',
+            'Create new body measurements',
+            PhosphorIcons.ruler(PhosphorIconsStyle.bold),
+            InventoryDesignConfig.successColor,
+            () {
+              AddMeasurementDialog.show(
+                context,
+                customer: widget.customer,
+                onMeasurementAdded: _fetchCustomerData,
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+          _buildEnhancedActionButton(
+            'Create Invoice',
+            'Generate new invoice',
+            PhosphorIcons.receipt(PhosphorIconsStyle.bold),
+            InventoryDesignConfig.primaryColor,
+            () {
+              AddEditInvoiceDesktopDialog.show(
+                context,
+                customer: widget.customer,
+                onInvoiceSaved: _fetchCustomerData,
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+          _buildEnhancedActionButton(
+            'Add Complaint',
+            'Log customer complaint',
+            PhosphorIcons.warning(PhosphorIconsStyle.bold),
+            InventoryDesignConfig.warningColor,
+            () {
+              // TODO: Implement Add Complaint
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Add complaint feature coming soon!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    Color? color,
-  }) {
-    final effectiveColor = color ?? InventoryDesignConfig.primaryAccent;
+  Widget _buildEnhancedActionButton(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: color.withOpacity(0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: InventoryDesignConfig.bodyMedium.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          color: color.withOpacity(0.7),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
+                  size: 16,
+                  color: color.withOpacity(0.6),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildStatsCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withOpacity(0.12),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(icon, size: 14, color: color),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: InventoryDesignConfig.titleLarge.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: InventoryDesignConfig.borderSecondary.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.info(PhosphorIconsStyle.bold),
+                size: 14,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Personal Information',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildCompactInfoRow('Address', widget.customer.address),
+          _buildCompactInfoRow('Phone', widget.customer.phone),
+          _buildCompactInfoRow('Gender', widget.customer.gender.name.toUpperCase()),
+          _buildCompactInfoRow(
+            'Member Since',
+            DateFormat('MMM d, yyyy').format(widget.customer.createdAt),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: InventoryDesignConfig.borderSecondary.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.lightning(PhosphorIconsStyle.bold),
+                size: 14,
+                color: InventoryDesignConfig.primaryColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Quick Actions',
+                style: InventoryDesignConfig.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildActionButton(
+            'Add Measurement',
+            PhosphorIcons.ruler(PhosphorIconsStyle.bold),
+            () {
+              AddMeasurementDialog.show(
+                context,
+                customer: widget.customer,
+                onMeasurementAdded: _fetchCustomerData,
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildActionButton(
+            'Create Invoice',
+            PhosphorIcons.receipt(PhosphorIconsStyle.bold),
+            () {
+              AddEditInvoiceDesktopDialog.show(
+                context,
+                customer: widget.customer,
+                onInvoiceSaved: _fetchCustomerData,
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildActionButton(
+            'Add Complaint',
+            PhosphorIcons.warning(PhosphorIconsStyle.bold),
+            () {
+              // TODO: Implement Add Complaint
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.textSecondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.primaryColor.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: InventoryDesignConfig.primaryColor.withOpacity(0.12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 14, color: InventoryDesignConfig.primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.primaryColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildInvoicesTab() {
+    if (_invoices.isEmpty) {
+      return _buildEmptyState(
+        icon: PhosphorIcons.receipt(PhosphorIconsStyle.bold),
+        title: 'No Invoices Found',
+        message: 'This customer does not have any invoices yet.',
+        actionLabel: 'Create Invoice',
+        onAction: () => AddEditInvoiceDesktopDialog.show(
+          context,
+          customer: widget.customer,
+          onInvoiceSaved: _fetchCustomerData,
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth / 320).floor().clamp(1, 4);
+        return GridView.builder(
+          padding: const EdgeInsets.all(20),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 1.4,
+          ),
+          itemCount: _invoices.length,
+          itemBuilder: (context, index) => _buildCleanInvoiceCard(_invoices[index]),
+        );
+      },
+    );
+  }
+
+  Widget _buildCleanInvoiceCard(Map<String, dynamic> invoice) {
+    final paymentStatus = invoice['payment_status'] ?? 'Pending';
+    final deliveryStatus = invoice['delivery_status'] ?? 'Pending';
+    final balance = invoice['balance'] ?? 0.0;
+    
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        onTap: () {
+          InvoiceDetailDialogDesktop.show(
+            context,
+            invoice: invoice,
+            onInvoiceUpdated: () {
+              _fetchCustomerData();
+              widget.onCustomerUpdated?.call();
+            },
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: InventoryDesignConfig.spacingL,
-            vertical: InventoryDesignConfig.spacingM,
-          ),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: effectiveColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-            border: Border.all(color: effectiveColor.withOpacity(0.3)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFE2E8F0),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 16, color: effectiveColor),
-              const SizedBox(width: InventoryDesignConfig.spacingXS),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.receipt(PhosphorIconsStyle.bold),
+                      size: 16,
+                      color: InventoryDesignConfig.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '#${invoice['invoice_number']}',
+                          style: InventoryDesignConfig.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('MMM d').format(DateTime.parse(invoice['date'])),
+                          style: InventoryDesignConfig.bodySmall.copyWith(
+                            color: InventoryDesignConfig.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Amount
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amount',
+                      style: InventoryDesignConfig.bodySmall.copyWith(
+                        color: InventoryDesignConfig.textSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                    Text(
+                      NumberFormat.currency(symbol: 'AED ').format(
+                        (invoice['amount_including_vat'] as num).toDouble(),
+                      ),
+                      style: InventoryDesignConfig.titleMedium.copyWith(
+                        color: InventoryDesignConfig.primaryColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const Spacer(),
+              
+              // Status row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildCleanStatusChip(paymentStatus, _getStatusColor(paymentStatus)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCleanStatusChip(deliveryStatus, _getStatusColor(deliveryStatus)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnhancedStatusChip(String status, Color color, IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
               Text(
                 label,
-                style: InventoryDesignConfig.bodyMedium.copyWith(
-                  color: effectiveColor,
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: color.withOpacity(0.8),
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            status,
+            style: InventoryDesignConfig.bodyMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInvoicesTab() {
-    if (_invoices.isEmpty) {
-      return _buildEmptyState(
-        icon: PhosphorIcons.receipt(),
-        title: 'No Invoices',
-        description: 'Create the first invoice for this customer.',
-        actionLabel: 'Create Invoice',
-        onAction: _addInvoice,
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      itemCount: _invoices.length,
-      separatorBuilder:
-          (context, index) =>
-              const SizedBox(height: InventoryDesignConfig.spacingL),
-      itemBuilder: (context, index) => _buildInvoiceCard(_invoices[index]),
-    );
-  }
-
-  Widget _buildInvoiceCard(Invoice invoice) {
+  Widget _buildEnhancedPaymentProgress(double paidAmount, double totalAmount) {
+    final percentage = (paidAmount / totalAmount).clamp(0.0, 1.0);
+    
     return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: InventoryDesignConfig.cardDecoration,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-                decoration: BoxDecoration(
-                  color: InventoryDesignConfig.infoColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
-                  ),
-                ),
-                child: Icon(
-                  PhosphorIcons.receipt(),
-                  size: 16,
-                  color: InventoryDesignConfig.infoColor,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Invoice #${invoice.invoiceNumber}',
-                      style: InventoryDesignConfig.titleMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      DateFormat.yMMMd().format(invoice.date),
-                      style: InventoryDesignConfig.bodySmall.copyWith(
-                        color: InventoryDesignConfig.textSecondary,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Payment Progress',
+                style: InventoryDesignConfig.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
-                NumberFormatter.formatCurrency(invoice.amountIncludingVat),
-                style: InventoryDesignConfig.titleMedium.copyWith(
+                '${(percentage * 100).toInt()}%',
+                style: InventoryDesignConfig.bodyMedium.copyWith(
+                  color: InventoryDesignConfig.primaryColor,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-
-          Row(
-            children: [
-              _buildStatusChip(
-                invoice.paymentStatus.toString().split('.').last.toUpperCase(),
-                _getPaymentStatusColor(
-                  invoice.paymentStatus.toString().split('.').last,
+          const SizedBox(height: 8),
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: percentage,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      InventoryDesignConfig.primaryColor,
+                      InventoryDesignConfig.primaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              _buildStatusChip(
-                invoice.deliveryStatus.toString().split('.').last.toUpperCase(),
-                _getDeliveryStatusColor(
-                  invoice.deliveryStatus.toString().split('.').last,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildModernStatusChip(String status, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              status,
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentProgress(double paidAmount, double totalAmount) {
+    final percentage = (paidAmount / totalAmount).clamp(0.0, 1.0);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Payment Progress',
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${(percentage * 100).toInt()}%',
+              style: InventoryDesignConfig.bodySmall.copyWith(
+                color: InventoryDesignConfig.primaryColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Container(
+          height: 3,
+          decoration: BoxDecoration(
+            color: InventoryDesignConfig.surfaceLight,
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: percentage,
+            child: Container(
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.primaryColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'paid':
+      case 'delivered':
+        return InventoryDesignConfig.successColor;
+      case 'pending':
+        return InventoryDesignConfig.warningColor;
+      case 'overdue':
+      case 'cancelled':
+        return InventoryDesignConfig.errorColor;
+      default:
+        return InventoryDesignConfig.textSecondary;
+    }
   }
 
   Widget _buildMeasurementsTab() {
     if (_measurements.isEmpty) {
       return _buildEmptyState(
-        icon: PhosphorIcons.ruler(),
-        title: 'No Measurements',
-        description: 'Add the first measurement for this customer.',
+        icon: PhosphorIcons.ruler(PhosphorIconsStyle.bold),
+        title: 'No Measurements Found',
+        message: 'This customer does not have any measurements yet.',
         actionLabel: 'Add Measurement',
-        onAction: _addMeasurement,
+        onAction: () => AddMeasurementDialog.show(
+          context,
+          customer: widget.customer,
+          onMeasurementAdded: _fetchCustomerData,
+        ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      itemCount: _measurements.length,
-      separatorBuilder:
-          (context, index) =>
-              const SizedBox(height: InventoryDesignConfig.spacingL),
-      itemBuilder:
-          (context, index) => _buildMeasurementCard(_measurements[index]),
-    );
-  }
-
-  Widget _buildMeasurementCard(Measurement measurement) {
-    return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: InventoryDesignConfig.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-                decoration: BoxDecoration(
-                  color: InventoryDesignConfig.successColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
-                  ),
-                ),
-                child: Icon(
-                  PhosphorIcons.ruler(),
-                  size: 16,
-                  color: InventoryDesignConfig.successColor,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Style: ${measurement.style}',
-                      style: InventoryDesignConfig.titleMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Design: ${measurement.designType}',
-                      style: InventoryDesignConfig.bodySmall.copyWith(
-                        color: InventoryDesignConfig.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                DateFormat.yMMMd().format(measurement.date),
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: InventoryDesignConfig.textSecondary,
-                ),
-              ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth / 280).floor().clamp(1, 5);
+        return GridView.builder(
+          padding: const EdgeInsets.all(20),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 1.6,
           ),
-
-          if (measurement.fabricName.isNotEmpty) ...[
-            const SizedBox(height: InventoryDesignConfig.spacingM),
-            Text(
-              'Fabric: ${measurement.fabricName}',
-              style: InventoryDesignConfig.bodyMedium,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFamilyTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Simple overview cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildSimpleInfoCard(
-                  title: 'Referral Status',
-                  value:
-                      _referredBy != null
-                          ? 'Referred Customer'
-                          : 'Direct Customer',
-                  subtitle:
-                      _referredBy != null
-                          ? 'Referred by ${_referredBy!.name}'
-                          : 'Joined directly',
-                  icon: PhosphorIcons.userPlus(),
-                  color:
-                      _referredBy != null
-                          ? InventoryDesignConfig.infoColor
-                          : InventoryDesignConfig.primaryColor,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingL),
-              Expanded(
-                child: _buildSimpleInfoCard(
-                  title: 'Referrals Made',
-                  value: '${_referrals.length} Customers',
-                  subtitle:
-                      _referrals.isEmpty
-                          ? 'No referrals yet'
-                          : 'Has referred customers',
-                  icon: PhosphorIcons.users(),
-                  color:
-                      _referrals.isNotEmpty
-                          ? InventoryDesignConfig.successColor
-                          : InventoryDesignConfig.textSecondary,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingL),
-              Expanded(
-                child: _buildSimpleInfoCard(
-                  title: 'Family Network',
-                  value:
-                      '${_familyMembers.length + (_familyHead != null ? 1 : 0)} Members',
-                  subtitle:
-                      _familyMembers.isEmpty && _familyHead == null
-                          ? 'No family links'
-                          : 'Connected family',
-                  icon: PhosphorIcons.houseLine(),
-                  color:
-                      (_familyMembers.isNotEmpty || _familyHead != null)
-                          ? InventoryDesignConfig.warningColor
-                          : InventoryDesignConfig.textSecondary,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingXXL),
-
-          // Who referred this customer
-          if (_referredBy != null) ...[
-            _buildSimpleSection(
-              title: 'Who Referred This Customer',
-              icon: PhosphorIcons.arrowDown(),
-              child: _buildSimpleCustomerCard(_referredBy!, 'Referrer'),
-            ),
-            const SizedBox(height: InventoryDesignConfig.spacingXXL),
-          ],
-
-          // Customers this person referred
-          if (_referrals.isNotEmpty) ...[
-            _buildSimpleSection(
-              title: 'Customers They Referred (${_referrals.length})',
-              icon: PhosphorIcons.arrowUp(),
-              child: Column(
-                children:
-                    _referrals
-                        .map(
-                          (customer) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: InventoryDesignConfig.spacingM,
-                            ),
-                            child: _buildSimpleCustomerCard(
-                              customer,
-                              'Referred',
-                            ),
-                          ),
-                        )
-                        .toList(),
-              ),
-            ),
-            const SizedBox(height: InventoryDesignConfig.spacingXXL),
-          ],
-
-          // Family connections
-          if (_familyHead != null || _familyMembers.isNotEmpty) ...[
-            _buildSimpleSection(
-              title: 'Family Connections',
-              icon: PhosphorIcons.houseLine(),
-              child: Column(
-                children: [
-                  if (_familyHead != null)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: InventoryDesignConfig.spacingM,
-                      ),
-                      child: _buildSimpleCustomerCard(
-                        _familyHead!,
-                        'Family Head',
-                      ),
-                    ),
-                  ..._familyMembers
-                      .map(
-                        (customer) => Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: InventoryDesignConfig.spacingM,
-                          ),
-                          child: _buildSimpleCustomerCard(
-                            customer,
-                            customer.familyRelation?.toString().toUpperCase() ??
-                                'FAMILY MEMBER',
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ],
-              ),
-            ),
-          ],
-
-          // Empty state
-          if (_referredBy == null &&
-              _referrals.isEmpty &&
-              _familyHead == null &&
-              _familyMembers.isEmpty)
-            _buildEmptyConnectionsState(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleInfoCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusL),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
-                  ),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              Expanded(
-                child: Text(
-                  title,
-                  style: InventoryDesignConfig.bodyMedium.copyWith(
-                    color: InventoryDesignConfig.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-          Text(
-            value,
-            style: InventoryDesignConfig.titleLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingXS),
-          Text(
-            subtitle,
-            style: InventoryDesignConfig.bodySmall.copyWith(
-              color: InventoryDesignConfig.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleSection({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      decoration: InventoryDesignConfig.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-            decoration: BoxDecoration(
-              color: InventoryDesignConfig.surfaceAccent,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(InventoryDesignConfig.radiusL),
-                topRight: Radius.circular(InventoryDesignConfig.radiusL),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: InventoryDesignConfig.primaryAccent,
-                ),
-                const SizedBox(width: InventoryDesignConfig.spacingM),
-                Text(
-                  title,
-                  style: InventoryDesignConfig.titleMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleCustomerCard(Customer customer, String relationship) {
-    final genderColor =
-        customer.gender == Gender.male
-            ? InventoryDesignConfig.infoColor
-            : InventoryDesignConfig.successColor;
-
-    return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: BoxDecoration(
-        color: InventoryDesignConfig.surfaceLight,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-        border: Border.all(color: InventoryDesignConfig.borderSecondary),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: genderColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusM,
-              ),
-              border: Border.all(color: genderColor, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
-                style: InventoryDesignConfig.titleLarge.copyWith(
-                  color: genderColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: InventoryDesignConfig.spacingL),
-
-          // Customer info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer.name,
-                  style: InventoryDesignConfig.titleMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: InventoryDesignConfig.spacingXS),
-                Text(
-                  '#${customer.billNumber} • ${customer.phone}',
-                  style: InventoryDesignConfig.bodyMedium.copyWith(
-                    color: InventoryDesignConfig.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: InventoryDesignConfig.spacingS),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: InventoryDesignConfig.spacingM,
-                    vertical: InventoryDesignConfig.spacingXS,
-                  ),
-                  decoration: BoxDecoration(
-                    color: InventoryDesignConfig.primaryAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(
-                      InventoryDesignConfig.radiusS,
-                    ),
-                  ),
-                  child: Text(
-                    relationship,
-                    style: InventoryDesignConfig.bodySmall.copyWith(
-                      color: InventoryDesignConfig.primaryAccent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Actions
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildSimpleActionButton(
-                icon: PhosphorIcons.eye(),
-                tooltip: 'View Details',
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  CustomerDetailDialogDesktop.show(
-                    context,
-                    customer: customer,
-                    onCustomerUpdated: widget.onCustomerUpdated,
-                  );
-                },
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingS),
-              _buildSimpleActionButton(
-                icon: PhosphorIcons.phone(),
-                tooltip: 'Call Customer',
-                onPressed: () async {
-                  final phoneNumber = 'tel:${customer.phone}';
-                  if (await canLaunch(phoneNumber)) {
-                    await launch(phoneNumber);
-                  }
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleActionButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-        child: Container(
-          padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-          decoration: BoxDecoration(
-            color: InventoryDesignConfig.primaryAccent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-          ),
-          child: Tooltip(
-            message: tooltip,
-            child: Icon(
-              icon,
-              size: 16,
-              color: InventoryDesignConfig.primaryAccent,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyConnectionsState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      decoration: InventoryDesignConfig.cardDecoration,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXL),
-            decoration: BoxDecoration(
-              color: InventoryDesignConfig.surfaceAccent,
-              borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusL,
-              ),
-            ),
-            child: Icon(
-              PhosphorIcons.users(),
-              size: 48,
-              color: InventoryDesignConfig.textTertiary,
-            ),
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingL),
-          Text(
-            'No Connections Yet',
-            style: InventoryDesignConfig.titleLarge.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingS),
-          Text(
-            'This customer has no family or referral connections.',
-            style: InventoryDesignConfig.bodyMedium.copyWith(
-              color: InventoryDesignConfig.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper methods for status colors
-  Color _getPaymentStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'paid':
-        return InventoryDesignConfig.successColor;
-      case 'partial':
-        return InventoryDesignConfig.warningColor;
-      case 'pending':
-      default:
-        return InventoryDesignConfig.errorColor;
-    }
-  }
-
-  Color _getDeliveryStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'delivered':
-        return InventoryDesignConfig.successColor;
-      case 'in_progress':
-        return InventoryDesignConfig.warningColor;
-      case 'pending':
-      default:
-        return InventoryDesignConfig.infoColor;
-    }
-  }
-
-  Color _getComplaintStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'resolved':
-        return InventoryDesignConfig.successColor;
-      case 'in_progress':
-        return InventoryDesignConfig.warningColor;
-      case 'pending':
-      default:
-        return InventoryDesignConfig.errorColor;
-    }
-  }
-
-  // Action methods
-  Future<void> _editCustomer() async {
-    await AddCustomerDialog.show(
-      context,
-      customer: widget.customer,
-      isEditing: true,
-      onCustomerAdded: () {
-        widget.onCustomerUpdated?.call();
-        Navigator.of(context).pop();
+          itemCount: _measurements.length,
+          itemBuilder: (context, index) => _buildCleanMeasurementCard(_measurements[index]),
+        );
       },
     );
   }
 
-  Future<void> _addMeasurement() async {
-    await AddMeasurementDialog.show(context, customer: widget.customer);
-    await _loadCustomerActivity();
-  }
-
-  Future<void> _addInvoice() async {
-    await AddEditInvoiceDesktopDialog.show(context, customer: widget.customer);
-    await _loadCustomerActivity();
-    _calculateFinancialSummary();
-  }
-
-  Future<void> _addComplaint() async {
-    await ComplaintDialog.show(
-      context,
-      customerId: widget.customer.id,
-      customerName: widget.customer.name,
+  Widget _buildCleanMeasurementCard(Measurement measurement) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () {
+          DetailDialog.show(
+            context,
+            measurement: measurement,
+            customerId: widget.customer.id,
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: InventoryDesignConfig.successColor.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: InventoryDesignConfig.successColor.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.successColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.ruler(PhosphorIconsStyle.bold),
+                      size: 16,
+                      color: InventoryDesignConfig.successColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          measurement.style,
+                          style: InventoryDesignConfig.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          DateFormat('MMM d').format(measurement.lastUpdated),
+                          style: InventoryDesignConfig.bodySmall.copyWith(
+                            color: InventoryDesignConfig.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const Spacer(),
+              
+              // Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: InventoryDesignConfig.successColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Measurement Set',
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.successColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    await _loadCustomerActivity();
-  }
-
-  Future<void> _callCustomer() async {
-    final phoneNumber = 'tel:${widget.customer.phone}';
-    if (await canLaunch(phoneNumber)) {
-      await launch(phoneNumber);
-    }
-  }
-
-  Future<void> _sendWhatsApp() async {
-    final whatsappNumber =
-        widget.customer.whatsapp.isNotEmpty
-            ? widget.customer.whatsapp
-            : widget.customer.phone;
-    final whatsappUrl = 'https://wa.me/$whatsappNumber';
-    if (await canLaunch(whatsappUrl)) {
-      await launch(whatsappUrl);
-    }
   }
 
   Widget _buildComplaintsTab() {
     if (_complaints.isEmpty) {
       return _buildEmptyState(
-        icon: PhosphorIcons.warning(),
-        title: 'No Complaints',
-        description: 'This customer has not filed any complaints.',
+        icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.bold),
+        title: 'No Complaints Found',
+        message: 'This customer does not have any complaints.',
         actionLabel: 'Add Complaint',
-        onAction: _addComplaint,
+        onAction: () {
+          // TODO: Implement Add Complaint
+        },
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-      itemCount: _complaints.length,
-      separatorBuilder:
-          (context, index) =>
-              const SizedBox(height: InventoryDesignConfig.spacingL),
-      itemBuilder: (context, index) => _buildComplaintCard(_complaints[index]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth / 300).floor().clamp(1, 4);
+        return GridView.builder(
+          padding: const EdgeInsets.all(20),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 1.5,
+          ),
+          itemCount: _complaints.length,
+          itemBuilder: (context, index) => _buildCleanComplaintCard(_complaints[index]),
+        );
+      },
     );
   }
 
-  Widget _buildComplaintCard(Complaint complaint) {
-    return Container(
-      padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
-      decoration: InventoryDesignConfig.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _buildCleanComplaintCard(Map<String, dynamic> complaint) {
+    final priority = complaint['priority'] ?? 'Medium';
+    final status = complaint['status'] ?? 'Open';
+    
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Complaint "${complaint['title'] ?? 'Untitled'}" details - Coming soon!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: InventoryDesignConfig.errorColor.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: InventoryDesignConfig.errorColor.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
-                decoration: BoxDecoration(
-                  color: InventoryDesignConfig.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    InventoryDesignConfig.radiusS,
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: InventoryDesignConfig.errorColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      PhosphorIcons.warningCircle(PhosphorIconsStyle.bold),
+                      size: 16,
+                      color: InventoryDesignConfig.errorColor,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  PhosphorIcons.warning(),
-                  size: 16,
-                  color: InventoryDesignConfig.errorColor,
-                ),
-              ),
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      complaint.title,
-                      style: InventoryDesignConfig.titleMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          complaint['title'] ?? 'Untitled',
+                          style: InventoryDesignConfig.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (complaint['created_at'] != null)
+                          Text(
+                            DateFormat('MMM d').format(DateTime.parse(complaint['created_at'])),
+                            style: InventoryDesignConfig.bodySmall.copyWith(
+                              color: InventoryDesignConfig.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
                     ),
-                    Text(
-                      DateFormat.yMMMd().format(complaint.createdAt),
-                      style: InventoryDesignConfig.bodySmall.copyWith(
-                        color: InventoryDesignConfig.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              _buildStatusChip(
-                complaint.status.toString().split('.').last.toUpperCase(),
-                _getComplaintStatusColor(
-                  complaint.status.toString().split('.').last,
+              
+              const SizedBox(height: 12),
+              
+              // Description
+              if (complaint['description'] != null)
+                Text(
+                  complaint['description'],
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-
-          Text(
-            complaint.description,
-            style: InventoryDesignConfig.bodyMedium,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-
-          Row(
-            children: [
-              Text(
-                'Priority: ',
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: InventoryDesignConfig.textSecondary,
-                ),
-              ),
-              _buildStatusChip(
-                complaint.priority.toString().split('.').last.toUpperCase(),
-                _getPriorityColor(
-                  complaint.priority.toString().split('.').last,
-                ),
-              ),
+              
               const Spacer(),
-              Text(
-                'Assigned to: ${complaint.assignedTo}',
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: InventoryDesignConfig.textSecondary,
-                ),
+              
+              // Status row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildCleanStatusChip(status, _getComplaintStatusColor(status)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCleanStatusChip(priority, _getPriorityColor(priority)),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: InventoryDesignConfig.spacingM,
-        vertical: InventoryDesignConfig.spacingXS,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: InventoryDesignConfig.bodySmall.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 10,
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String description,
-    String? actionLabel,
-    VoidCallback? onAction,
-  }) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(InventoryDesignConfig.spacingXXL),
-            decoration: BoxDecoration(
-              color: InventoryDesignConfig.surfaceAccent,
-              borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusL,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 48,
-              color: InventoryDesignConfig.textTertiary,
-            ),
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingXL),
-          Text(
-            title,
-            style: InventoryDesignConfig.titleLarge.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: InventoryDesignConfig.spacingM),
-          Text(
-            description,
-            style: InventoryDesignConfig.bodyMedium.copyWith(
-              color: InventoryDesignConfig.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: InventoryDesignConfig.spacingXL),
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(
-                InventoryDesignConfig.radiusM,
-              ),
-              child: InkWell(
-                onTap: onAction,
-                borderRadius: BorderRadius.circular(
-                  InventoryDesignConfig.radiusM,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: InventoryDesignConfig.spacingXL,
-                    vertical: InventoryDesignConfig.spacingM,
-                  ),
-                  decoration: InventoryDesignConfig.buttonPrimaryDecoration,
-                  child: Text(
-                    actionLabel,
-                    style: InventoryDesignConfig.bodyMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+  Widget _buildCleanStatusChip(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        status,
+        style: InventoryDesignConfig.bodySmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -1765,24 +1857,111 @@ class _CustomerDetailDialogDesktopState
   Color _getPriorityColor(String priority) {
     switch (priority.toLowerCase()) {
       case 'high':
+      case 'urgent':
         return InventoryDesignConfig.errorColor;
       case 'medium':
         return InventoryDesignConfig.warningColor;
       case 'low':
-      default:
         return InventoryDesignConfig.successColor;
+      default:
+        return InventoryDesignConfig.textSecondary;
     }
   }
 
-  void _copyBillNumber() {
-    Clipboard.setData(ClipboardData(text: widget.customer.billNumber));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Bill number copied to clipboard'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: InventoryDesignConfig.successColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+  Color _getComplaintStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+      case 'closed':
+        return InventoryDesignConfig.successColor;
+      case 'in progress':
+      case 'investigating':
+        return InventoryDesignConfig.warningColor;
+      case 'open':
+      case 'pending':
+        return InventoryDesignConfig.primaryColor;
+      default:
+        return InventoryDesignConfig.textSecondary;
+    }
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String message,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.textTertiary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                size: 40,
+                color: InventoryDesignConfig.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: InventoryDesignConfig.titleLarge.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: InventoryDesignConfig.bodyMedium.copyWith(
+                color: InventoryDesignConfig.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    InventoryDesignConfig.primaryColor,
+                    InventoryDesignConfig.primaryColor.withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: InventoryDesignConfig.primaryColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: onAction,
+                icon: Icon(
+                  PhosphorIcons.plus(PhosphorIconsStyle.bold),
+                  size: 14,
+                ),
+                label: Text(actionLabel),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  textStyle: InventoryDesignConfig.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

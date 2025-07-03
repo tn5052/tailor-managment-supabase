@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../theme/inventory_design_config.dart';
 import '../../../models/customer.dart';
-import '../../../models/invoice_product.dart' as model_product;
 import '../../../models/measurement.dart';
+import '../../../models/invoice_product.dart' as model_product;
+import '../../../services/inventory_service.dart';
+
 import 'customer_selector_sheet.dart';
 import 'measurement_selector_sheet.dart';
 import 'product_selector_sheet.dart';
@@ -16,11 +18,8 @@ class AddEditInvoiceMobileSheet extends StatefulWidget {
   final Map<String, dynamic>? invoice;
   final VoidCallback? onInvoiceSaved;
 
-  const AddEditInvoiceMobileSheet({
-    Key? key,
-    this.invoice,
-    this.onInvoiceSaved,
-  }) : super(key: key);
+  const AddEditInvoiceMobileSheet({Key? key, this.invoice, this.onInvoiceSaved})
+    : super(key: key);
 
   static Future<void> show(
     BuildContext context, {
@@ -129,19 +128,23 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
       _invoiceNumberController.text = invoiceData['invoice_number'] ?? '';
       _customerNameController.text = invoiceData['customer_name'] ?? '';
       _customerPhoneController.text = invoiceData['customer_phone'] ?? '';
-      
+
       // Parse dates properly
-      _selectedDate = DateTime.tryParse(invoiceData['date'] ?? '') ?? DateTime.now();
-      _selectedDeliveryDate = DateTime.tryParse(invoiceData['delivery_date'] ?? '') ?? DateTime.now();
-      
+      _selectedDate =
+          DateTime.tryParse(invoiceData['date'] ?? '') ?? DateTime.now();
+      _selectedDeliveryDate =
+          DateTime.tryParse(invoiceData['delivery_date'] ?? '') ??
+          DateTime.now();
+
       // Load status values
       _paymentStatus = invoiceData['payment_status'] ?? 'Unpaid';
       _deliveryStatus = invoiceData['delivery_status'] ?? 'Pending';
-      
+
       // Load discount data
       _discountType = invoiceData['discount_type'] ?? 'none';
-      _discountValueController.text = (invoiceData['discount_value'] as num?)?.toString() ?? '0';
-      
+      _discountValueController.text =
+          (invoiceData['discount_value'] as num?)?.toString() ?? '0';
+
       // Load notes - handle both string and array formats
       if (invoiceData['notes'] != null) {
         if (invoiceData['notes'] is List) {
@@ -150,26 +153,34 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           _notesController.text = invoiceData['notes'].toString();
         }
       }
-      
+
       // Load financial data
-      _amountController.text = (invoiceData['amount'] as num?)?.toStringAsFixed(2) ?? '0.00';
-      _vatController.text = (invoiceData['vat'] as num?)?.toStringAsFixed(2) ?? '0.00';
-      _totalAmountController.text = (invoiceData['amount_including_vat'] as num?)?.toStringAsFixed(2) ?? '0.00';
-      _advanceController.text = (invoiceData['advance'] as num?)?.toStringAsFixed(2) ?? '0.00';
-      _balanceController.text = (invoiceData['balance'] as num?)?.toStringAsFixed(2) ?? '0.00';
-      
+      _amountController.text =
+          (invoiceData['amount'] as num?)?.toStringAsFixed(2) ?? '0.00';
+      _vatController.text =
+          (invoiceData['vat'] as num?)?.toStringAsFixed(2) ?? '0.00';
+      _totalAmountController.text =
+          (invoiceData['amount_including_vat'] as num?)?.toStringAsFixed(2) ??
+          '0.00';
+      _advanceController.text =
+          (invoiceData['advance'] as num?)?.toStringAsFixed(2) ?? '0.00';
+      _balanceController.text =
+          (invoiceData['balance'] as num?)?.toStringAsFixed(2) ?? '0.00';
+
       // Load customer and measurement data
       _loadCustomerAndMeasurementData(invoiceData);
-      
+
       // Load products data
       _loadProductsFromInvoice(invoiceData);
     } else {
       _generateInvoiceNumber();
     }
-    
+
     // Format date controllers
     _dateController.text = DateFormat('MMM dd').format(_selectedDate);
-    _deliveryDateController.text = DateFormat('MMM dd').format(_selectedDeliveryDate);
+    _deliveryDateController.text = DateFormat(
+      'MMM dd',
+    ).format(_selectedDeliveryDate);
 
     // Add listeners to calculate totals
     _amountController.addListener(_calculateTotals);
@@ -177,16 +188,19 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     _discountValueController.addListener(_calculateTotals);
   }
 
-  Future<void> _loadCustomerAndMeasurementData(Map<String, dynamic> invoiceData) async {
+  Future<void> _loadCustomerAndMeasurementData(
+    Map<String, dynamic> invoiceData,
+  ) async {
     // Load customer data if customer_id exists
     if (invoiceData['customer_id'] != null) {
       try {
-        final response = await _supabase
-            .from('customers')
-            .select('*')
-            .eq('id', invoiceData['customer_id'])
-            .single();
-        
+        final response =
+            await _supabase
+                .from('customers')
+                .select('*')
+                .eq('id', invoiceData['customer_id'])
+                .single();
+
         setState(() {
           _selectedCustomer = Customer.fromMap(response);
         });
@@ -199,12 +213,13 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     // Load measurement data if measurement_id exists
     if (invoiceData['measurement_id'] != null) {
       try {
-        final response = await _supabase
-            .from('measurements')
-            .select('*')
-            .eq('id', invoiceData['measurement_id'])
-            .single();
-        
+        final response =
+            await _supabase
+                .from('measurements')
+                .select('*')
+                .eq('id', invoiceData['measurement_id'])
+                .single();
+
         setState(() {
           _selectedMeasurement = Measurement.fromMap(response);
         });
@@ -219,19 +234,22 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     if (invoiceData['products'] != null && invoiceData['products'] is List) {
       try {
         setState(() {
-          _products = (invoiceData['products'] as List).map((productData) {
-            // Create InvoiceProduct using proper constructor
-            return model_product.InvoiceProduct(
-              id: productData['id'] ?? '',
-              inventoryId: productData['inventory_id'] ?? '',
-              name: productData['name'] ?? '',
-              quantity: (productData['quantity'] as num?)?.toDouble() ?? 1.0,
-              unit: productData['unit'] ?? 'pcs',
-              unitPrice: (productData['unit_price'] as num?)?.toDouble() ?? 0.0,
-              inventoryType: productData['inventory_type'] ?? 'product',
-              description: productData['description'] ?? '',
-            );
-          }).toList();
+          _products =
+              (invoiceData['products'] as List).map((productData) {
+                // Create InvoiceProduct using proper constructor
+                return model_product.InvoiceProduct(
+                  id: productData['id'] ?? '',
+                  inventoryId: productData['inventory_id'] ?? '',
+                  name: productData['name'] ?? '',
+                  quantity:
+                      (productData['quantity'] as num?)?.toDouble() ?? 1.0,
+                  unit: productData['unit'] ?? 'pcs',
+                  unitPrice:
+                      (productData['unit_price'] as num?)?.toDouble() ?? 0.0,
+                  inventoryType: productData['inventory_type'] ?? 'product',
+                  description: productData['description'] ?? '',
+                );
+              }).toList();
         });
       } catch (e) {
         print('Error loading products: $e');
@@ -244,12 +262,13 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
 
   Future<void> _generateInvoiceNumber() async {
     try {
-      final response = await _supabase
-          .from('invoices')
-          .select('invoice_number')
-          .order('created_at', ascending: false)
-          .limit(1)
-          .single();
+      final response =
+          await _supabase
+              .from('invoices')
+              .select('invoice_number')
+              .order('created_at', ascending: false)
+              .limit(1)
+              .single();
       final lastInvoiceNumber = response['invoice_number'] as String?;
       if (lastInvoiceNumber != null) {
         final number = int.tryParse(lastInvoiceNumber) ?? 0;
@@ -270,7 +289,8 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
   void _calculateTotals() {
     double amount = _products.fold(0.0, (sum, item) => sum + item.totalPrice);
     double advance = double.tryParse(_advanceController.text) ?? 0.0;
-    double discountValue = double.tryParse(_discountValueController.text) ?? 0.0;
+    double discountValue =
+        double.tryParse(_discountValueController.text) ?? 0.0;
     double discountAmount = 0.0;
 
     if (_discountType == 'percentage') {
@@ -375,31 +395,45 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
         'delivery_date': _selectedDeliveryDate.toIso8601String(),
         'amount': double.tryParse(_amountController.text) ?? 0.0,
         'vat': 0.05, // Fixed VAT rate
-        'amount_including_vat': double.tryParse(_totalAmountController.text) ?? 0.0,
+        'amount_including_vat':
+            double.tryParse(_totalAmountController.text) ?? 0.0,
         'net_total': double.tryParse(_totalAmountController.text) ?? 0.0,
         'advance': double.tryParse(_advanceController.text) ?? 0.0,
         'balance': double.tryParse(_balanceController.text) ?? 0.0,
         'customer_id': _selectedCustomer?.id,
-        'customer_name': _selectedCustomer?.name ?? _customerNameController.text.trim(),
+        'customer_name':
+            _selectedCustomer?.name ?? _customerNameController.text.trim(),
         'customer_phone': _selectedCustomer?.phone ?? '',
         'customer_bill_number': _selectedCustomer?.billNumber ?? '',
         'measurement_id': _selectedMeasurement?.id,
         'measurement_name': _selectedMeasurement?.style,
         'payment_status': _paymentStatus,
         'delivery_status': _deliveryStatus,
-        'delivered_at': _deliveryStatus == 'Delivered' ? DateTime.now().toIso8601String() : null,
-        'paid_at': _paymentStatus == 'Paid' ? DateTime.now().toIso8601String() : null,
-        'notes': _notesController.text.trim().isEmpty ? null : _notesController.text.trim().split('\n'),
+        'delivered_at':
+            _deliveryStatus == 'Delivered'
+                ? DateTime.now().toIso8601String()
+                : null,
+        'paid_at':
+            _paymentStatus == 'Paid' ? DateTime.now().toIso8601String() : null,
+        'notes':
+            _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim().split('\n'),
         'is_delivered': _deliveryStatus == 'Delivered',
-        'products': _products.map((p) => {
-          'name': p.name,
-          'quantity': p.quantity,
-          'unit': p.unit,
-          'unit_price': p.unitPrice,
-          'total_price': p.totalPrice,
-          'inventory_type': p.inventoryType,
-          'description': p.description,
-        }).toList(),
+        'products':
+            _products
+                .map(
+                  (p) => {
+                    'name': p.name,
+                    'quantity': p.quantity,
+                    'unit': p.unit,
+                    'unit_price': p.unitPrice,
+                    'total_price': p.totalPrice,
+                    'inventory_type': p.inventoryType,
+                    'description': p.description,
+                  },
+                )
+                .toList(),
         'discount_type': _discountType,
         'discount_value': double.tryParse(_discountValueController.text) ?? 0.0,
         'discount_amount': _calculateDiscountAmount(),
@@ -410,10 +444,15 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
       if (_isEditMode) {
         data['last_modified_at'] = DateTime.now().toIso8601String();
         data['last_modified_reason'] = 'Edited via mobile app';
-        await _supabase.from('invoices').update(data).eq('id', widget.invoice!['id']);
+        await _supabase
+            .from('invoices')
+            .update(data)
+            .eq('id', widget.invoice!['id']);
       } else {
-        data['id'] = const Uuid().v4(); // Generate new UUID for new invoice
+        data['id'] = const Uuid().v4();
         await _supabase.from('invoices').insert(data);
+        // Update inventory for new invoices
+        await InventoryService.updateInventoryQuantities(_products);
       }
 
       if (mounted) {
@@ -421,7 +460,11 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           SnackBar(
             content: Row(
               children: [
-                Icon(PhosphorIcons.checkCircle(), color: Colors.white, size: 20),
+                Icon(
+                  PhosphorIcons.checkCircle(),
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -470,7 +513,8 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
 
   double _calculateDiscountAmount() {
     double amount = double.tryParse(_amountController.text) ?? 0.0;
-    double discountValue = double.tryParse(_discountValueController.text) ?? 0.0;
+    double discountValue =
+        double.tryParse(_discountValueController.text) ?? 0.0;
     if (_discountType == 'percentage') {
       return amount * (discountValue / 100);
     } else if (_discountType == 'fixed') {
@@ -489,7 +533,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
       animation: _sheetAnimation,
       builder: (context, child) {
         return Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.4 * _sheetAnimation.value),
+          backgroundColor: Colors.black.withOpacity(
+            0.4 * _sheetAnimation.value,
+          ),
           resizeToAvoidBottomInset: true,
           body: GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
@@ -503,7 +549,8 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                   child: Transform.translate(
                     offset: Offset(
                       0,
-                      (screenHeight - safeAreaTop - 40) * (1 - _sheetAnimation.value),
+                      (screenHeight - safeAreaTop - 40) *
+                          (1 - _sheetAnimation.value),
                     ),
                     child: _buildSheetContent(),
                   ),
@@ -574,14 +621,22 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+                        color: InventoryDesignConfig.primaryColor.withOpacity(
+                          0.1,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusM,
+                        ),
                         border: Border.all(
-                          color: InventoryDesignConfig.primaryColor.withOpacity(0.2),
+                          color: InventoryDesignConfig.primaryColor.withOpacity(
+                            0.2,
+                          ),
                         ),
                       ),
                       child: Icon(
-                        _isEditMode ? PhosphorIcons.pencilSimple() : PhosphorIcons.plus(),
+                        _isEditMode
+                            ? PhosphorIcons.pencilSimple()
+                            : PhosphorIcons.plus(),
                         color: InventoryDesignConfig.primaryColor,
                         size: 24,
                       ),
@@ -593,11 +648,12 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                         children: [
                           Text(
                             _isEditMode ? 'Edit Invoice' : 'Create Invoice',
-                            style: InventoryDesignConfig.headlineMedium.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: InventoryDesignConfig.headlineMedium
+                                .copyWith(fontWeight: FontWeight.w700),
                           ),
-                          const SizedBox(height: InventoryDesignConfig.spacingXS),
+                          const SizedBox(
+                            height: InventoryDesignConfig.spacingXS,
+                          ),
                           Text(
                             'Fill in the details below',
                             style: InventoryDesignConfig.bodyMedium.copyWith(
@@ -624,10 +680,16 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                         vertical: InventoryDesignConfig.spacingS,
                       ),
                       decoration: BoxDecoration(
-                        color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+                        color: InventoryDesignConfig.primaryColor.withOpacity(
+                          0.1,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          InventoryDesignConfig.radiusM,
+                        ),
                         border: Border.all(
-                          color: InventoryDesignConfig.primaryColor.withOpacity(0.2),
+                          color: InventoryDesignConfig.primaryColor.withOpacity(
+                            0.2,
+                          ),
                         ),
                       ),
                       child: Row(
@@ -640,9 +702,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _invoiceNumberController.text.isEmpty 
-                              ? 'Generating...' 
-                              : _invoiceNumberController.text,
+                            _invoiceNumberController.text.isEmpty
+                                ? 'Generating...'
+                                : _invoiceNumberController.text,
                             style: InventoryDesignConfig.bodyMedium.copyWith(
                               fontWeight: FontWeight.w700,
                               color: InventoryDesignConfig.primaryColor,
@@ -685,7 +747,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
             height: 40,
             decoration: BoxDecoration(
               color: InventoryDesignConfig.textSecondary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
             ),
             child: Icon(
               icon,
@@ -726,7 +790,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                         onDateSelected: (date) {
                           setState(() {
                             _selectedDate = date;
-                            _dateController.text = DateFormat('MMM dd').format(date);
+                            _dateController.text = DateFormat(
+                              'MMM dd',
+                            ).format(date);
                           });
                         },
                       ),
@@ -740,7 +806,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                         onDateSelected: (date) {
                           setState(() {
                             _selectedDeliveryDate = date;
-                            _deliveryDateController.text = DateFormat('MMM dd').format(date);
+                            _deliveryDateController.text = DateFormat(
+                              'MMM dd',
+                            ).format(date);
                           });
                         },
                       ),
@@ -758,8 +826,11 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                   label: 'Customer Name',
                   value: _selectedCustomer?.name,
                   onTap: _openCustomerSelector,
-                  validator: (val) =>
-                      _selectedCustomer == null ? 'Please select a customer' : null,
+                  validator:
+                      (val) =>
+                          _selectedCustomer == null
+                              ? 'Please select a customer'
+                              : null,
                   prefixIcon: PhosphorIcons.user(),
                 ),
                 const SizedBox(height: InventoryDesignConfig.spacingL),
@@ -788,7 +859,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               children: [
                 // Discount section - always visible
                 _buildDiscountSection(),
-                
+
                 // Advance payment - only if not paid
                 if (_paymentStatus != 'Paid') ...[
                   const SizedBox(height: InventoryDesignConfig.spacingL),
@@ -803,7 +874,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               ],
             ),
             const SizedBox(height: InventoryDesignConfig.spacingXXL),
-             _buildFormSection(
+            _buildFormSection(
               title: 'Status',
               icon: PhosphorIcons.toggleLeft(),
               children: [
@@ -811,7 +882,8 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                   label: 'Payment Status',
                   value: _paymentStatus,
                   items: ['Unpaid', 'Paid', 'Partially Paid'],
-                  onChanged: (val) => setState(() => _paymentStatus = val ?? 'Unpaid'),
+                  onChanged:
+                      (val) => setState(() => _paymentStatus = val ?? 'Unpaid'),
                   prefixIcon: PhosphorIcons.creditCard(),
                 ),
                 const SizedBox(height: InventoryDesignConfig.spacingL),
@@ -819,7 +891,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                   label: 'Delivery Status',
                   value: _deliveryStatus,
                   items: ['Pending', 'Processing', 'Delivered', 'Cancelled'],
-                  onChanged: (val) => setState(() => _deliveryStatus = val ?? 'Pending'),
+                  onChanged:
+                      (val) =>
+                          setState(() => _deliveryStatus = val ?? 'Pending'),
                   prefixIcon: PhosphorIcons.package(),
                 ),
               ],
@@ -844,9 +918,15 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               padding: const EdgeInsets.all(InventoryDesignConfig.spacingS),
               decoration: BoxDecoration(
                 color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusS,
+                ),
               ),
-              child: Icon(icon, size: 16, color: InventoryDesignConfig.primaryColor),
+              child: Icon(
+                icon,
+                size: 16,
+                color: InventoryDesignConfig.primaryColor,
+              ),
             ),
             const SizedBox(width: InventoryDesignConfig.spacingM),
             Text(
@@ -892,20 +972,34 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
             onChanged: (val) => _calculateTotals(),
             style: InventoryDesignConfig.bodyLarge,
             decoration: InputDecoration(
-              labelText: 'Discount Value (${_discountType == 'percentage' ? '%' : 'AED'})',
+              labelText:
+                  'Discount Value (${_discountType == 'percentage' ? '%' : 'AED'})',
               filled: true,
               fillColor: InventoryDesignConfig.surfaceLight,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-                borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.borderPrimary,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-                borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.borderPrimary,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-                borderSide: BorderSide(color: InventoryDesignConfig.primaryColor, width: 2),
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
+                ),
+                borderSide: BorderSide(
+                  color: InventoryDesignConfig.primaryColor,
+                  width: 2,
+                ),
               ),
             ),
           ),
@@ -918,9 +1012,10 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     final isSelected = _discountType == type;
     return Expanded(
       child: Material(
-        color: isSelected
-            ? InventoryDesignConfig.primaryColor
-            : InventoryDesignConfig.surfaceLight,
+        color:
+            isSelected
+                ? InventoryDesignConfig.primaryColor
+                : InventoryDesignConfig.surfaceLight,
         borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
         child: InkWell(
           onTap: () {
@@ -936,11 +1031,14 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusS),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusS,
+              ),
               border: Border.all(
-                color: isSelected
-                    ? InventoryDesignConfig.primaryColor
-                    : InventoryDesignConfig.borderPrimary,
+                color:
+                    isSelected
+                        ? InventoryDesignConfig.primaryColor
+                        : InventoryDesignConfig.borderPrimary,
               ),
             ),
             child: Center(
@@ -948,9 +1046,10 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                 label,
                 style: InventoryDesignConfig.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? Colors.white
-                      : InventoryDesignConfig.textPrimary,
+                  color:
+                      isSelected
+                          ? Colors.white
+                          : InventoryDesignConfig.textPrimary,
                 ),
               ),
             ),
@@ -990,29 +1089,45 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           style: InventoryDesignConfig.bodyLarge,
           decoration: InputDecoration(
             hintText: 'Enter $label',
-            prefixIcon: prefixIcon != null
-                ? Padding(
-                    padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
-                    child: Icon(
-                      prefixIcon,
-                      size: 18,
-                      color: InventoryDesignConfig.textSecondary,
-                    ),
-                  )
-                : null,
+            prefixIcon:
+                prefixIcon != null
+                    ? Padding(
+                      padding: const EdgeInsets.all(
+                        InventoryDesignConfig.spacingM,
+                      ),
+                      child: Icon(
+                        prefixIcon,
+                        size: 18,
+                        color: InventoryDesignConfig.textSecondary,
+                      ),
+                    )
+                    : null,
             filled: true,
             fillColor: InventoryDesignConfig.surfaceLight,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-              borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-              borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-              borderSide: BorderSide(color: InventoryDesignConfig.primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.primaryColor,
+                width: 2,
+              ),
             ),
           ),
         ),
@@ -1047,9 +1162,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-            border: Border.all(
-              color: color.withOpacity(0.3),
-            ),
+            border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1064,17 +1177,13 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(
-                    PhosphorIcons.calendar(),
-                    size: 16,
-                    color: color,
-                  ),
+                  Icon(PhosphorIcons.calendar(), size: 16, color: color),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      controller.text.isEmpty 
-                        ? DateFormat('MMM dd').format(DateTime.now())
-                        : controller.text,
+                      controller.text.isEmpty
+                          ? DateFormat('MMM dd').format(DateTime.now())
+                          : controller.text,
                       style: InventoryDesignConfig.bodyLarge.copyWith(
                         fontWeight: FontWeight.w700,
                         color: color,
@@ -1122,12 +1231,20 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
             filled: true,
             fillColor: InventoryDesignConfig.surfaceLight,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-              borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-              borderSide: BorderSide(color: InventoryDesignConfig.borderPrimary),
+              borderRadius: BorderRadius.circular(
+                InventoryDesignConfig.radiusM,
+              ),
+              borderSide: BorderSide(
+                color: InventoryDesignConfig.borderPrimary,
+              ),
             ),
           ),
           onTap: () async {
@@ -1165,7 +1282,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
         ),
         const SizedBox(height: InventoryDesignConfig.spacingS),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: InventoryDesignConfig.spacingL),
+          padding: const EdgeInsets.symmetric(
+            horizontal: InventoryDesignConfig.spacingL,
+          ),
           decoration: BoxDecoration(
             color: InventoryDesignConfig.surfaceLight,
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
@@ -1175,13 +1294,17 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              icon: Icon(PhosphorIcons.caretDown(), color: InventoryDesignConfig.textSecondary),
-              items: items.map((String item) {
-                return DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(item, style: InventoryDesignConfig.bodyLarge),
-                );
-              }).toList(),
+              icon: Icon(
+                PhosphorIcons.caretDown(),
+                color: InventoryDesignConfig.textSecondary,
+              ),
+              items:
+                  items.map((String item) {
+                    return DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(item, style: InventoryDesignConfig.bodyLarge),
+                    );
+                  }).toList(),
               onChanged: onChanged,
             ),
           ),
@@ -1196,14 +1319,15 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
       children: [
         // Compact Financial Summary
         _buildCompactFinancialSummary(),
-        
+
         // Action Buttons
         Container(
           padding: EdgeInsets.fromLTRB(
             InventoryDesignConfig.spacingXL,
             InventoryDesignConfig.spacingL,
             InventoryDesignConfig.spacingXL,
-            InventoryDesignConfig.spacingL + MediaQuery.of(context).padding.bottom,
+            InventoryDesignConfig.spacingL +
+                MediaQuery.of(context).padding.bottom,
           ),
           decoration: const BoxDecoration(
             color: InventoryDesignConfig.surfaceColor,
@@ -1298,9 +1422,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
         decoration: BoxDecoration(
           color: InventoryDesignConfig.surfaceAccent,
           borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusL),
-          border: Border.all(
-            color: InventoryDesignConfig.borderSecondary,
-          ),
+          border: Border.all(color: InventoryDesignConfig.borderSecondary),
         ),
         child: Column(
           children: [
@@ -1327,198 +1449,206 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
         ),
       );
     }
-    
+
     return Column(
-      children: _products.asMap().entries.map((entry) {
-        final index = entry.key;
-        final product = entry.value;
-        
-        return Container(
-          margin: EdgeInsets.only(
-            bottom: index == _products.length - 1 ? 0 : InventoryDesignConfig.spacingS,
-          ),
-          padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
-          decoration: BoxDecoration(
-            color: InventoryDesignConfig.surfaceColor,
-            borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
-            border: Border.all(
-              color: InventoryDesignConfig.borderSecondary,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
+      children:
+          _products.asMap().entries.map((entry) {
+            final index = entry.key;
+            final product = entry.value;
+
+            return Container(
+              margin: EdgeInsets.only(
+                bottom:
+                    index == _products.length - 1
+                        ? 0
+                        : InventoryDesignConfig.spacingS,
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Color indicator
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: _parseProductColor(product.description),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: InventoryDesignConfig.borderPrimary,
-                    width: 0.5,
-                  ),
+              padding: const EdgeInsets.all(InventoryDesignConfig.spacingM),
+              decoration: BoxDecoration(
+                color: InventoryDesignConfig.surfaceColor,
+                borderRadius: BorderRadius.circular(
+                  InventoryDesignConfig.radiusM,
                 ),
-                child: Icon(
-                  product.inventoryType == 'fabric' 
-                      ? PhosphorIcons.scissors()
-                      : PhosphorIcons.package(),
-                  color: Colors.white,
-                  size: 14,
+                border: Border.all(
+                  color: InventoryDesignConfig.borderSecondary,
                 ),
-              ),
-              
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              
-              // Product info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: InventoryDesignConfig.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${product.quantity.toStringAsFixed(product.quantity.truncateToDouble() == product.quantity ? 0 : 1)} ${product.unit} × AED ${NumberFormat('#,##0').format(product.unitPrice)}',
-                      style: InventoryDesignConfig.bodySmall.copyWith(
-                        color: InventoryDesignConfig.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Quantity controls (vertical)
-              Column(
-                children: [
-                  Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          product.quantity++;
-                          _calculateTotals();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        width: 24,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: InventoryDesignConfig.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Icon(
-                          PhosphorIcons.plus(),
-                          size: 10,
-                          color: InventoryDesignConfig.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    product.quantity.toInt().toString(),
-                    style: InventoryDesignConfig.bodySmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          if (product.quantity > 1) {
-                            product.quantity--;
-                          } else {
-                            _products.removeAt(index);
-                          }
-                          _calculateTotals();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        width: 24,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: InventoryDesignConfig.textSecondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Icon(
-                          PhosphorIcons.minus(),
-                          size: 10,
-                          color: InventoryDesignConfig.textSecondary,
-                        ),
-                      ),
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
-              
-              const SizedBox(width: InventoryDesignConfig.spacingM),
-              
-              // Price and delete
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Row(
                 children: [
-                  Text(
-                    'AED ${NumberFormat('#,##0').format(product.totalPrice)}',
-                    style: InventoryDesignConfig.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: InventoryDesignConfig.successColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(3),
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        setState(() {
-                          _products.removeAt(index);
-                          _calculateTotals();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(3),
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        child: Icon(
-                          PhosphorIcons.trash(),
-                          size: 12,
-                          color: InventoryDesignConfig.errorColor,
-                        ),
+                  // Color indicator
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _parseProductColor(product.description),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: InventoryDesignConfig.borderPrimary,
+                        width: 0.5,
                       ),
                     ),
+                    child: Icon(
+                      product.inventoryType == 'fabric'
+                          ? PhosphorIcons.scissors()
+                          : PhosphorIcons.package(),
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+
+                  const SizedBox(width: InventoryDesignConfig.spacingM),
+
+                  // Product info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: InventoryDesignConfig.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${product.quantity.toStringAsFixed(product.quantity.truncateToDouble() == product.quantity ? 0 : 1)} ${product.unit} × AED ${NumberFormat('#,##0').format(product.unitPrice)}',
+                          style: InventoryDesignConfig.bodySmall.copyWith(
+                            color: InventoryDesignConfig.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Quantity controls (vertical)
+                  Column(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              product.quantity++;
+                              _calculateTotals();
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            width: 24,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: InventoryDesignConfig.primaryColor
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              PhosphorIcons.plus(),
+                              size: 10,
+                              color: InventoryDesignConfig.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        product.quantity.toInt().toString(),
+                        style: InventoryDesignConfig.bodySmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              if (product.quantity > 1) {
+                                product.quantity--;
+                              } else {
+                                _products.removeAt(index);
+                              }
+                              _calculateTotals();
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            width: 24,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: InventoryDesignConfig.textSecondary
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              PhosphorIcons.minus(),
+                              size: 10,
+                              color: InventoryDesignConfig.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(width: InventoryDesignConfig.spacingM),
+
+                  // Price and delete
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'AED ${NumberFormat('#,##0').format(product.totalPrice)}',
+                        style: InventoryDesignConfig.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: InventoryDesignConfig.successColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(3),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() {
+                              _products.removeAt(index);
+                              _calculateTotals();
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(3),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            child: Icon(
+                              PhosphorIcons.trash(),
+                              size: 12,
+                              color: InventoryDesignConfig.errorColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -1596,7 +1726,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     if (colorCode == null || colorCode.isEmpty) {
       return InventoryDesignConfig.primaryColor;
     }
-    
+
     try {
       if (colorCode.startsWith('#')) {
         String hex = colorCode.substring(1);
@@ -1604,7 +1734,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           return Color(int.parse('FF$hex', radix: 16));
         }
       }
-      
+
       // Map common color names to more vibrant colors
       switch (colorCode.toLowerCase()) {
         case 'red':
@@ -1722,9 +1852,10 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                       InventoryDesignConfig.radiusM,
                     ),
                     border: Border.all(
-                      color: state.hasError
-                          ? InventoryDesignConfig.errorColor
-                          : InventoryDesignConfig.borderPrimary,
+                      color:
+                          state.hasError
+                              ? InventoryDesignConfig.errorColor
+                              : InventoryDesignConfig.borderPrimary,
                       width: 1,
                     ),
                   ),
@@ -1820,9 +1951,9 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         child: Icon(
-                          _showSubtotalDetails 
-                            ? PhosphorIcons.caretUp() 
-                            : PhosphorIcons.info(),
+                          _showSubtotalDetails
+                              ? PhosphorIcons.caretUp()
+                              : PhosphorIcons.info(),
                           size: 14,
                           color: InventoryDesignConfig.primaryColor,
                         ),
@@ -1840,7 +1971,7 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               ),
             ],
           ),
-          
+
           // Collapsible details
           if (_showSubtotalDetails) ...[
             const SizedBox(height: 12),
@@ -1863,21 +1994,23 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
               ),
             ),
           ],
-          
+
           // Payment info for unpaid invoices
           if (_paymentStatus != 'Paid' && advance > 0) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: balance > 0 
-                  ? InventoryDesignConfig.warningColor.withOpacity(0.1)
-                  : InventoryDesignConfig.successColor.withOpacity(0.1),
+                color:
+                    balance > 0
+                        ? InventoryDesignConfig.warningColor.withOpacity(0.1)
+                        : InventoryDesignConfig.successColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: balance > 0 
-                    ? InventoryDesignConfig.warningColor.withOpacity(0.3)
-                    : InventoryDesignConfig.successColor.withOpacity(0.3),
+                  color:
+                      balance > 0
+                          ? InventoryDesignConfig.warningColor.withOpacity(0.3)
+                          : InventoryDesignConfig.successColor.withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -1898,19 +2031,24 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
                         'Due: AED ${NumberFormat('#,##0').format(balance)}',
                         style: InventoryDesignConfig.bodyLarge.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: balance > 0 
-                            ? InventoryDesignConfig.warningColor
-                            : InventoryDesignConfig.successColor,
+                          color:
+                              balance > 0
+                                  ? InventoryDesignConfig.warningColor
+                                  : InventoryDesignConfig.successColor,
                         ),
                       ),
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: balance > 0 
-                        ? InventoryDesignConfig.warningColor
-                        : InventoryDesignConfig.successColor,
+                      color:
+                          balance > 0
+                              ? InventoryDesignConfig.warningColor
+                              : InventoryDesignConfig.successColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -1930,7 +2068,11 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
     );
   }
 
-  Widget _buildFinancialRow(String label, double amount, {bool isTotal = false}) {
+  Widget _buildFinancialRow(
+    String label,
+    double amount, {
+    bool isTotal = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1938,18 +2080,20 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
           label,
           style: InventoryDesignConfig.bodyMedium.copyWith(
             fontWeight: isTotal ? FontWeight.w700 : FontWeight.w500,
-            color: isTotal 
-              ? InventoryDesignConfig.textPrimary
-              : InventoryDesignConfig.textSecondary,
+            color:
+                isTotal
+                    ? InventoryDesignConfig.textPrimary
+                    : InventoryDesignConfig.textSecondary,
           ),
         ),
         Text(
           'AED ${NumberFormat('#,##0').format(amount)}',
           style: InventoryDesignConfig.bodyMedium.copyWith(
             fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
-            color: isTotal 
-              ? InventoryDesignConfig.primaryColor
-              : InventoryDesignConfig.textPrimary,
+            color:
+                isTotal
+                    ? InventoryDesignConfig.primaryColor
+                    : InventoryDesignConfig.textPrimary,
           ),
         ),
       ],
@@ -1968,10 +2112,13 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
       child: InkWell(
-        onTap: onTap != null && !loading ? () {
-          HapticFeedback.mediumImpact();
-          onTap();
-        } : null,
+        onTap:
+            onTap != null && !loading
+                ? () {
+                  HapticFeedback.mediumImpact();
+                  onTap();
+                }
+                : null,
         borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -1982,9 +2129,10 @@ class _AddEditInvoiceMobileSheetState extends State<AddEditInvoiceMobileSheet>
             color: backgroundColor,
             borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
             border: Border.all(
-              color: backgroundColor == InventoryDesignConfig.surfaceLight
-                  ? InventoryDesignConfig.borderPrimary
-                  : backgroundColor,
+              color:
+                  backgroundColor == InventoryDesignConfig.surfaceLight
+                      ? InventoryDesignConfig.borderPrimary
+                      : backgroundColor,
             ),
           ),
           child: Row(

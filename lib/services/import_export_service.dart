@@ -142,7 +142,7 @@ class ImportExportService {
               'chest': double.tryParse(cleanField(data['chest']) ?? '') ?? 0,
               'width': double.tryParse(cleanField(data['width']) ?? '') ?? 0,
               'sleeve': double.tryParse(cleanField(data['sleeve']) ?? '') ?? 0,
-              'collar': double.tryParse(cleanField(data['collar']) ?? '') ?? 0,
+              'collar': _parseCollar(cleanField(data['collar'])),
               'under': double.tryParse(cleanField(data['under']) ?? '') ?? 0,
               'back_length': double.tryParse(cleanField(data['back_length']) ?? '') ?? 0,
               'neck': double.tryParse(cleanField(data['neck']) ?? '') ?? 0,
@@ -185,7 +185,7 @@ class ImportExportService {
             'chest': double.tryParse(data['chest']?.toString() ?? '') ?? 0,
             'width': double.tryParse(data['width']?.toString() ?? '') ?? 0,
             'sleeve': double.tryParse(data['sleeve']?.toString() ?? '') ?? 0,
-            'collar': double.tryParse(data['collar']?.toString() ?? '') ?? 0,
+            'collar': _parseCollar(data['collar']?.toString()),
             'under': double.tryParse(data['under']?.toString() ?? '') ?? 0,
             'back_length':
                 double.tryParse(data['back_length']?.toString() ?? '') ?? 0,
@@ -325,7 +325,7 @@ class ImportExportService {
             DoubleCellValue(measurement.chest),
             DoubleCellValue(measurement.width),
             DoubleCellValue(measurement.sleeve),
-            DoubleCellValue(measurement.collar),
+            TextCellValue(_formatCollar(measurement.collar)),
             DoubleCellValue(measurement.under),
             DoubleCellValue(measurement.backLength),
             DoubleCellValue(measurement.neck),
@@ -436,7 +436,7 @@ class ImportExportService {
                 DoubleCellValue(measurement.chest),
                 DoubleCellValue(measurement.width),
                 DoubleCellValue(measurement.sleeve),
-                DoubleCellValue(measurement.collar),
+                TextCellValue(_formatCollar(measurement.collar)),
                 DoubleCellValue(measurement.under),
                 DoubleCellValue(measurement.backLength),
                 DoubleCellValue(measurement.neck),
@@ -474,6 +474,25 @@ class ImportExportService {
       _progressController.add('Error: $e');
       rethrow;
     }
+  }
+
+  Map<String, double> _parseCollar(String? value) {
+    if (value == null || value.isEmpty) {
+      return {'start': 0.0, 'center': 0.0, 'end': 0.0};
+    }
+    try {
+      final parts = value.split(' ');
+      final start = double.tryParse(parts[0].split(':')[1]) ?? 0.0;
+      final center = double.tryParse(parts[1].split(':')[1]) ?? 0.0;
+      final end = double.tryParse(parts[2].split(':')[1]) ?? 0.0;
+      return {'start': start, 'center': center, 'end': end};
+    } catch (e) {
+      return {'start': 0.0, 'center': 0.0, 'end': 0.0};
+    }
+  }
+
+  String _formatCollar(Map<String, double> collar) {
+    return 'S:${collar['start'] ?? 0} C:${collar['center'] ?? 0} E:${collar['end'] ?? 0}';
   }
 
   void dispose() {

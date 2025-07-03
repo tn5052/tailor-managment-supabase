@@ -97,7 +97,7 @@ class _MeasurementFilterDialogState extends State<MeasurementFilterDialog> {
   }
 
   void _applyFilters() {
-    widget.onFilterApplied(_localFilter);
+    widget.onFilterApplied(_localFilter.copyWith(searchQuery: _searchController.text));
     Navigator.of(context).pop();
   }
 
@@ -869,12 +869,189 @@ class _MeasurementFilterDialogState extends State<MeasurementFilterDialog> {
           ),
         ),
         const SizedBox(height: InventoryDesignConfig.spacingM),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRangeTextField(
+                label: 'Length',
+                startController:
+                    TextEditingController(text: _localFilter.lengthRange?.start.toString() ?? ''),
+                endController:
+                    TextEditingController(text: _localFilter.lengthRange?.end.toString() ?? ''),
+                onChanged: (start, end) {
+                  setState(() {
+                    _localFilter = _localFilter.copyWith(
+                      lengthRange: (start != null || end != null)
+                          ? RangeValues(start ?? 0, end ?? double.infinity)
+                          : null,
+                    );
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingL),
+            Expanded(
+              child: _buildRangeTextField(
+                label: 'Chest',
+                startController:
+                    TextEditingController(text: _localFilter.chestRange?.start.toString() ?? ''),
+                endController:
+                    TextEditingController(text: _localFilter.chestRange?.end.toString() ?? ''),
+                onChanged: (start, end) {
+                  setState(() {
+                    _localFilter = _localFilter.copyWith(
+                      chestRange: (start != null || end != null)
+                          ? RangeValues(start ?? 0, end ?? double.infinity)
+                          : null,
+                    );
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingL),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRangeTextField(
+                label: 'Sleeve',
+                startController:
+                    TextEditingController(text: _localFilter.sleeveRange?.start.toString() ?? ''),
+                endController:
+                    TextEditingController(text: _localFilter.sleeveRange?.end.toString() ?? ''),
+                onChanged: (start, end) {
+                  setState(() {
+                    _localFilter = _localFilter.copyWith(
+                      sleeveRange: (start != null || end != null)
+                          ? RangeValues(start ?? 0, end ?? double.infinity)
+                          : null,
+                    );
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingL),
+            Expanded(child: Container()), // Empty space for alignment
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRangeTextField({
+    required String label,
+    required TextEditingController startController,
+    required TextEditingController endController,
+    required Function(double?, double?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text(
-          'Filter measurements by specific value ranges (coming soon)',
-          style: InventoryDesignConfig.bodySmall.copyWith(
-            color: InventoryDesignConfig.textTertiary,
-            fontStyle: FontStyle.italic,
+          label,
+          style: InventoryDesignConfig.labelLarge.copyWith(
+            color: InventoryDesignConfig.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: startController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Min',
+                  filled: true,
+                  fillColor: InventoryDesignConfig.surfaceLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.borderPrimary,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.borderPrimary,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.primaryColor,
+                      width: 2.0,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: InventoryDesignConfig.spacingL,
+                    vertical: InventoryDesignConfig.spacingM,
+                  ),
+                ),
+                onChanged: (value) {
+                  onChanged(
+                    double.tryParse(value),
+                    double.tryParse(endController.text),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Expanded(
+              child: TextFormField(
+                controller: endController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Max',
+                  filled: true,
+                  fillColor: InventoryDesignConfig.surfaceLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.borderPrimary,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.borderPrimary,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      InventoryDesignConfig.radiusM,
+                    ),
+                    borderSide: BorderSide(
+                      color: InventoryDesignConfig.primaryColor,
+                      width: 2.0,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: InventoryDesignConfig.spacingL,
+                    vertical: InventoryDesignConfig.spacingM,
+                  ),
+                ),
+                onChanged: (value) {
+                  onChanged(
+                    double.tryParse(startController.text),
+                    double.tryParse(value),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );

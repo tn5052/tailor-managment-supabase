@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/responsive_layout.dart';
-import '../models/invoice.dart';
-import '../models/measurement.dart';
-import '../models/complaint.dart';
-import '../services/invoice_service.dart';
-import '../widgets/dashboard/status_distribution.dart';
-import '../widgets/dashboard/overview_grid.dart';
-import '../widgets/dashboard/recent_activity.dart';
-import '../widgets/dashboard/performance_metrics.dart';
-import '../widgets/dashboard/dashboard_header.dart';
-import '../services/measurement_service.dart';
-import '../services/complaint_service.dart';  // Add this import
-import 'package:supabasetest/screens/settings_screen.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../theme/inventory_design_config.dart';
+import '../widgets/dashboard/overview_stats_widget.dart';
+import '../widgets/dashboard/revenue_chart_widget.dart';
+import '../widgets/dashboard/recent_orders_widget.dart';
+import '../widgets/dashboard/customer_insights_widget.dart';
+import '../widgets/dashboard/inventory_alerts_widget.dart';
+import '../widgets/dashboard/performance_metrics_widget.dart';
+import '../widgets/dashboard/top_customers_widget.dart';
+import '../widgets/dashboard/monthly_targets_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -22,176 +18,361 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final InvoiceService _invoiceService = InvoiceService();
-  final MeasurementService _measurementService = MeasurementService();
-  final ComplaintService _complaintService = ComplaintService(Supabase.instance.client);  // Add this
-  late Stream<List<Invoice>> _invoicesStream;
-  late Stream<List<Measurement>> _measurementsStream;
-  late Stream<List<Complaint>> _complaintsStream;  // Add this
+  bool _isLoading = false;
+  String _selectedTimeRange = '30 days';
+  final List<String> _timeRangeOptions = [
+    '7 days',
+    '30 days',
+    '90 days',
+    '1 year',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _invoicesStream = _invoiceService.getInvoicesStream();
-    _measurementsStream = _measurementService.getMeasurementsStream();
-    _complaintsStream = _complaintService.getComplaintsStream();  // Add this
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    // Simulate loading delay
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          if (ResponsiveLayout.isMobile(context))
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                );
-              },
-            ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: InventoryDesignConfig.backgroundColor,
+      ),
+      child: Column(
+        children: [
+          // Header Section
+          _buildHeader(),
+
+          // Main Content
+          Expanded(
+            child: _isLoading ? _buildLoadingState() : _buildDashboardContent(),
+          ),
         ],
       ),
-      body: StreamBuilder<List<Invoice>>(
-        stream: _invoicesStream,
-        builder: (context, invoiceSnapshot) {
-          return StreamBuilder<List<Measurement>>(
-            stream: _measurementsStream,
-            builder: (context, measurementSnapshot) {
-              return StreamBuilder<List<Complaint>>(  // Add this StreamBuilder
-                stream: _complaintsStream,
-                builder: (context, complaintSnapshot) {
-                  if (invoiceSnapshot.hasError || 
-                      measurementSnapshot.hasError ||
-                      complaintSnapshot.hasError) {
-                    return const Center(child: Text('Error loading data'));
-                  }
+    );
+  }
 
-                  if (!invoiceSnapshot.hasData || 
-                      !measurementSnapshot.hasData ||
-                      !complaintSnapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final invoices = invoiceSnapshot.data!;
-                  final measurements = measurementSnapshot.data!;
-                  final complaints = complaintSnapshot.data!;  // Add this
-
-                  return SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: ResponsiveLayout(
-                        mobileBody: _buildMobileLayout(
-                          invoices, 
-                          measurements,
-                          complaints,  // Add this
-                        ),
-                        desktopBody: _buildDesktopLayout(
-                          invoices, 
-                          measurements,
-                          complaints,  // Add this
-                        ),
+  Widget _buildHeader() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: InventoryDesignConfig.backgroundColor,
+      ),
+      padding: const EdgeInsets.fromLTRB(32, 20, 32, 16),
+      child: Row(
+        children: [
+          // Title section
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      InventoryDesignConfig.primaryColor,
+                      InventoryDesignConfig.primaryColor.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: InventoryDesignConfig.primaryColor.withOpacity(
+                        0.3,
                       ),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                  ],
+                ),
+                child: Icon(
+                  PhosphorIcons.chartLine(),
+                  size: 24,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Business Dashboard',
+                    style: InventoryDesignConfig.headlineLarge.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    'Real-time insights for your tailor business',
+                    style: InventoryDesignConfig.bodyMedium.copyWith(
+                      fontSize: 14,
+                      color: InventoryDesignConfig.textSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // Time range selector and refresh
+          Row(
+            children: [
+              _buildTimeRangeSelector(),
+              const SizedBox(width: 16),
+              _buildRefreshButton(),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMobileLayout(
-    List<Invoice> invoices, 
-    List<Measurement> measurements,
-    List<Complaint> complaints,  // Add this
-  ) {
-    return Column(
-      children: [
-        SafeArea(
-          child: DashboardHeader(
-            invoices: invoices,
-            onRefresh: () => setState(() {}),
-            isMobile: true,
+  Widget _buildTimeRangeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: InventoryDesignConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: InventoryDesignConfig.borderPrimary),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedTimeRange,
+          icon: Icon(
+            PhosphorIcons.caretDown(),
+            size: 16,
+            color: InventoryDesignConfig.textSecondary,
+          ),
+          style: InventoryDesignConfig.bodyMedium.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+          dropdownColor: InventoryDesignConfig.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedTimeRange = newValue;
+              });
+              _loadDashboardData();
+            }
+          },
+          items:
+              _timeRangeOptions.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          PhosphorIcons.calendar(),
+                          size: 16,
+                          color: InventoryDesignConfig.primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(value),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton() {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+      child: InkWell(
+        onTap: _isLoading ? null : _loadDashboardData,
+        borderRadius: BorderRadius.circular(InventoryDesignConfig.radiusM),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(
+            horizontal: InventoryDesignConfig.spacingL,
+            vertical: InventoryDesignConfig.spacingM,
+          ),
+          decoration: InventoryDesignConfig.buttonSecondaryDecoration,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isLoading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: InventoryDesignConfig.primaryColor,
+                  ),
+                )
+              else
+                Icon(
+                  PhosphorIcons.arrowClockwise(),
+                  size: 16,
+                  color: InventoryDesignConfig.textSecondary,
+                ),
+              const SizedBox(width: InventoryDesignConfig.spacingXS),
+              Text(
+                _isLoading ? 'Refreshing...' : 'Refresh',
+                style: InventoryDesignConfig.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 24),
-        OverviewGrid(invoices: invoices, isExpanded: true),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-
-        ),
-        const SizedBox(height: 16),
-        StatusDistribution(invoices: invoices),
-        const SizedBox(height: 16),
-        PerformanceMetrics(invoices: invoices),
-        const SizedBox(height: 16),
-        RecentActivity(
-          invoices: invoices, 
-          measurements: measurements,
-          complaints: complaints,  // Add this
-        ),
-        // Add bottom padding for mobile
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-      ],
+      ),
     );
   }
 
-  Widget _buildDesktopLayout(
-    List<Invoice> invoices, 
-    List<Measurement> measurements,
-    List<Complaint> complaints,  // Add this
-  ) {
-    return Column(
-      children: [
-        DashboardHeader(
-          invoices: invoices,
-          onRefresh: () => setState(() {}),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  OverviewGrid(invoices: invoices),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: StatusDistribution(invoices: invoices),
-                      ),
-                      const SizedBox(width: 16),
-           
-                    ],
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: InventoryDesignConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: InventoryDesignConfig.primaryColor,
                   ),
-                  const SizedBox(height: 16),
-                  PerformanceMetrics(invoices: invoices),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading Dashboard...',
+                  style: InventoryDesignConfig.titleMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Fetching your business insights',
+                  style: InventoryDesignConfig.bodyMedium.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: RecentActivity(
-                invoices: invoices, 
-                measurements: measurements,
-                complaints: complaints,  // Add this
-              ),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
+  Widget _buildDashboardContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overview Stats Row
+          OverviewStatsWidget(timeRange: _selectedTimeRange),
+
+          const SizedBox(height: 24),
+
+          // Charts and Analytics Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column - Revenue Chart
+              Expanded(
+                flex: 2,
+                child: RevenueChartWidget(timeRange: _selectedTimeRange),
+              ),
+
+              const SizedBox(width: 24),
+
+              // Right Column - Performance Metrics
+              Expanded(
+                flex: 1,
+                child: PerformanceMetricsWidget(timeRange: _selectedTimeRange),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Middle Row - Customer Insights and Monthly Targets
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: CustomerInsightsWidget(timeRange: _selectedTimeRange),
+              ),
+
+              const SizedBox(width: 24),
+
+              Expanded(
+                child: MonthlyTargetsWidget(timeRange: _selectedTimeRange),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Bottom Row - Recent Orders, Top Customers, and Alerts
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Recent Orders
+              Expanded(
+                flex: 2,
+                child: RecentOrdersWidget(timeRange: _selectedTimeRange),
+              ),
+
+              const SizedBox(width: 24),
+
+              // Right Column with Top Customers and Inventory Alerts
+              Expanded(
+                flex: 1,
+                child: Column(
+                  children: [
+                    TopCustomersWidget(timeRange: _selectedTimeRange),
+                    const SizedBox(height: 24),
+                    InventoryAlertsWidget(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

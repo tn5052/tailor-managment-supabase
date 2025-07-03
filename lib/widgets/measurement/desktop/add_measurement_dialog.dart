@@ -79,7 +79,9 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
   late final TextEditingController _chestController;
   late final TextEditingController _widthController;
   late final TextEditingController _sleeveController;
-  late final TextEditingController _collarController;
+  late final TextEditingController _collarStartController;
+  late final TextEditingController _collarCenterController;
+  late final TextEditingController _collarEndController;
   late final TextEditingController _underController;
   late final TextEditingController _backLengthController;
   late final TextEditingController _neckController;
@@ -126,7 +128,9 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     _chestController = TextEditingController();
     _widthController = TextEditingController();
     _sleeveController = TextEditingController();
-    _collarController = TextEditingController();
+    _collarStartController = TextEditingController();
+    _collarCenterController = TextEditingController();
+    _collarEndController = TextEditingController();
     _underController = TextEditingController();
     _backLengthController = TextEditingController();
     _neckController = TextEditingController();
@@ -161,7 +165,9 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _chestController.text = measurement.chest.toString();
       _widthController.text = measurement.width.toString();
       _sleeveController.text = measurement.sleeve.toString();
-      _collarController.text = measurement.collar.toString();
+      _collarStartController.text = measurement.collar['start'].toString();
+      _collarCenterController.text = measurement.collar['center'].toString();
+      _collarEndController.text = measurement.collar['end'].toString();
       _underController.text = measurement.under.toString();
       _backLengthController.text = measurement.backLength.toString();
       _neckController.text = measurement.neck.toString();
@@ -214,7 +220,9 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     _chestController.dispose();
     _widthController.dispose();
     _sleeveController.dispose();
-    _collarController.dispose();
+    _collarStartController.dispose();
+    _collarCenterController.dispose();
+    _collarEndController.dispose();
     _underController.dispose();
     _backLengthController.dispose();
     _neckController.dispose();
@@ -251,7 +259,11 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         chest: FractionHelper.parseFraction(_chestController.text),
         width: FractionHelper.parseFraction(_widthController.text),
         sleeve: FractionHelper.parseFraction(_sleeveController.text),
-        collar: FractionHelper.parseFraction(_collarController.text),
+        collar: {
+          'start': FractionHelper.parseFraction(_collarStartController.text),
+          'center': FractionHelper.parseFraction(_collarCenterController.text),
+          'end': FractionHelper.parseFraction(_collarEndController.text),
+        },
         under: FractionHelper.parseFraction(_underController.text),
         backLength: FractionHelper.parseFraction(_backLengthController.text),
         neck: FractionHelper.parseFraction(_neckController.text),
@@ -511,8 +523,8 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
                     Expanded(
                       child: _buildDropdown<String>(
                         value: _selectedTarbooshType,
-                        label: 'Cap Style',
-                        arabicLabel: 'موديل التربوش', // Placeholder
+                        label: 'Tarboosh Type',
+                        arabicLabel: ' التربوش', // Placeholder
                         icon: PhosphorIcons.crown(),
                         items:
                             _tarbooshOptions
@@ -903,7 +915,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         icon: PhosphorIcons.arrowUp(),
       ),
       _MeasurementField(
-        controller: _collarController,
+        controller: _neckController,
         label: 'Neck Size',
         arabicLabel: 'رقبہ',
         icon: PhosphorIcons.circle(),
@@ -925,6 +937,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         label: 'Sleeve Fitting',
         arabicLabel: 'فكم',
         icon: PhosphorIcons.circleNotch(),
+        isCustom: true,
       ),
       _MeasurementField(
         controller: _underController,
@@ -934,21 +947,21 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       ),
       _MeasurementField(
         controller: _seamController,
-        label: 'Side Seam',
+        label: 'Shoulder Shaib',
         arabicLabel: 'شيب',
         icon: PhosphorIcons.path(),
         isTextField: true,
       ),
       _MeasurementField(
         controller: _adhesiveController,
-        label: 'Adhesive',
+        label: 'Bottom',
         arabicLabel: 'چسبا',
         icon: PhosphorIcons.drop(),
         isTextField: true,
       ),
       _MeasurementField(
         controller: _underKanduraController,
-        label: 'Under Kandura',
+        label: 'Bottom Kandura',
         arabicLabel: 'تحت كندورة',
         icon: PhosphorIcons.shirtFolded(),
         isTextField: true,
@@ -967,6 +980,9 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       itemCount: measurements.length,
       itemBuilder: (context, index) {
         final field = measurements[index];
+        if (field.isCustom) {
+          return _buildSleeveFittingFields();
+        }
         return field.isTextField
             ? _buildCompactTextField(
               controller: field.controller,
@@ -991,7 +1007,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     final styleFields = [
       _StyleField(
         controller: _openSleeveController,
-        label: 'Sleeve Opening',
+        label: 'Sleeve Stich',
         arabicLabel: 'كم سلائی',
         icon: PhosphorIcons.tShirt(),
       ),
@@ -1009,7 +1025,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       ),
       _StyleField(
         controller: _buttonController,
-        label: 'Side Pocket',
+        label: 'front Plate',
         arabicLabel: 'بتى',
         icon: PhosphorIcons.circle(),
       ),
@@ -1153,7 +1169,7 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
   Widget _buildMeasurementField({
     required TextEditingController controller,
-    required String englishLabel,
+    String? englishLabel,
     required String arabicLabel,
     required IconData icon,
     bool required = false,
@@ -1162,37 +1178,39 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            if (isHighlighted)
-              Container(
-                width: 4,
-                height: 4,
-                margin: const EdgeInsets.only(
-                  right: InventoryDesignConfig.spacingXS,
+        if (englishLabel != null)
+          Row(
+            children: [
+              if (isHighlighted)
+                Container(
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(
+                    right: InventoryDesignConfig.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: InventoryDesignConfig.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: InventoryDesignConfig.primaryColor,
-                  shape: BoxShape.circle,
+              Expanded(
+                child: Text(
+                  englishLabel,
+                  style: InventoryDesignConfig.labelLarge.copyWith(
+                    color:
+                        isHighlighted
+                            ? InventoryDesignConfig.primaryColor
+                            : InventoryDesignConfig.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            Expanded(
-              child: Text(
-                englishLabel,
-                style: InventoryDesignConfig.labelLarge.copyWith(
-                  color:
-                      isHighlighted
-                          ? InventoryDesignConfig.primaryColor
-                          : InventoryDesignConfig.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: InventoryDesignConfig.spacingS),
+            ],
+          ),
+        if (englishLabel != null)
+          const SizedBox(height: InventoryDesignConfig.spacingS),
         TextFormField(
           controller: controller,
           keyboardType: TextInputType.text,
@@ -1504,6 +1522,57 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       ],
     );
   }
+
+  Widget _buildSleeveFittingFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Sleeve Fitting',
+                style: InventoryDesignConfig.labelLarge.copyWith(
+                  color: InventoryDesignConfig.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: InventoryDesignConfig.spacingS),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMeasurementField(
+                controller: _collarStartController,
+                arabicLabel: 'البداية',
+                icon: PhosphorIcons.arrowLineUp(),
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Expanded(
+              child: _buildMeasurementField(
+                controller: _collarCenterController,
+                arabicLabel: 'الوسط',
+                icon: PhosphorIcons.arrowElbowRight(),
+              ),
+            ),
+            const SizedBox(width: InventoryDesignConfig.spacingS),
+            Expanded(
+              child: _buildMeasurementField(
+                controller: _collarEndController,
+                arabicLabel: 'النهاية',
+                icon: PhosphorIcons.arrowLineDown(),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _MeasurementField {
@@ -1514,6 +1583,7 @@ class _MeasurementField {
   final bool required;
   final bool isHighlighted;
   final bool isTextField;
+  final bool isCustom;
 
   _MeasurementField({
     required this.controller,
@@ -1523,6 +1593,7 @@ class _MeasurementField {
     this.required = false,
     this.isHighlighted = false,
     this.isTextField = false,
+    this.isCustom = false,
   });
 }
 

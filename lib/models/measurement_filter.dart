@@ -25,6 +25,9 @@ class MeasurementFilter {
   final MeasurementGroupBy groupBy;
   final MeasurementSortBy sortBy; // Added sortBy
   final bool sortAscending; // Added sortAscending
+  final RangeValues? lengthRange;
+  final RangeValues? chestRange;
+  final RangeValues? sleeveRange;
 
   const MeasurementFilter({
     this.searchQuery = '',
@@ -39,6 +42,9 @@ class MeasurementFilter {
     this.groupBy = MeasurementGroupBy.none,
     this.sortBy = MeasurementSortBy.date, // Added sortBy with default
     this.sortAscending = true, // Added sortAscending with default
+    this.lengthRange,
+    this.chestRange,
+    this.sleeveRange,
   });
 
   bool get hasActiveFilters =>
@@ -53,7 +59,10 @@ class MeasurementFilter {
       !showActive ||
       groupBy != MeasurementGroupBy.none ||
       sortBy != MeasurementSortBy.date || // Added sortBy
-      !sortAscending; // Added sortAscending
+      !sortAscending ||
+      lengthRange != null ||
+      chestRange != null ||
+      sleeveRange != null;
 
   MeasurementFilter copyWith({
     String? searchQuery,
@@ -68,6 +77,9 @@ class MeasurementFilter {
     MeasurementGroupBy? groupBy,
     MeasurementSortBy? sortBy, // Added sortBy
     bool? sortAscending, // Added sortAscending
+    RangeValues? lengthRange,
+    RangeValues? chestRange,
+    RangeValues? sleeveRange,
   }) {
     return MeasurementFilter(
       searchQuery: searchQuery ?? this.searchQuery,
@@ -82,6 +94,9 @@ class MeasurementFilter {
       groupBy: groupBy ?? this.groupBy,
       sortBy: sortBy ?? this.sortBy, // Added sortBy
       sortAscending: sortAscending ?? this.sortAscending, // Added sortAscending
+      lengthRange: lengthRange ?? this.lengthRange,
+      chestRange: chestRange ?? this.chestRange,
+      sleeveRange: sleeveRange ?? this.sleeveRange,
     );
   }
 }

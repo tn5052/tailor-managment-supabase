@@ -6,17 +6,17 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../models/customer.dart';
 import '../../../models/invoice.dart';
 import '../../../models/measurement.dart';
-import '../../../models/complaint.dart';
+import '../../../models/new_complaint_model.dart';
 import '../../../services/customer_service.dart';
 import '../../../services/invoice_service.dart';
 import '../../../services/measurement_service.dart';
-import '../../../services/complaint_service.dart';
+import '../../../services/new_complaint_service.dart';
 import '../../../utils/number_formatter.dart';
 import '../../../theme/inventory_design_config.dart';
 import 'add_customer_mobile_sheet.dart';
 import '../../measurement/desktop/add_measurement_dialog.dart';
 import '../../invoice/desktop/add_edit_invoice_desktop_dialog.dart';
-import '../../complaint/complaint_dialog.dart';
+import '../../complaint/new_complaint_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomerDetailScreenMobile extends StatefulWidget {
@@ -56,9 +56,7 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
   final SupabaseService _customerService = SupabaseService();
   final InvoiceService _invoiceService = InvoiceService();
   final MeasurementService _measurementService = MeasurementService();
-  final ComplaintService _complaintService = ComplaintService(
-    Supabase.instance.client,
-  );
+  late final NewComplaintService _complaintService;
 
   late TabController _tabController;
   late ScrollController _scrollController;
@@ -70,13 +68,14 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
   List<Customer> _referrals = [];
   List<Measurement> _measurements = [];
   List<Invoice> _invoices = [];
-  List<Complaint> _complaints = [];
+  List<NewComplaint> _complaints = [];
   Customer? _referredBy;
   Customer? _familyHead;
 
   @override
   void initState() {
     super.initState();
+    _complaintService = NewComplaintService(Supabase.instance.client);
     _tabController = TabController(length: 4, vsync: this);
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
@@ -152,7 +151,7 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
 
     _measurements = results[0] as List<Measurement>;
     _invoices = results[1] as List<Invoice>;
-    _complaints = results[2] as List<Complaint>;
+    _complaints = results[2] as List<NewComplaint>;
   }
 
   void _calculateFinancialSummary() {
@@ -782,10 +781,8 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
     );
   }
 
-  Widget _buildComplaintItem(Complaint complaint) {
-    final statusColor = _getComplaintStatusColor(
-      complaint.status.toString().split('.').last,
-    );
+  Widget _buildComplaintItem(NewComplaint complaint) {
+    final statusColor = complaint.status.color;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -825,7 +822,7 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      complaint.status.toString().split('.').last.toUpperCase(),
+                      complaint.status.displayName.toUpperCase(),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -1598,10 +1595,8 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
     );
   }
 
-  Widget _buildComplaintCard(Complaint complaint) {
-    final statusColor = _getComplaintStatusColor(
-      complaint.status.toString().split('.').last,
-    );
+  Widget _buildComplaintCard(NewComplaint complaint) {
+    final statusColor = complaint.status.color;
 
     return Container(
       padding: const EdgeInsets.all(InventoryDesignConfig.spacingL),
@@ -1650,7 +1645,7 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
                 ),
               ),
               _buildStatusChip(
-                complaint.status.toString().split('.').last.toUpperCase(),
+                complaint.status.displayName.toUpperCase(),
                 statusColor,
               ),
             ],
@@ -1658,25 +1653,25 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
 
           const SizedBox(height: InventoryDesignConfig.spacingM),
 
-          Text(complaint.description, style: InventoryDesignConfig.bodyMedium),
+          if (complaint.description != null && complaint.description!.isNotEmpty)
+            Text(complaint.description!, style: InventoryDesignConfig.bodyMedium),
 
           const SizedBox(height: InventoryDesignConfig.spacingM),
 
           Row(
             children: [
               _buildStatusChip(
-                complaint.priority.toString().split('.').last.toUpperCase(),
-                _getPriorityColor(
-                  complaint.priority.toString().split('.').last,
-                ),
+                complaint.priority.displayName.toUpperCase(),
+                complaint.priority.color,
               ),
               const Spacer(),
-              Text(
-                'Assigned to ${complaint.assignedTo}',
-                style: InventoryDesignConfig.bodySmall.copyWith(
-                  color: InventoryDesignConfig.textSecondary,
+              if (complaint.assignedTo != null && complaint.assignedTo!.isNotEmpty)
+                Text(
+                  'Assigned to ${complaint.assignedTo}',
+                  style: InventoryDesignConfig.bodySmall.copyWith(
+                    color: InventoryDesignConfig.textSecondary,
+                  ),
                 ),
-              ),
             ],
           ),
         ],
@@ -2013,12 +2008,12 @@ class _CustomerDetailScreenMobileState extends State<CustomerDetailScreenMobile>
   }
 
   Future<void> _addComplaint() async {
-    await ComplaintDialog.show(
+    await NewComplaintDialog.show(
       context,
       customerId: widget.customer.id,
       customerName: widget.customer.name,
+      onComplaintUpdated: _loadData,
     );
-    await _loadCustomerActivity();
   }
 
   Future<void> _callCustomer() async {

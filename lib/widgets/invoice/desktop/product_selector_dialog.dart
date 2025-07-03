@@ -54,7 +54,6 @@ class _ProductSelectorDialogState extends State<ProductSelectorDialog> {
   List<InvoiceProduct> _selectedProducts = [];
   List<String> _availableBrands = [];
 
-  final List<double> _quickMeters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
   final List<int> _quickQuantities = [1, 2, 3, 4, 5, 10, 15, 20];
 
   @override

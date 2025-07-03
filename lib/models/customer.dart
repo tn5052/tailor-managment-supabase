@@ -35,6 +35,8 @@ class Customer {
     this.familyRelation,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  factory Customer.fromJson(Map<String, dynamic> json) => Customer.fromMap(json);
+
   factory Customer.fromMap(Map<String, dynamic> map) {
     return Customer(
       id: map['id'],

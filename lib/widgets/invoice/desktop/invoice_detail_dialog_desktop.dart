@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_null_comparison
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -378,8 +380,8 @@ class _InvoiceDetailDialogDesktopState
             height: 40,
             decoration: BoxDecoration(
               color:
-                  product.description != null && product.description!.isNotEmpty
-                      ? _parseColor(product.description!)
+                  product.description != null && product.description.isNotEmpty
+                      ? _parseColor(product.description)
                       : InventoryDesignConfig.primaryColor,
               borderRadius: BorderRadius.circular(
                 InventoryDesignConfig.radiusS,
