@@ -160,18 +160,18 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
       _selectedCustomerId = measurement.customerId;
       _billNumber = measurement.billNumber;
       _selectedStyle = measurement.style;
-      _lengthArabiController.text = measurement.lengthArabi.toString();
-      _lengthKuwaitiController.text = measurement.lengthKuwaiti.toString();
-      _chestController.text = measurement.chest.toString();
-      _widthController.text = measurement.width.toString();
-      _sleeveController.text = measurement.sleeve.toString();
-      _collarStartController.text = measurement.collar['start'].toString();
-      _collarCenterController.text = measurement.collar['center'].toString();
-      _collarEndController.text = measurement.collar['end'].toString();
-      _underController.text = measurement.under.toString();
-      _backLengthController.text = measurement.backLength.toString();
-      _neckController.text = measurement.neck.toString();
-      _shoulderController.text = measurement.shoulder.toString();
+      _lengthArabiController.text = measurement.lengthArabi;
+      _lengthKuwaitiController.text = measurement.lengthKuwaiti;
+      _chestController.text = measurement.chest;
+      _widthController.text = measurement.width;
+      _sleeveController.text = measurement.sleeve;
+      _collarStartController.text = measurement.collar['start'] ?? '';
+      _collarCenterController.text = measurement.collar['center'] ?? '';
+      _collarEndController.text = measurement.collar['end'] ?? '';
+      _underController.text = measurement.under;
+      _backLengthController.text = measurement.backLength;
+      _neckController.text = measurement.neck;
+      _shoulderController.text = measurement.shoulder;
       _seamController.text = measurement.seam;
       _adhesiveController.text = measurement.adhesive;
       _underKanduraController.text = measurement.underKandura;
@@ -252,22 +252,20 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
         customerId: _selectedCustomerId!,
         billNumber: _billNumber,
         style: _selectedStyle!,
-        lengthArabi: FractionHelper.parseFraction(_lengthArabiController.text),
-        lengthKuwaiti: FractionHelper.parseFraction(
-          _lengthKuwaitiController.text,
-        ),
-        chest: FractionHelper.parseFraction(_chestController.text),
-        width: FractionHelper.parseFraction(_widthController.text),
-        sleeve: FractionHelper.parseFraction(_sleeveController.text),
+        lengthArabi: _lengthArabiController.text,
+        lengthKuwaiti: _lengthKuwaitiController.text,
+        chest: _chestController.text,
+        width: _widthController.text,
+        sleeve: _sleeveController.text,
         collar: {
-          'start': FractionHelper.parseFraction(_collarStartController.text),
-          'center': FractionHelper.parseFraction(_collarCenterController.text),
-          'end': FractionHelper.parseFraction(_collarEndController.text),
+          'start': _collarStartController.text,
+          'center': _collarCenterController.text,
+          'end': _collarEndController.text,
         },
-        under: FractionHelper.parseFraction(_underController.text),
-        backLength: FractionHelper.parseFraction(_backLengthController.text),
-        neck: FractionHelper.parseFraction(_neckController.text),
-        shoulder: FractionHelper.parseFraction(_shoulderController.text),
+        under: _underController.text,
+        backLength: _backLengthController.text,
+        neck: _neckController.text,
+        shoulder: _shoulderController.text,
         seam: _seamController.text,
         adhesive: _adhesiveController.text,
         underKandura: _underKanduraController.text,
@@ -296,8 +294,10 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
 
       if (mounted) {
         Navigator.of(context).pop();
-        widget.onMeasurementAdded?.call();
-
+        // Immediately refresh the list after saving
+        if (widget.onMeasurementAdded != null) {
+          widget.onMeasurementAdded!();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1299,9 +1299,6 @@ class _AddMeasurementDialogState extends State<AddMeasurementDialog> {
                   ? (value) {
                     if (value == null || value.isEmpty) {
                       return 'Required';
-                    }
-                    if (!FractionHelper.isValidFraction(value)) {
-                      return 'Invalid';
                     }
                     return null;
                   }

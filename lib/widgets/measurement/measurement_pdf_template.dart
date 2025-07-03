@@ -19,15 +19,13 @@ class MeasurementTemplate {
     final englishBoldFont = pw.Font.ttf(
       await rootBundle.load('assets/fonts/Roboto-Bold.ttf'),
     );
-    
-    final logoImage = (await rootBundle.load('assets/images/3.png')).buffer.asUint8List();
+
+    final logoImage =
+        (await rootBundle.load('assets/images/3.png')).buffer.asUint8List();
     final logo = pw.MemoryImage(logoImage);
-    
+
     final pdf = pw.Document(
-      theme: pw.ThemeData.withFont(
-        base: englishFont,
-        bold: englishBoldFont,
-      ),
+      theme: pw.ThemeData.withFont(base: englishFont, bold: englishBoldFont),
     );
 
     pdf.addPage(
@@ -40,7 +38,7 @@ class MeasurementTemplate {
             children: [
               _buildHeader(logo, customerName, measurement),
               pw.SizedBox(height: 24),
-              
+
               _buildSection(
                 title: 'Style & Design',
                 content: _buildStyleAndDesign(measurement),
@@ -57,18 +55,21 @@ class MeasurementTemplate {
                 title: 'Style Details',
                 content: _buildStyleDetails(measurement),
               ),
-              
+
               if (measurement.notes.isNotEmpty) ...[
                 pw.SizedBox(height: 16),
                 _buildSection(
                   title: 'Additional Notes',
                   content: pw.Text(
                     measurement.notes,
-                    style: const pw.TextStyle(fontSize: 10, color: _secondaryColor),
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: _secondaryColor,
+                    ),
                   ),
                 ),
               ],
-              
+
               pw.Spacer(),
               _buildFooter(),
             ],
@@ -134,16 +135,25 @@ class MeasurementTemplate {
               height: 70,
             ),
             pw.SizedBox(height: 8),
-            _buildHeaderInfo('DATE', _formatDate(measurement.date), alignRight: true),
+            _buildHeaderInfo(
+              'DATE',
+              _formatDate(measurement.date),
+              alignRight: true,
+            ),
           ],
         ),
       ],
     );
   }
 
-  static pw.Widget _buildHeaderInfo(String label, String value, {bool alignRight = false}) {
+  static pw.Widget _buildHeaderInfo(
+    String label,
+    String value, {
+    bool alignRight = false,
+  }) {
     return pw.Column(
-      crossAxisAlignment: alignRight ? pw.CrossAxisAlignment.end : pw.CrossAxisAlignment.start,
+      crossAxisAlignment:
+          alignRight ? pw.CrossAxisAlignment.end : pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
           label,
@@ -166,7 +176,10 @@ class MeasurementTemplate {
     );
   }
 
-  static pw.Widget _buildSection({required String title, required pw.Widget content}) {
+  static pw.Widget _buildSection({
+    required String title,
+    required pw.Widget content,
+  }) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
@@ -203,42 +216,50 @@ class MeasurementTemplate {
     return pw.Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: styleItems.map((item) => pw.SizedBox(width: 150, child: item)).toList(),
+      children:
+          styleItems
+              .map((item) => pw.SizedBox(width: 150, child: item))
+              .toList(),
     );
   }
 
   static pw.Widget _buildMainMeasurements(Measurement measurement) {
     final List<pw.Widget> measurementItems = [
-      _buildMeasurementItem(
+      _buildDetailItem(
         measurement.style == 'Emirati' ? 'Length (Arabic)' : 'Length (Kuwaiti)',
-        measurement.style == 'Emirati' ? measurement.lengthArabi : measurement.lengthKuwaiti,
+        measurement.style == 'Emirati'
+            ? measurement.lengthArabi
+            : measurement.lengthKuwaiti,
       ),
-      _buildMeasurementItem('Chest', measurement.chest),
-      _buildMeasurementItem('Width', measurement.width),
-      _buildMeasurementItem('Back Length', measurement.backLength),
-      _buildMeasurementItem('Neck Size', measurement.neck),
-      _buildMeasurementItem('Shoulder', measurement.shoulder),
-      _buildMeasurementItem('Sleeve Length', measurement.sleeve),
+      _buildDetailItem('Chest', measurement.chest),
+      _buildDetailItem('Width', measurement.width),
+      _buildDetailItem('Back Length', measurement.backLength),
+      _buildDetailItem('Neck Size', measurement.neck),
+      _buildDetailItem('Shoulder', measurement.shoulder),
+      _buildDetailItem('Sleeve Length', measurement.sleeve),
       _buildCollarMeasurement('Sleeve Fitting', measurement.collar),
-      _buildMeasurementItem('Under Shoulder', measurement.under),
-      _buildDetailItem('Side Seam', measurement.seam),
-      _buildDetailItem('Adhesive', measurement.adhesive),
-      _buildDetailItem('Under Kandura', measurement.underKandura),
+      _buildDetailItem('Under Shoulder', measurement.under),
+      _buildDetailItem('Shoulder Shaib', measurement.seam),
+      _buildDetailItem('Bottom', measurement.adhesive),
+      _buildDetailItem('Bottom Kandura', measurement.underKandura),
     ];
 
     return pw.Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: measurementItems.map((item) => pw.SizedBox(width: 150, child: item)).toList(),
+      children:
+          measurementItems
+              .map((item) => pw.SizedBox(width: 150, child: item))
+              .toList(),
     );
   }
 
   static pw.Widget _buildStyleDetails(Measurement measurement) {
     final List<pw.Widget> styleItems = [
-      _buildDetailItem('Sleeve Opening', measurement.openSleeve),
+      _buildDetailItem('Sleeve Stich', measurement.openSleeve),
       _buildDetailItem('Stitching Style', measurement.stitching),
       _buildDetailItem('Pleat Style', measurement.pleat),
-      _buildDetailItem('Side Pocket', measurement.button),
+      _buildDetailItem('front Plate', measurement.button),
       _buildDetailItem('Cuff Style', measurement.cuff),
       _buildDetailItem('Embroidery', measurement.embroidery),
       _buildDetailItem('Neck Style', measurement.neckStyle),
@@ -247,7 +268,10 @@ class MeasurementTemplate {
     return pw.Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: styleItems.map((item) => pw.SizedBox(width: 150, child: item)).toList(),
+      children:
+          styleItems
+              .map((item) => pw.SizedBox(width: 150, child: item))
+              .toList(),
     );
   }
 
@@ -273,21 +297,24 @@ class MeasurementTemplate {
     );
   }
 
-  static pw.Widget _buildMeasurementItem(String label, double value) {
-    final displayValue = value != 0.0 ? value.toStringAsFixed(1) : '-';
+  static pw.Widget _buildMeasurementItem(String label, String value) {
+    final displayValue = value.isNotEmpty && value != '0' ? value : '-';
     return _buildDetailItem(label, displayValue);
   }
 
-  static pw.Widget _buildCollarMeasurement(String label, Map<String, double> value) {
-    final start = value['start'] ?? 0.0;
-    final center = value['center'] ?? 0.0;
-    final end = value['end'] ?? 0.0;
-    
-    if (start == 0.0 && center == 0.0 && end == 0.0) {
+  static pw.Widget _buildCollarMeasurement(
+    String label,
+    Map<String, String> value,
+  ) {
+    final start = value['start'] ?? '';
+    final center = value['center'] ?? '';
+    final end = value['end'] ?? '';
+
+    if (start.isEmpty && center.isEmpty && end.isEmpty) {
       return _buildDetailItem(label, '-');
     }
 
-    final formattedValue = 'S:${start.toStringAsFixed(1)} C:${center.toStringAsFixed(1)} E:${end.toStringAsFixed(1)}';
+    final formattedValue = 'S:$start C:$center E:$end';
     return _buildDetailItem(label, formattedValue);
   }
 
@@ -318,20 +345,25 @@ class MeasurementTemplate {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  static String _generateDetailedQRData(Measurement measurement, String customerName) {
+  static String _generateDetailedQRData(
+    Measurement measurement,
+    String customerName,
+  ) {
     final data = {
       'Customer': customerName,
       'Bill': measurement.billNumber,
       'Date': _formatDate(measurement.date),
       'Style': measurement.style,
       'Design': measurement.designType,
-      'Length': measurement.style == 'Emirati' 
-          ? '${measurement.lengthArabi} (Ar)'
-          : '${measurement.lengthKuwaiti} (Kw)',
+      'Length':
+          measurement.style == 'Emirati'
+              ? '${measurement.lengthArabi} (Ar)'
+              : '${measurement.lengthKuwaiti} (Kw)',
       'Chest': measurement.chest,
       'Width': measurement.width,
       'Sleeve': measurement.sleeve,
-      'Collar': 'S:${measurement.collar['start'] ?? 0},C:${measurement.collar['center'] ?? 0},E:${measurement.collar['end'] ?? 0}',
+      'Collar':
+          'S:${measurement.collar['start'] ?? ""},C:${measurement.collar['center'] ?? ""},E:${measurement.collar['end'] ?? ""}',
       'Neck': measurement.neck,
       'Shoulder': measurement.shoulder,
     };

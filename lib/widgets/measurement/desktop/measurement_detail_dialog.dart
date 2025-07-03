@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:printing/printing.dart';
 import '../../../models/customer.dart';
 import '../../../models/measurement.dart';
 import '../../../services/customer_service.dart';
@@ -773,72 +775,43 @@ class _DetailDialogState extends State<DetailDialog> {
   List<MeasurementItem> _buildMeasurementItems() {
     return [
       if (widget.measurement.style == 'Emirati')
-        MeasurementItem(
-          'Length (Arabic)',
-          FractionHelper.formatFraction(widget.measurement.lengthArabi),
-          true,
-        )
+        MeasurementItem('Length (Arabic)', widget.measurement.lengthArabi, true)
       else
         MeasurementItem(
           'Length (Kuwaiti)',
-          FractionHelper.formatFraction(widget.measurement.lengthKuwaiti),
+          widget.measurement.lengthKuwaiti,
           true,
         ),
-      MeasurementItem(
-        'Chest',
-        FractionHelper.formatFraction(widget.measurement.chest),
-        true,
-      ),
-      MeasurementItem(
-        'Width',
-        FractionHelper.formatFraction(widget.measurement.width),
-        true,
-      ),
-      MeasurementItem(
-        'Back Length',
-        FractionHelper.formatFraction(widget.measurement.backLength),
-      ),
-      MeasurementItem(
-        'Neck Size',
-        FractionHelper.formatFraction(widget.measurement.neck),
-      ),
+      MeasurementItem('Chest', widget.measurement.chest, true),
+      MeasurementItem('Width', widget.measurement.width, true),
+      MeasurementItem('Back Length', widget.measurement.backLength),
+      MeasurementItem('Neck Size', widget.measurement.neck),
       MeasurementItem(
         'Sleeve Fitting',
-        'S: ${FractionHelper.formatFraction(widget.measurement.collar['start'] ?? 0)} C: ${FractionHelper.formatFraction(widget.measurement.collar['center'] ?? 0)} E: ${FractionHelper.formatFraction(widget.measurement.collar['end'] ?? 0)}',
+        'S: ${widget.measurement.collar['start'] ?? ""} C: ${widget.measurement.collar['center'] ?? ""} E: ${widget.measurement.collar['end'] ?? ""}',
       ),
-      MeasurementItem(
-        'Shoulder',
-        FractionHelper.formatFraction(widget.measurement.shoulder),
-      ),
-      MeasurementItem(
-        'Sleeve Length',
-        FractionHelper.formatFraction(widget.measurement.sleeve),
-      ),
-      MeasurementItem(
-        'Under Shoulder',
-        FractionHelper.formatFraction(widget.measurement.under),
-      ),
+      MeasurementItem('Shoulder', widget.measurement.shoulder),
+      MeasurementItem('Sleeve Length', widget.measurement.sleeve),
+      MeasurementItem('Under Shoulder', widget.measurement.under),
       if (widget.measurement.seam.isNotEmpty)
-        MeasurementItem('Side Seam', widget.measurement.seam),
+        MeasurementItem('Shoulder Shaib', widget.measurement.seam),
       if (widget.measurement.adhesive.isNotEmpty)
-        MeasurementItem('Adhesive', widget.measurement.adhesive),
+        MeasurementItem('Bottom', widget.measurement.adhesive),
       if (widget.measurement.underKandura.isNotEmpty)
-        MeasurementItem('Under Kandura', widget.measurement.underKandura),
+        MeasurementItem('Bottom Kandura', widget.measurement.underKandura),
     ];
   }
 
   List<MeasurementItem> _buildStyleDetailItems() {
     return [
-      if (widget.measurement.tarboosh.isNotEmpty)
-        MeasurementItem('Cap Style', widget.measurement.tarboosh),
       if (widget.measurement.openSleeve.isNotEmpty)
-        MeasurementItem('Sleeve Opening', widget.measurement.openSleeve),
+        MeasurementItem('Sleeve Stich', widget.measurement.openSleeve),
       if (widget.measurement.stitching.isNotEmpty)
         MeasurementItem('Stitching Style', widget.measurement.stitching),
       if (widget.measurement.pleat.isNotEmpty)
         MeasurementItem('Pleat Style', widget.measurement.pleat),
       if (widget.measurement.button.isNotEmpty)
-        MeasurementItem('Side Pocket', widget.measurement.button),
+        MeasurementItem('front Plate', widget.measurement.button),
       if (widget.measurement.cuff.isNotEmpty)
         MeasurementItem('Cuff Style', widget.measurement.cuff),
       if (widget.measurement.embroidery.isNotEmpty)
@@ -997,6 +970,17 @@ class _DetailDialogState extends State<DetailDialog> {
               _sharePdf(pdfBytes);
             },
             isPrimary: true,
+          ),
+          const SizedBox(width: InventoryDesignConfig.spacingS),
+          _buildHeaderActionButton(
+            icon: PhosphorIcons.printer(),
+            label: 'Print PDF',
+            onPressed: () {
+              Printing.layoutPdf(
+                onLayout: (format) async => Uint8List.fromList(pdfBytes),
+              );
+            },
+            isPrimary: false,
           ),
         ],
       ),

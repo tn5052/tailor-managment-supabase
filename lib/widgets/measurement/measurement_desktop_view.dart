@@ -72,7 +72,11 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
       final customers = await _customerService.getAllCustomers();
       final measurements = await _measurementService.getAllMeasurements();
 
-      var filteredMeasurements = _applyAllFilters(measurements, _currentFilter, _customers);
+      var filteredMeasurements = _applyAllFilters(
+        measurements,
+        _currentFilter,
+        _customers,
+      );
 
       // Apply sorting
       filteredMeasurements.sort((a, b) {
@@ -152,14 +156,15 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
     return measurements.where((measurement) {
       final customer = customers.firstWhere(
         (c) => c.id == measurement.customerId,
-        orElse: () => Customer(
-          id: '',
-          billNumber: '',
-          name: 'Unknown',
-          phone: '',
-          address: '',
-          gender: Gender.male,
-        ),
+        orElse:
+            () => Customer(
+              id: '',
+              billNumber: '',
+              name: 'Unknown',
+              phone: '',
+              address: '',
+              gender: Gender.male,
+            ),
       );
 
       // Text search
@@ -200,9 +205,11 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
 
       // Length range filter
       if (filter.lengthRange != null) {
-        final length = measurement.style == 'Emirati'
-            ? measurement.lengthArabi
-            : measurement.lengthKuwaiti;
+        final lengthStr =
+            measurement.style == 'Emirati'
+                ? measurement.lengthArabi
+                : measurement.lengthKuwaiti;
+        final length = double.tryParse(lengthStr) ?? 0.0;
         if (length < filter.lengthRange!.start ||
             length > filter.lengthRange!.end) {
           return false;
@@ -211,16 +218,18 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
 
       // Chest range filter
       if (filter.chestRange != null) {
-        if (measurement.chest < filter.chestRange!.start ||
-            measurement.chest > filter.chestRange!.end) {
+        final chest = double.tryParse(measurement.chest) ?? 0.0;
+        if (chest < filter.chestRange!.start ||
+            chest > filter.chestRange!.end) {
           return false;
         }
       }
 
       // Sleeve range filter
       if (filter.sleeveRange != null) {
-        if (measurement.sleeve < filter.sleeveRange!.start ||
-            measurement.sleeve > filter.sleeveRange!.end) {
+        final sleeve = double.tryParse(measurement.sleeve) ?? 0.0;
+        if (sleeve < filter.sleeveRange!.start ||
+            sleeve > filter.sleeveRange!.end) {
           return false;
         }
       }
@@ -237,9 +246,11 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
   }
 
   void _showAddMeasurementDialog() {
-    AddMeasurementDialog.show(context);
-    // Reload after adding
-    Future.delayed(const Duration(milliseconds: 500), _loadData);
+    AddMeasurementDialog.show(
+      context,
+      onMeasurementAdded: _loadData, // Refresh immediately after save
+    );
+    // No need for delayed reload anymore
   }
 
   void _showMeasurementDetails(Measurement measurement) {
@@ -917,9 +928,9 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
         DataCell(_buildDesignTypeCell(measurement.designType)),
         DataCell(_buildDateCell(measurement.date)),
         DataCell(_buildLengthCell(measurement)),
-        DataCell(_buildMeasurementValueCell(measurement.chest)),
-        DataCell(_buildMeasurementValueCell(measurement.width)),
-        DataCell(_buildMeasurementValueCell(measurement.sleeve)),
+        DataCell(_buildMeasurementStringCell(measurement.chest)),
+        DataCell(_buildMeasurementStringCell(measurement.width)),
+        DataCell(_buildMeasurementStringCell(measurement.sleeve)),
         DataCell(_buildActionsCell(measurement)),
       ],
       onSelectChanged: (selected) {
@@ -1031,12 +1042,12 @@ class _MeasurementDesktopViewState extends State<MeasurementDesktopView> {
         measurement.style == 'Emirati'
             ? measurement.lengthArabi
             : measurement.lengthKuwaiti;
-    return _buildMeasurementValueCell(length);
+    return _buildMeasurementStringCell(length);
   }
 
-  Widget _buildMeasurementValueCell(double? value) {
+  Widget _buildMeasurementStringCell(String? value) {
     return Text(
-      value != null && value > 0 ? value.toString() : '-',
+      (value != null && value.isNotEmpty && value != '0') ? value : '-',
       style: InventoryDesignConfig.bodyLarge,
     );
   }
